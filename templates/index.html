@@ -55,11 +55,12 @@
         <div class="group-title">{{ cat.title }}</div>
         <div class="grid-custom">
             {% for stock in cat.stocks %}
-            <div class="card" id="card-{{ stock.code }}">
+            {% set q = quotes[stock.code] %}
+            <div class="card">
                 <div class="card-title">{{ stock.name }}</div>
-                <div class="card-val" id="val-{{ stock.code }}">
-                    불러오는 중...<br>
-                    <span style="font-size:0.75rem; font-weight: 600;">+0.00%</span>
+                <div class="card-val {{ 'up' if q.is_up else 'down' }}">
+                    {{ q.price }}<br>
+                    <span style="font-size:0.75rem; font-weight: 600;">{{ q.rate }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -68,57 +69,8 @@
     {% endfor %}
 
     <div class="btn-wrap">
-        <button class="btn" onclick="loadMarketData()">🔄 시세 새로고침</button>
+        <button class="btn" onclick="location.reload()">🔄 시세 새로고침</button>
     </div>
-
-    <script>
-        const stockList = [
-            {% for cat in categories %}
-                {% for stock in cat.stocks %}
-                    { code: "{{ stock.code }}", symbol: "{{ stock.symbol }}" },
-                {% endfor %}
-            {% endfor %}
-        ];
-
-        async function loadMarketData() {
-            for (const item of stockList) {
-                const el = document.getElementById(`val-${item.code}`);
-                try {
-                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=2d`;
-                    // CORS 우회 퍼블릭 프록시 적용
-                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-                    
-                    const res = await fetch(proxyUrl);
-                    const data = await res.json();
-                    
-                    const meta = data.chart.result[0].meta;
-                    let cur = meta.regularMarketPrice;
-                    let prev = meta.chartPreviousClose || meta.previousClose;
-                    
-                    if (!cur || !prev) {
-                        const quotes = data.chart.result[0].indicators.quote[0].close;
-                        const valid = quotes.filter(q => q !== null);
-                        if (valid.length >= 2) {
-                            cur = valid[valid.length - 1];
-                            prev = valid[valid.length - 2];
-                        }
-                    }
-
-                    const diff = cur - prev;
-                    const rate = prev ? (diff / prev) * 100 : 0;
-                    const isUp = diff >= 0;
-
-                    el.className = `card-val ${isUp ? 'up' : 'down'}`;
-                    el.innerHTML = `${cur.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>` +
-                                   `<span style="font-size:0.75rem; font-weight: 600;">${rate >= 0 ? '+' : ''}${rate.toFixed(2)}%</span>`;
-                } catch (err) {
-                    el.innerHTML = `값 로딩 실패<br><span style="font-size:0.75rem; font-weight: 600;">+0.00%</span>`;
-                }
-            }
-        }
-
-        loadMarketData();
-    </script>
 
 </body>
 </html>
