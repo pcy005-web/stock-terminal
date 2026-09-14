@@ -4,37 +4,40 @@ import json
 
 app = Flask(__name__)
 
-def fetch_naver_index(code):
+def fetch_yahoo_index(symbol):
     try:
-        url = f"https://m.stock.naver.com/api/index/{code}/basic"
+        # 야후 파이낸스 공개 API를 활용한 실시간 지수 조회 (패키지 설치 불필요)
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=2d"
         req = urllib.request.Request(
             url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         )
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with urllib.request.urlopen(req, timeout=4) as response:
             res_data = json.loads(response.read().decode('utf-8'))
+            result = res_data['chart']['result'][0]
+            meta = result['meta']
             
-            price = res_data.get('closePrice', '0')
-            rate = res_data.get('fluctuationsRatio', '0')
-            sign = res_data.get('sign', '3')
+            current_price = meta['regularMarketPrice']
+            prev_close = meta['chartPreviousClose'] if 'chartPreviousClose' in meta else meta['previousClose']
             
-            is_up = sign in ['1', '2']
-            formatted_rate = f"+{rate}%" if is_up and not rate.startswith('+') and not rate.startswith('-') else f"{rate}%"
+            change = current_price - prev_close
+            change_rate = (change / prev_close) * 100
+            is_up = change >= 0
             
             return {
-                'price': price,
-                'rate': formatted_rate,
+                'price': f"{current_price:,.2f}",
+                'rate': f"{change_rate:+.2f}%",
                 'is_up': is_up
             }
-    except Exception:
+    except Exception as e:
         return None
 
 @app.route('/')
 def index():
-    # 나스닥 심볼을 해외 지수 전용 코드(NAS@NASike 등)로 변경
-    kospi = fetch_naver_index('KOSPI') or {'price': '로드 실패', 'rate': '0.00%', 'is_up': True}
-    kosdaq = fetch_naver_index('KOSDAQ') or {'price': '로드 실패', 'rate': '0.00%', 'is_up': True}
-    nasdaq = fetch_naver_index('NAS@NASike') or {'price': '19,000.00', 'rate': '+1.00%', 'is_up': True}
+    # 코스피(^KS11), 코스닥(^KQ11), 나스닥 100(^NDX) 정확한 글로벌 티커 사용
+    kospi = fetch_yahoo_index('^KS11') or {'price': '정보 없음', 'rate': '0.00%', 'is_up': True}
+    kosdaq = fetch_yahoo_index('^KQ11') or {'price': '정보 없음', 'rate': '0.00%', 'is_up': True}
+    nasdaq = fetch_yahoo_index('^NDX') or {'price': '정보 없음', 'rate': '0.00%', 'is_up': True}
 
     data = {
         'kospi': kospi,
