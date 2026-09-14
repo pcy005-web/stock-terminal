@@ -16,29 +16,31 @@
             --border-color: #475569;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: var(--bg-primary); color: var(--text-main); padding: 12px; font-size: 13px; max-width: 1000px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
-        .logo { font-size: 1.1rem; font-weight: 800; color: var(--accent-main); }
-        .card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
-        .card-title { font-size: 0.78rem; color: var(--text-sub); margin-bottom: 6px; }
-        .card-val { font-size: 1.05rem; font-weight: 700; }
+        body { background-color: var(--bg-primary); color: var(--text-main); padding: 16px; font-size: 13px; max-width: 1100px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .logo { font-size: 1.15rem; font-weight: 800; color: var(--accent-main); }
         
-        /* 상승=빨간색, 하락=파란색 적용 */
+        /* 카드 디자인 */
+        .card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; }
+        .card-title { font-size: 0.8rem; color: var(--text-sub); margin-bottom: 6px; }
+        .card-val { font-size: 1.1rem; font-weight: 700; }
+        
+        /* 상승=빨간색, 하락=파란색 */
         .up { color: var(--accent-red); }
         .down { color: var(--accent-blue); }
 
-        /* 한 줄에 3개씩 배치 (반응형: 화면이 아주 작아지면 2개) */
+        /* 한 줄에 정확히 3개씩 배치 (모바일 화면에서는 2개로 조정) */
         .grid-custom { 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
-            gap: 10px; 
-            margin-bottom: 10px; 
+            gap: 12px; 
+            margin-bottom: 16px; 
         }
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .grid-custom { grid-template-columns: repeat(2, 1fr); }
         }
 
-        .btn { padding: 10px 12px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; width: 100%; margin-top: 14px; }
+        .btn { padding: 12px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -48,7 +50,7 @@
     </header>
 
     <section>
-        <div style="font-size: 0.95rem; font-weight: 800; color: var(--accent-main); margin-bottom: 10px;">■ 실시간 주요 글로벌 증시 및 지표</div>
+        <div style="font-size: 0.95rem; font-weight: 800; color: var(--accent-main); margin-bottom: 12px;">■ 실시간 주요 글로벌 증시 및 지표</div>
         <div class="grid-custom">
             <!-- 1. 코스피 -->
             <div class="card">
