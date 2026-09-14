@@ -1,2 +1,4 @@
 Flask==3.0.2
-yfinance==0.2.36
+FinanceDataReader==0.9.50
+pandas==2.1.4
+requests==2.31.0
