@@ -28,12 +28,18 @@ def fetch_market_data(symbol):
         with urllib.request.urlopen(req, timeout=4) as response:
             res_data = json.loads(response.read().decode('utf-8'))
             result = res_data['chart']['result'][0]
-            meta = result['meta']
             
-            current_price = meta['regularMarketPrice']
-            # 전일 종가 정확도를 높이기 위해 표준 필드 우선순위 적용
-            prev_close = meta.get('regularMarketPreviousClose', meta.get('chartPreviousClose', meta.get('previousClose', current_price)))
+            # 차트 가격 배열에서 유효한 값을 추출해 정확한 등락 계산
+            quotes = result['indicators']['quote'][0]['close']
+            valid_quotes = [q for q in quotes if q is not None]
             
+            if len(valid_quotes) >= 2:
+                current_price = valid_quotes[-1]
+                prev_close = valid_quotes[-2]
+            else:
+                current_price = valid_quotes[-1] if valid_quotes else 0
+                prev_close = current_price
+
             change = current_price - prev_close
             change_rate = (change / prev_close) * 100 if prev_close else 0.0
             is_up = change >= 0
