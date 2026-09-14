@@ -47,7 +47,7 @@
 <body>
 
     <header>
-        <div class="logo">📊 글로벌 실시간 금융 시세</div>
+        <div class="logo">📊 글로벌 실시간 금융 시세 대시보드</div>
     </header>
 
     {% for cat in categories %}
@@ -55,11 +55,12 @@
         <div class="group-title">{{ cat.title }}</div>
         <div class="grid-custom">
             {% for stock in cat.stocks %}
-            <div class="card" id="card-{{ stock.code }}">
+            {% set q = quotes[stock.code] %}
+            <div class="card">
                 <div class="card-title">{{ stock.name }}</div>
-                <div class="card-val" id="val-{{ stock.code }}">
-                    불러오는 중...<br>
-                    <span style="font-size:0.75rem; font-weight: 600;">+0.00%</span>
+                <div class="card-val {{ 'up' if q.is_up else 'down' }}">
+                    {{ q.price }}<br>
+                    <span style="font-size:0.75rem; font-weight: 600;">{{ q.rate }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -68,56 +69,8 @@
     {% endfor %}
 
     <div class="btn-wrap">
-        <button class="btn" onclick="fetchAllData()">🔄 전체 시세 새로고침</button>
+        <button class="btn" onclick="location.reload()">🔄 시세 새로고침</button>
     </div>
-
-    <script>
-        const stocks = [
-            {% for cat in categories %}
-                {% for stock in cat.stocks %}
-                    { code: "{{ stock.code }}", ticker: "{{ stock.ticker }}" },
-                {% endfor %}
-            {% endfor %}
-        ];
-
-        async function fetchAllData() {
-            for (const stock of stocks) {
-                const el = document.getElementById(`val-${stock.code}`);
-                try {
-                    // CORS 우회를 위한 퍼블릭 프록시 또는 야후 v8 차트 API 직접 호출
-                    const encodedTicker = encodeURIComponent(stock.ticker);
-                    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodedTicker}?interval=1d&range=2d`);
-                    const data = await res.json();
-                    
-                    const meta = data.chart.result[0].meta;
-                    let cur = meta.regularMarketPrice;
-                    let prev = meta.chartPreviousClose || meta.previousClose;
-                    
-                    if (!cur || !prev) {
-                        const quotes = data.chart.result[0].indicators.quote[0].close;
-                        const valid = quotes.filter(q => q !== null);
-                        if (valid.length >= 2) {
-                            cur = valid[valid.length - 1];
-                            prev = valid[valid.length - 2];
-                        }
-                    }
-
-                    const diff = cur - prev;
-                    const rate = prev ? (diff / prev) * 100 : 0;
-                    const isUp = diff >= 0;
-
-                    el.className = `card-val ${isUp ? 'up' : 'down'}`;
-                    el.innerHTML = `${cur.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>` +
-                                   `<span style="font-size:0.75rem; font-weight: 600;">${rate >= 0 ? '+' : ''}${rate.toFixed(2)}%</span>`;
-                } catch (e) {
-                    el.innerHTML = `데이터 확인중<br><span style="font-size:0.75rem; font-weight: 600;">+0.00%</span>`;
-                }
-            }
-        }
-
-        // 페이지 로드 시 자동 실행
-        fetchAllData();
-    </script>
 
 </body>
 </html>
