@@ -4,7 +4,6 @@ import json
 
 app = Flask(__name__)
 
-# 요청하신 순서대로 자산 정의 (URL 인코딩된 심볼 사용)
 ASSETS = [
     {'id': 'kospi', 'name': '코스피 (KOSPI)', 'symbol': '%5EKS11'},
     {'id': 'kosdaq', 'name': '코스닥 (KOSDAQ)', 'symbol': '%5EKQ11'},
@@ -32,10 +31,11 @@ def fetch_market_data(symbol):
             meta = result['meta']
             
             current_price = meta['regularMarketPrice']
-            prev_close = meta.get('chartPreviousClose', meta.get('previousClose', current_price))
+            # 전일 종가 정확도를 높이기 위해 표준 필드 우선순위 적용
+            prev_close = meta.get('regularMarketPreviousClose', meta.get('chartPreviousClose', meta.get('previousClose', current_price)))
             
             change = current_price - prev_close
-            change_rate = (change / prev_close) * 100
+            change_rate = (change / prev_close) * 100 if prev_close else 0.0
             is_up = change >= 0
             
             return {
