@@ -45,7 +45,7 @@ def fetch_realtime_data(ticker):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
     encoded_ticker = ticker.replace('^', '%5E')
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range=2d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range=5d"
     
     try:
         req = urllib.request.Request(url, headers=headers)
@@ -56,20 +56,15 @@ def fetch_realtime_data(ticker):
             if not result_arr:
                 return None
                 
-            meta = result_arr[0].get('meta', {})
-            cur = meta.get('regularMarketPrice')
-            prev = meta.get('chartPreviousClose', meta.get('previousClose'))
+            quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
+            valid_closes = [c for c in quotes if c is not None]
             
-            if cur is None or prev is None:
-                quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
-                valid_closes = [c for c in quotes if c is not None]
-                if len(valid_closes) >= 2:
-                    cur, prev = valid_closes[-1], valid_closes[-2]
-                elif len(valid_closes) == 1:
-                    cur = prev = valid_closes[-1]
-                else:
-                    return None
-
+            if not valid_closes:
+                return None
+            
+            cur = valid_closes[-1]
+            prev = valid_closes[-2] if len(valid_closes) >= 2 else cur
+            
             diff = cur - prev
             pct = (diff / prev) * 100 if prev else 0.0
             
