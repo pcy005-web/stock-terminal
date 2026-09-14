@@ -1,34 +1,35 @@
 from flask import Flask, render_template
-import yfinance as yf
-from requests import Session
+import FinanceDataReader as fdr
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
     try:
-        # 야후 파이낸스 차단 우회를 위한 세션 설정
-        session = Session()
-        session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        # 최근 5일간의 데이터 가져오기 (주말/휴일 대비)
+        end_date = datetime.today().strftime('%Y-%m-%d')
+        start_date = (datetime.today() - timedelta(days=7)).strftime('%Y-%m-%d')
         
-        tickers = {
-            'kospi': '^KS11',
-            'kosdaq': '^KQ11',
-            'nasdaq': '^NDX'
+        # 코스피, 코스닥, 나스닥 지수 심볼
+        symbols = {
+            'kospi': 'KS11',
+            'kosdaq': 'KQ11',
+            'nasdaq': 'IXIC'
         }
         
         data = {}
-        for key, symbol in tickers.items():
-            t = yf.Ticker(symbol, session=session)
-            todays_data = t.history(period='2d')
-            
-            if len(todays_data) >= 2:
-                current_price = todays_data['Close'].iloc[-1]
-                prev_close = todays_data['Close'].iloc[-2]
+        for key, symbol in symbols.items():
+            df = fdr.DataReader(symbol, start_date, end_date)
+            if not df.empty and len(df) >= 2:
+                current_price = df['Close'].iloc[-1]
+                prev_close = df['Close'].iloc[-2]
                 change_rate = ((current_price - prev_close) / prev_close) * 100
-            else:
-                current_price = todays_data['Close'].iloc[-1]
+            elif not df.empty:
+                current_price = df['Close'].iloc[-1]
                 change_rate = 0.0
+            else:
+                raise Exception("데이터 없음")
                 
             data[key] = {
                 'price': f"{current_price:,.2f}",
@@ -37,12 +38,11 @@ def index():
             }
             
     except Exception as e:
-        # 에러 원인 확인용
-        err_msg = str(e)
+        # 오류 발생 시 확인용 메시지 표시
         data = {
-            'kospi': {'price': f"에러: {err_msg[:15]}", 'rate': '0.00%', 'is_up': True},
-            'kosdaq': {'price': '데이터 로드 실패', 'rate': '0.00%', 'is_up': True},
-            'nasdaq': {'price': '데이터 로드 실패', 'rate': '0.00%', 'is_up': True},
+            'kospi': {'price': '조회 중단(API 제한)', 'rate': '0.00%', 'is_up': True},
+            'kosdaq': {'price': '조회 중단(API 제한)', 'rate': '0.00%', 'is_up': True},
+            'nasdaq': {'price': '조회 중단(API 제한)', 'rate': '0.00%', 'is_up': True},
         }
 
     return render_template('index.html', data=data)
