@@ -16,25 +16,28 @@
             --accent-main: #38bdf8;
             --border-color: #475569;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; scroll-behavior: smooth; }
         body { background-color: var(--bg-primary); color: var(--text-main); padding: 16px; font-size: 13px; max-width: 1400px; margin: 0 auto; }
         
-        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; position: sticky; top: 0; background: var(--bg-primary); z-index: 100; padding-top: 12px; }
         .logo { font-size: 1.3rem; font-weight: 800; color: var(--accent-main); }
         
-        /* 탭 내비게이션바 (7대 섹션) */
-        .nav-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); }
-        .nav-tab { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-sub); padding: 8px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
-        .nav-tab:hover, .nav-tab.active { background: var(--accent-main); color: #0f172a; border-color: var(--accent-main); }
+        /* 스크롤 목차 네비게이션 바 */
+        .quick-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .quick-nav::-webkit-scrollbar { height: 4px; }
+        .quick-nav::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        .quick-btn { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-sub); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; text-decoration: none; transition: all 0.2s; }
+        .quick-btn:hover { background: var(--accent-main); color: #0f172a; border-color: var(--accent-main); }
 
-        .section-block { display: none; margin-bottom: 30px; }
-        .section-block.active { display: block; }
+        /* 섹션 컨테이너 */
+        .dashboard-section { margin-bottom: 40px; scroll-margin-top: 70px; }
+        .section-header-title { font-size: 1.1rem; font-weight: 800; color: var(--accent-main); margin-bottom: 16px; border-left: 4px solid var(--accent-main); padding-left: 10px; display: flex; align-items: center; justify-content: space-between; }
         
-        .group-container { margin-bottom: 24px; }
-        .group-title { font-size: 1rem; font-weight: 700; color: var(--accent-main); margin-bottom: 12px; border-left: 3px solid var(--accent-main); padding-left: 8px; }
+        .group-container { margin-bottom: 16px; }
+        .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
 
         .card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .card-title { font-size: 0.8rem; color: var(--text-sub); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-title { font-size: 0.78rem; color: var(--text-sub); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-val { font-size: 1.1rem; font-weight: 700; }
         
         .up { color: var(--accent-red); }
@@ -49,35 +52,36 @@
             .grid-custom { grid-template-columns: repeat(2, 1fr); }
         }
 
-        /* 분석 컨텐츠 테이블 및 카드 스타일 */
+        /* 분석 컨텐츠 카드 스타일 */
         .content-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
         .content-card h3 { font-size: 0.95rem; color: var(--accent-main); margin-bottom: 8px; }
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
-        .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; }
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo">⚡ AlphaFlow Terminal Pro</div>
-        <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time Market & Intelligence Hub</div>
+        <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time Scrolling Intelligence Hub</div>
     </header>
 
-    <!-- 7대 섹션 메뉴 탭 -->
-    <div class="nav-tabs">
-        <div class="nav-tab active" onclick="switchTab(0)">1. 증시 팩트체크</div>
-        <div class="nav-tab" onclick="switchTab(1)">2. 미·한 테마 연동성</div>
-        <div class="nav-tab" onclick="switchTab(2)">3. 스마트머니 레이더</div>
-        <div class="nav-tab" onclick="switchTab(3)">4. 거래소 수급 전략 TOP 5</div>
-        <div class="nav-tab" onclick="switchTab(4)">5. 장전 5분 핵심 요약</div>
-        <div class="nav-tab" onclick="switchTab(5)">6. 핵심 뉴스 10선 & 검증</div>
-        <div class="nav-tab" onclick="switchTab(6)">7. AI 브리핑 생성기</div>
+    <!-- 빠른 목차 이동 바 -->
+    <div class="quick-nav">
+        <a href="#sec-1" class="quick-btn">1. 팩트체크</a>
+        <a href="#sec-2" class="quick-btn">2. 테마연동성</a>
+        <a href="#sec-3" class="quick-btn">3. 스마트머니 레이더</a>
+        <a href="#sec-4" class="quick-btn">4. 수급 전략 TOP 5</a>
+        <a href="#sec-5" class="quick-btn">5. 장전 5분 요약</a>
+        <a href="#sec-6" class="quick-btn">6. 뉴스 10선 & 검증</a>
+        <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
-    <!-- 섹션 1: 실제 증시 지표 팩트체크 (시세 데이터 연동) -->
-    <div class="section-block active" id="sec-0">
+    <!-- 1. 실제 증시 지표 팩트체크 -->
+    <div class="dashboard-section" id="sec-1">
+        <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
         {% for cat in categories %}
         <div class="group-container">
             <div class="group-title">{{ cat.title }}</div>
@@ -97,9 +101,9 @@
         {% endfor %}
     </div>
 
-    <!-- 섹션 2: 미·한 테마 연동성 및 리스크 구분 -->
-    <div class="section-block" id="sec-1">
-        <div class="group-title">미·한 증시 디커플링 및 동조화 리스크 매트릭스</div>
+    <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
+    <div class="dashboard-section" id="sec-2">
+        <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
             <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로</h3>
             <p style="color: var(--text-sub); margin-bottom: 8px;">필라델피아 반도체 지수 전일 대비 변동폭과 국내 반도체 대형주의 외국인 순매수 동조화 구간 분석.</p>
@@ -121,9 +125,9 @@
         </div>
     </div>
 
-    <!-- 섹션 3: 스마트머니 수급 레이더 (현재 조회 시점 데이터 중심 업데이트) -->
-    <div class="section-block" id="sec-2">
-        <div class="group-title">기관·외국인 실시간 양매수 및 프로그램 매매 강도 (현재 실시간 레이더)</div>
+    <!-- 3. 스마트머니 수급 레이더 -->
+    <div class="dashboard-section" id="sec-3">
+        <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card">
             <h3>1. AI 인프라 및 전력기기 패시브 자금 집중</h3>
             <p style="color: var(--text-sub); margin-bottom: 8px;">글로벌 빅테크 CapEx 확대에 따른 데이터센터 전력 수요 급증으로 기관·외국인 순매수세가 집중 유입되는 전력 설비 및 변압기 섹터 집중 모니터링.</p>
@@ -135,7 +139,7 @@
         </div>
         <div class="content-card">
             <h3>2. 반도체 HBM4 및 첨단 패키징 밸류체인 수급</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">엔비디아 차세대 칩(루빈 등) 공급망 연동 핵심 소부장 종목으로 외국인 현물 순매수 유입 강도 최상위 포착.</p>
+            <p style="color: var(--text-sub); margin-bottom: 8px;">엔비디아 차세대 칩 공급망 연동 핵심 소부장 종목으로 외국인 현물 순매수 유입 강도 최상위 포착.</p>
             <div class="tag-list">
                 <span class="tag">주도 종목: SK하이닉스</span>
                 <span class="tag">한미반도체</span>
@@ -153,9 +157,9 @@
         </div>
     </div>
 
-    <!-- 섹션 4: 거래소 확정 수급 기반 전략 TOP 5 -->
-    <div class="section-block" id="sec-3">
-        <div class="group-title">거래소 확정 수급 기반 주도주 전략 TOP 5</div>
+    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 -->
+    <div class="dashboard-section" id="sec-4">
+        <div class="section-header-title">4. 거래소 확정 수급 기반 전략 TOP 5</div>
         <script>
             const top5List = [
                 { rank: 1, title: "AI 전력 인프라 및 변압기 슈퍼사이클", stocks: "효성중공업, HD현대일렉트릭, LS일렉트릭" },
@@ -173,9 +177,9 @@
         </script>
     </div>
 
-    <!-- 섹션 5: 장전 5분 마켓 핵심 요약 -->
-    <div class="section-block" id="sec-4">
-        <div class="group-title">오늘 장 반드시 체크해야 할 5분 핵심 브리핑</div>
+    <!-- 5. 장전 5분 마켓 핵심 요약 -->
+    <div class="dashboard-section" id="sec-5">
+        <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
             <h3>미증시 마감 요약 및 국내 개장 영향</h3>
             <p style="color: var(--text-sub); margin-bottom: 8px;">주요 빅테크 실적 및 연준 금리 경로 반영에 따른 국내 시초가 영향 분석.</p>
@@ -187,9 +191,9 @@
         </div>
     </div>
 
-    <!-- 섹션 6: 핵심 뉴스 10선 및 리스크 검증 (현재 조회 시점 기준 업데이트) -->
-    <div class="section-block" id="sec-5">
-        <div class="group-title">실시간 핵심 뉴스 10선 및 팩트 리스크 검증 (현재 조회 기준)</div>
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 -->
+    <div class="dashboard-section" id="sec-6">
+        <div class="section-header-title">6. 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
             <h3>주요 경제 헤드라인 10선 및 팩트 검증</h3>
             <p style="color: var(--text-sub); margin-bottom: 6px;">1. AI 반도체 HBM4 및 첨단 패키징 수요 견조 — <span style="color: var(--accent-red);">[팩트확인 완료 / 수혜주 집중]</span></p>
@@ -211,32 +215,15 @@
         </div>
     </div>
 
-    <!-- 섹션 7: 팩트 기반 AI 브리핑 생성기 -->
-    <div class="section-block" id="sec-6">
-        <div class="group-title">실시간 팩트 기반 맞춤형 AI 리포트 생성기</div>
+    <!-- 7. 팩트 기반 AI 브리핑 생성기 -->
+    <div class="dashboard-section" id="sec-7">
+        <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
             <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 지수 데이터와 수급 팩트를 바탕으로 AI가 요약한 오늘의 투자 전략 리포트를 생성합니다.</p>
             <button class="btn" onclick="alert('AI 브리핑 리포트가 성공적으로 생성되었습니다!')">✨ 실시간 AI 브리핑 리포트 생성</button>
         </div>
     </div>
-
-    <script>
-        function switchTab(index) {
-            const tabs = document.querySelectorAll('.nav-tab');
-            const blocks = document.querySelectorAll('.section-block');
-            
-            tabs.forEach((tab, idx) => {
-                if(idx === index) {
-                    tab.classList.add('active');
-                    blocks[idx].classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                    blocks[idx].classList.remove('active');
-                }
-            });
-        }
-    </script>
 
 </body>
 </html>
