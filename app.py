@@ -5,7 +5,6 @@ import ssl
 
 app = Flask(__name__)
 
-# 요청하신 그룹별 레이아웃 정의
 GROUPS = [
     {
         'group_name': '🇰🇷 국내 증시',
@@ -36,12 +35,10 @@ GROUPS = [
 ]
 
 def fetch_single_symbol(symbol):
-    """서버리스 환경에서 타임아웃과 크래시를 방지하기 위한 안전한 초고속 API 요청 함수"""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json'
     }
-    # 야후 파이낸스 차트 API를 활용해 가장 가볍고 빠르게 최근 2일 데이터 수집
     encoded_sym = symbol.replace('^', '%5E')
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_sym}?interval=1d&range=2d"
     
@@ -51,27 +48,31 @@ def fetch_single_symbol(symbol):
         ctx.verify_mode = ssl.CERT_NONE
         
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, context=ctx, timeout=2.5) as response:
+        with urllib.request.urlopen(req, context=ctx, timeout=3) as response:
             res_data = json.loads(response.read().decode('utf-8'))
-            result = res_data['chart']['result'][0]
             
-            # 메타 데이터에서 최신 가격과 전일 종가 추출 (가장 정확하고 빠름)
-            meta = result['meta']
-            cur = meta.get('regularMarketPrice', 0)
-            prev = meta.get('chartPreviousClose', meta.get('previousClose', 0))
+            # 안전한 구조 분해 및 방어 코드 적용
+            chart = res_data.get('chart', {})
+            result_list = chart.get('result')
+            if not result_list:
+                return {'price': '데이터 확인중', 'rate': '+0.00%', 'is_up': True}
+                
+            result = result_list[0]
+            meta = result.get('meta', {})
             
-            # 만약 메타에 값이 없다면 인디케이터 닫힘 가격 활용
-            if not cur or not prev:
-                quotes = result['indicators']['quote'][0]['close']
+            cur = meta.get('regularMarketPrice')
+            prev = meta.get('chartPreviousClose', meta.get('previousClose'))
+            
+            if cur is None or prev is None:
+                quotes = result.get('indicators', {}).get('quote', [{}])[0].get('close', [])
                 valid = [q for q in quotes if q is not None]
                 if len(valid) >= 2:
                     cur, prev = valid[-1], valid[-2]
                 elif len(valid) == 1:
                     cur = prev = valid[-1]
-            
-            if not cur or not prev:
-                return {'price': '데이터 없음', 'rate': '+0.00%', 'is_up': True}
-                
+                else:
+                    return {'price': '데이터 확인중', 'rate': '+0.00%', 'is_up': True}
+
             change = cur - prev
             rate = (change / prev) * 100 if prev else 0.0
             
@@ -85,12 +86,14 @@ def fetch_single_symbol(symbol):
 
 @app.route('/')
 def index():
-    data = {}
-    for group in GROUPS:
-        for item in group['items']:
-            data[item['id']] = fetch_single_symbol(item['symbol'])
-            
-    return render_template('index.html', groups=GROUPS, data=data)
+    try:
+        data = {}
+        for group in GROUPS:
+            for item in group['items']:
+                data[item['id']] = fetch_single_symbol(item['symbol'])
+        return render_template('index.html', groups=GROUPS, data=data)
+    except Exception as e:
+        return f"Server Error: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
