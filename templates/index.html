@@ -84,9 +84,11 @@
             for (const item of stockList) {
                 const el = document.getElementById(`val-${item.code}`);
                 try {
-                    // CORS 프리/퍼블릭 엔드포인트 활용 비동기 호출
-                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=2d`;
-                    const res = await fetch(url);
+                    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?interval=1d&range=2d`;
+                    // CORS 우회 퍼블릭 프록시 적용
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+                    
+                    const res = await fetch(proxyUrl);
                     const data = await res.json();
                     
                     const meta = data.chart.result[0].meta;
@@ -115,7 +117,6 @@
             }
         }
 
-        // 페이지 진입 시 즉시 실행
         loadMarketData();
     </script>
 
