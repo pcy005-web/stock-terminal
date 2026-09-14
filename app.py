@@ -1,12 +1,16 @@
 from flask import Flask, render_template
 import yfinance as yf
+from requests import Session
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
     try:
-        # 야후 파이낸스에서 주요 지수 가져오기 (코스피: ^KS11, 코스닥: ^KQ11, 나스닥100: ^NDX)
+        # 야후 파이낸스 차단 우회를 위한 세션 설정
+        session = Session()
+        session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        
         tickers = {
             'kospi': '^KS11',
             'kosdaq': '^KQ11',
@@ -15,7 +19,7 @@ def index():
         
         data = {}
         for key, symbol in tickers.items():
-            t = yf.Ticker(symbol)
+            t = yf.Ticker(symbol, session=session)
             todays_data = t.history(period='2d')
             
             if len(todays_data) >= 2:
@@ -33,9 +37,10 @@ def index():
             }
             
     except Exception as e:
-        # 에러 발생 시 기본값 처리
+        # 에러 원인 확인용
+        err_msg = str(e)
         data = {
-            'kospi': {'price': '데이터 로드 실패', 'rate': '0.00%', 'is_up': True},
+            'kospi': {'price': f"에러: {err_msg[:15]}", 'rate': '0.00%', 'is_up': True},
             'kosdaq': {'price': '데이터 로드 실패', 'rate': '0.00%', 'is_up': True},
             'nasdaq': {'price': '데이터 로드 실패', 'rate': '0.00%', 'is_up': True},
         }
