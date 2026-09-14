@@ -10,8 +10,8 @@
             --bg-secondary: #1e293b;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            --accent-red: #ef4444;   /* 상승: 빨간색 */
-            --accent-blue: #3b82f6;  /* 하락: 파란색 */
+            --accent-red: #ef4444;   
+            --accent-blue: #3b82f6;  
             --accent-main: #38bdf8;
             --border-color: #334155;
         }
@@ -21,29 +21,27 @@
         header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; }
         .logo { font-size: 1.2rem; font-weight: 800; color: var(--accent-main); }
         
-        /* 그룹 스타일 */
         .group-container { margin-bottom: 24px; }
         .group-title { font-size: 0.95rem; font-weight: 700; color: var(--accent-main); margin-bottom: 10px; border-left: 3px solid var(--accent-main); padding-left: 8px; }
 
-        /* 카드 디자인 */
         .card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .card-title { font-size: 0.78rem; color: var(--text-sub); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-val { font-size: 1.05rem; font-weight: 700; }
         
-        /* 상승=빨간색, 하락=파란색 */
         .up { color: var(--accent-red); }
         .down { color: var(--accent-blue); }
 
-        /* 그리드 레이아웃 */
         .grid-custom { 
             display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+            grid-template-columns: repeat(3, 1fr); 
             gap: 12px; 
+        }
+        @media (max-width: 768px) {
+            .grid-custom { grid-template-columns: repeat(2, 1fr); }
         }
 
         .btn-wrap { margin-top: 15px; margin-bottom: 30px; }
-        .btn { padding: 12px; border-radius: 8px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.95rem; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.85; }
+        .btn { padding: 12px; border-radius: 8px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -52,14 +50,14 @@
         <div class="logo">📊 글로벌 실시간 금융 시세</div>
     </header>
 
-    {% for group in groups %}
+    {% for cat in categories %}
     <div class="group-container">
-        <div class="group-title">{{ group.group_name }}</div>
+        <div class="group-title">{{ cat.title }}</div>
         <div class="grid-custom">
-            {% for item in group.items %}
+            {% for stock in cat.stocks %}
             <div class="card">
-                <div class="card-title">{{ item.name }}</div>
-                {% set val = data[item.id] %}
+                <div class="card-title">{{ stock.name }}</div>
+                {% set val = quotes.get(stock.code, {'price': '데이터 확인중', 'rate': '+0.00%', 'is_up': True}) %}
                 <div class="card-val {{ 'up' if val.is_up else 'down' }}">
                     {{ val.price }}<br>
                     <span style="font-size:0.75rem; font-weight: 600;">{{ val.rate }}</span>
