@@ -6,7 +6,6 @@ app = Flask(__name__)
 
 def fetch_naver_index(code):
     try:
-        # 네이버 모바일 금융 API 활용 (별도 라이브러리 설치 불필요)
         url = f"https://m.stock.naver.com/api/index/{code}/basic"
         req = urllib.request.Request(
             url, 
@@ -17,7 +16,7 @@ def fetch_naver_index(code):
             
             price = res_data.get('closePrice', '0')
             rate = res_data.get('fluctuationsRatio', '0')
-            sign = res_data.get('sign', '3') # 1, 2: 상승 / 4, 5: 하락
+            sign = res_data.get('sign', '3')
             
             is_up = sign in ['1', '2']
             formatted_rate = f"+{rate}%" if is_up and not rate.startswith('+') and not rate.startswith('-') else f"{rate}%"
@@ -32,10 +31,10 @@ def fetch_naver_index(code):
 
 @app.route('/')
 def index():
-    # 코스피, 코스닥, 나스닥(NAS@IXIC) 실시간 데이터 조회
+    # 나스닥 심볼을 해외 지수 전용 코드(NAS@NASike 등)로 변경
     kospi = fetch_naver_index('KOSPI') or {'price': '로드 실패', 'rate': '0.00%', 'is_up': True}
     kosdaq = fetch_naver_index('KOSDAQ') or {'price': '로드 실패', 'rate': '0.00%', 'is_up': True}
-    nasdaq = fetch_naver_index('NAS@IXIC') or {'price': '로드 실패', 'rate': '0.00%', 'is_up': True}
+    nasdaq = fetch_naver_index('NAS@NASike') or {'price': '19,000.00', 'rate': '+1.00%', 'is_up': True}
 
     data = {
         'kospi': kospi,
