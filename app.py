@@ -5,7 +5,8 @@ import ssl
 
 app = Flask(__name__)
 
-GROUPS = [
+# 그룹별 지표 정의 (함수가 아닌 일반 리스트 데이터)
+GROUPS_DATA = [
     {
         'group_name': '🇰🇷 국내 증시',
         'items': [
@@ -51,7 +52,6 @@ def fetch_single_symbol(symbol):
         with urllib.request.urlopen(req, context=ctx, timeout=3) as response:
             res_data = json.loads(response.read().decode('utf-8'))
             
-            # 안전한 구조 분해 및 방어 코드 적용
             chart = res_data.get('chart', {})
             result_list = chart.get('result')
             if not result_list:
@@ -87,11 +87,13 @@ def fetch_single_symbol(symbol):
 @app.route('/')
 def index():
     try:
-        data = {}
-        for group in GROUPS:
+        market_data = {}
+        for group in GROUPS_DATA:
             for item in group['items']:
-                data[item['id']] = fetch_single_symbol(item['symbol'])
-        return render_template('index.html', groups=GROUPS, data=data)
+                market_data[item['id']] = fetch_single_symbol(item['symbol'])
+        
+        # 템플릿에 명확한 변수명으로 전달
+        return render_template('index.html', groups=GROUPS_DATA, data=market_data)
     except Exception as e:
         return f"Server Error: {str(e)}", 500
 
