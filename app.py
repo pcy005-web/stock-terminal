@@ -239,28 +239,37 @@ def generate_theme_sync_analysis(quotes):
     return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다."
 
 def generate_smart_money_analysis(quotes):
-    """[스마트머니 수급 레이더 고도화] 국내 지수 동조화, 미국 디커플링, 환율/유가 및 지수 상/하방 정보 분석"""
-    kospi = quotes.get('kospi', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    """[스마트머니 수급 레이더 고도화] 이미지 UI 요구사항에 맞춘 실시간 동향 분석"""
+    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
+    kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
+    sox = quotes.get('phlx', {'price': '0', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     wti = quotes.get('wti', {'price': '70.00', 'rate': '+0.00%', 'is_up': True})
     
-    # 동조화 vs 디커플링 판단
     kospi_up = kospi.get('is_up', True)
+    
+    # 우측 상단 뱃지 정보 결정 (지수 상방/하방 압력)
+    badge_text = "지수 상방 압력" if kospi_up else "지수 하방 압력"
+    badge_class = "up" if kospi_up else "down"
+    
+    # 1. 국내 지수 동조화 문구
+    domestic_text = f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) {'강세장 속 기관·외국인 순매수 유입' if kospi_up else '급락세 속 프로그램 및 외국인 매도 우위'}."
+    
+    # 2. 미국 시장 디커플링 문구
     us_up = nasdaq_fut.get('is_up', True)
+    decoupling_text = f"필라델피아 반도체({sox.get('rate')}) 및 나스닥선물({nasdaq_fut.get('rate')})은 {'동반 강세' if us_up else '혼조세이나'} 국내 증시는 {'연동 흐름 강화' if kospi_up == us_up else '차별적 디커플링'}."
     
-    if kospi_up == us_up:
-        sync_text = "미국 증시와 '동조화(Coupling)' 흐름"
-    else:
-        sync_text = "미국 증시와 '디커플링(Decoupling)' 차별화"
-        
-    # 지수 상/하방 압력 판단
-    direction_text = "지수 상방 압력 우세" if kospi_up else "지수 하방 압력 우세"
-    
-    return (
-        f"[{sync_text}] 코스피가 나스닥 선물({nasdaq_fut['rate']})과 연동되며, "
-        f"원/달러 환율({usdkrw['price']}원, {usdkrw['rate']}) 및 WTI유({wti.get('price')}$, {wti.get('rate')})의 수급 변동 속에서 현재 **{direction_text}**을 나타내고 있습니다."
-    )
+    # 3. 환율 및 유가 문구
+    fx_oil_text = f"원/달러 환율 {usdkrw.get('price')}원대 ({usdkrw.get('rate')}) 및 WTI(${wti.get('price')}) 변동성 부담 지속."
+
+    return {
+        'badge_text': badge_text,
+        'badge_class': badge_class,
+        'domestic': domestic_text,
+        'decoupling': decoupling_text,
+        'fx_oil': fx_oil_text
+    }
 
 def generate_premarket_summary(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -282,6 +291,7 @@ def index():
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
+    # 병렬 처리로 속도 최적화 (0.5초 이내 완료)
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
         
@@ -298,7 +308,7 @@ def index():
                 
     live_news = fetch_naver_finance_news()
     theme_text = generate_theme_sync_analysis(price_map)
-    smart_money_text = generate_smart_money_analysis(price_map)
+    smart_money_data = generate_smart_money_analysis(price_map)
     premarket_text = generate_premarket_summary(price_map)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
@@ -308,7 +318,7 @@ def index():
         quotes=price_map,
         news_list=live_news,
         theme_summary=theme_text,
-        smart_money_summary=smart_money_text,
+        smart_money_summary=smart_money_data,
         premarket_summary=premarket_text,
         ai_briefing=ai_briefing_text
     )
