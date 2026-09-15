@@ -152,6 +152,35 @@ def fetch_naver_finance_news():
         pass
     return news_list
 
+def generate_theme_sync_analysis(quotes):
+    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    direction = "상승 동조화" if sox.get('is_up', True) else "조정 압력 연동"
+    return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다."
+
+def generate_smart_money_analysis(quotes):
+    vix = quotes.get('vix', {'price': '15.00', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
+    try:
+        vix_val = float(vix['price'].replace(',', ''))
+    except:
+        vix_val = 15.0
+    sentiment = "안정적 위험선호 (Risk-On)" if vix_val < 20 else "변동성 경계 (Risk-Off)"
+    return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원)을 기반으로 한 시장 심리는 '{sentiment}' 상태입니다."
+
+def generate_premarket_summary(quotes):
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    return f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 영향을 미치고 있습니다."
+
+def generate_ai_comprehensive_briefing(quotes, news_list):
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
+    top_news = news_list[0]['title'] if news_list else "실시간 경제 속보 모니터링 중"
+    return f"[AI 종합 리포트]\n원/달러 환율 {usdkrw['price']}원, VIX {vix['price']}선 기록 중.\n주요 이슈: {top_news}"
+
 @app.route('/')
 def index():
     price_map = {}
@@ -166,7 +195,21 @@ def index():
                 price_map[code] = {'price': '-', 'rate': '+0.00%', 'is_up': True}
                 
     live_news = fetch_naver_finance_news()
-    return render_template('index.html', categories=MARKET_CATEGORIES, quotes=price_map, news_list=live_news)
+    theme_text = generate_theme_sync_analysis(price_map)
+    smart_money_text = generate_smart_money_analysis(price_map)
+    premarket_text = generate_premarket_summary(price_map)
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+                
+    return render_template(
+        'index.html', 
+        categories=MARKET_CATEGORIES, 
+        quotes=price_map,
+        news_list=live_news,
+        theme_summary=theme_text,
+        smart_money_summary=smart_money_text,
+        premarket_summary=premarket_text,
+        ai_briefing=ai_briefing_text
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
