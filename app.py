@@ -79,8 +79,7 @@ def fetch_realtime_data(ticker):
         return None
 
 def fetch_naver_finance_news():
-    """네이버 증권 뉴스 RSS를 통해 실시간 헤드라인 10선 추출"""
-    rss_url = "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101" # 경제 뉴스 RSS
+    rss_url = "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
@@ -90,33 +89,37 @@ def fetch_naver_finance_news():
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
-            
-            # RSS 아이템(기사) 파싱
             items = root.findall('.//item')
-            for item in items[:10]: # 상위 10개만 추출
+            for item in items[:10]:
                 title = item.find('title')
                 link = item.find('link')
                 if title is not None and title.text:
-                    # HTML 태그 제거 및 특수문자 정리
                     clean_title = re.sub('<.*?>', '', title.text)
-                    news_link = link.text if link is not None else "#"
+                    # 링크 공백 제거 및 정제 (동일 페이지 이동 방지)
+                    news_link = link.text.strip() if link is not None and link.text else "https://finance.naver.com"
                     news_list.append({
                         'title': clean_title,
                         'link': news_link
                     })
     except Exception:
-        # 비상시 기본 대체 뉴스
         fallback_titles = [
-            "글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검",
-            "원/달러 환율 변동성 속 외국인 수급 동향 주시",
-            "정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속",
-            "K-방산 및 조선업 슈퍼사이클 수주 랠리 가시화",
-            "연준 통화정책 기대감 및 국채 금리 움직임 분석"
+            ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "https://finance.naver.com"),
+            ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "https://finance.naver.com"),
+            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "https://finance.naver.com")
         ]
-        for t in fallback_titles:
-            news_list.append({'title': t, 'link': '#'})
+        for t, l in fallback_titles:
+            news_list.append({'title': t, 'link': l})
             
     return news_list
+
+def generate_premarket_summary(quotes):
+    nasdaq = quotes.get('nasdaq', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    sp500 = quotes.get('sp500', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    
+    summary = f"미 증시 주요 지표 연동 결과, 나스닥({nasdaq['rate']}) 및 S&P 500({sp500['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
+    return summary
 
 @app.route('/')
 def index():
@@ -132,14 +135,15 @@ def index():
             else:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
-    # 실시간 뉴스 긁어오기
     live_news = fetch_naver_finance_news()
+    premarket_text = generate_premarket_summary(price_map)
                 
     return render_template(
         'index.html', 
         categories=MARKET_CATEGORIES, 
         quotes=price_map,
-        news_list=live_news
+        news_list=live_news,
+        premarket_summary=premarket_text
     )
 
 if __name__ == '__main__':
