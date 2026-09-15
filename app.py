@@ -27,7 +27,7 @@ MARKET_CATEGORIES = [
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
             {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'},
-            {'code': 'vix', 'name': 'S&P 500 VIX (VX)', 'ticker': 'VX=F'}
+            {'code': 'vix', 'name': 'S&P 500 VIX (VX)', 'ticker': '^VIX'}
         ]
     },
     {
