@@ -47,7 +47,7 @@ def get_ssl_context():
     return ctx
 
 def fetch_realtime_data(ticker):
-    # 코스피 200 선물 전용 네이버 금융 크롤링 연동
+    # 1. 코스피 200 선물 전용 네이버 금융 상세 크롤링
     if ticker == 'KOSPI200_FUT':
         try:
             naver_url = "https://finance.naver.com/sise/sise_index.naver?code=KPI200"
@@ -56,6 +56,7 @@ def fetch_realtime_data(ticker):
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
                 html = response.read().decode('euc-kr', errors='ignore')
                 
+                # 네이버 금융 메인 지수 페이지에서 현재가 및 등락률 정밀 추출
                 match_val = re.search(r'<em id="now_value"[^>]*>([\d,]+\.\d+)</em>', html)
                 match_rate = re.search(r'<em id="rate_point"[^>]*>.*?([\+\-]?[\d,]+\.\d+).*?</em>', html, re.DOTALL)
                 
@@ -78,12 +79,12 @@ def fetch_realtime_data(ticker):
         
         return {'price': '365.50', 'rate': '+0.35%', 'is_up': True}
 
-    # 야후 파이낸스 연동 로직
+    # 2. 미국 선물 및 글로벌 지표 (야후 파이낸스 정밀 파싱)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
     encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range=5d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
     
     try:
         req = urllib.request.Request(url, headers=headers)
@@ -94,15 +95,22 @@ def fetch_realtime_data(ticker):
             if not result_arr:
                 return None
                 
-            quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
-            valid_closes = [c for c in quotes if c is not None]
+            meta = result_arr[0].get('meta', {})
+            cur = meta.get('regularMarketPrice')
+            prev = meta.get('previousClose') or meta.get('chartPreviousClose')
             
-            if not valid_closes:
-                return None
-            
-            cur = valid_closes[-1]
-            prev = valid_closes[-2] if len(valid_closes) >= 2 else cur
-            
+            # 만약 meta에 실시간 가격이 없으면 quote 배열의 가장 최신 종가 탐색
+            if cur is None:
+                quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
+                valid_closes = [c for c in quotes if c is not None]
+                if not valid_closes:
+                    return None
+                cur = valid_closes[-1]
+                prev = valid_closes[-2] if len(valid_closes) >= 2 else cur
+
+            if prev is None:
+                prev = cur
+
             diff = cur - prev
             pct = (diff / prev) * 100 if prev else 0.0
             
