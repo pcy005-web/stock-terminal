@@ -82,23 +82,51 @@ def fetch_realtime_data(ticker):
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
 
-        # 4. 원자재 및 환율 개별 단건 API 활용 (정확한 경로 매칭)
+        # 4. 원자재 및 원/달러 환율 API 설정
         elif ticker == 'NAVER_ENERGY_WTI':
             api_url = "https://api.stock.naver.com/marketindex/energy/CLcv1"
         elif ticker == 'NAVER_METAL_GOLD':
             api_url = "https://api.stock.naver.com/marketindex/metals/GCcv1"
         elif ticker == 'NAVER_EXCHANGE_USD':
-            api_url = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
+            api_url = "https://stock.naver.com/api/stockSecurity/exchange-rates/v2/USD/charts/round?bankType=hana"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
-                # 단건 API 및 폴링 API 공통 데이터 추출
+                # 원/달러 환율 차트 API 응답 구조 전용 파싱
+                if ticker == 'NAVER_EXCHANGE_USD':
+                    # 리스트 형태의 시계열 데이터 중 가장 마지막(최신) 항목 추출
+                    chart_data = []
+                    if isinstance(res_json, list):
+                        chart_data = res_json
+                    elif isinstance(res_json, dict):
+                        chart_data = res_json.get('result', []) or res_json.get('data', []) or res_json.get('chartRows', [])
+                    
+                    if chart_data and len(chart_data) > 0:
+                        latest = chart_data[-1]  # 가장 최신 데이터
+                        cur_price = latest.get('closePrice') or latest.get('price') or latest.get('dealBasRate')
+                        prev_price = chart_data[-2].get('closePrice') if len(chart_data) > 1 else cur_price
+                        
+                        if cur_price is not None:
+                            price_val = float(str(cur_price).replace(',', ''))
+                            prev_val = float(str(prev_price).replace(',', '')) if prev_price else price_val
+                            
+                            rate_val = 0.0
+                            if prev_val > 0:
+                                rate_val = ((price_val - prev_val) / prev_val) * 100
+                                
+                            is_up = price_val >= prev_val
+                            return {
+                                'price': f"{price_val:,.2f}", 
+                                'rate': f"{rate_val:+.2f}%", 
+                                'is_up': is_up
+                            }
+                
+                # 일반 단건 API 및 폴링 API 응답 파싱
                 item = None
                 if isinstance(res_json, dict):
-                    # 단건 API 응답 구조 (바로 객체 형태이거나 result 내부에 있는 경우)
                     if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json:
                         item = res_json
                     elif 'result' in res_json and isinstance(res_json['result'], dict):
