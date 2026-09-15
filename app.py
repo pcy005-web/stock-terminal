@@ -49,7 +49,7 @@ def get_ssl_context():
 def fetch_realtime_data(ticker):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': 'https://stock.naver.com/',
+        'Referer': 'https://m.stock.naver.com/',
         'Accept': 'application/json, text/plain, */*'
     }
 
@@ -61,13 +61,13 @@ def fetch_realtime_data(ticker):
             target = ticker.replace('NAVER_DOMESTIC_', '')
             api_url = f"https://polling.finance.naver.com/api/realtime/domestic/index/{target}"
 
-        # 2. 해외 증시 현물 폴링 API (S&P500, 다우존스, 나스닥)
+        # 2. 해외 증시 현물 폴링 API
         elif ticker.startswith('NAVER_WORLD_SPOT_'):
             spot_map = {'SP': '.INX', 'DOW': '.DJI', 'NAS': '.IXIC'}
             symbol = spot_map.get(ticker.replace('NAVER_WORLD_SPOT_', ''), '.IXIC')
             api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
 
-        # 3. 해외 증시 선물 및 글로벌 지표 폴링 API
+        # 3. 해외 증시 선물 및 지표 폴링 API
         elif ticker.startswith('NAVER_WORLD_'):
             world_map = {
                 'ES': 'EScv1', 
@@ -82,20 +82,20 @@ def fetch_realtime_data(ticker):
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
 
-        # 4. 원자재 및 환율 네이버 폴링 API 매핑 (제안해주신 energy 경로 적용)
+        # 4. 원자재 및 환율 (네이버페이 증권 모바일 API 활용)
         elif ticker == 'NAVER_ENERGY_WTI':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/energy/CLcv1"
+            api_url = "https://api.stock.naver.com/marketindex/energy/CLcv1"
         elif ticker == 'NAVER_METAL_GOLD':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/metals/GCcv1"
+            api_url = "https://api.stock.naver.com/marketindex/metals/GCcv1"
         elif ticker == 'NAVER_EXCHANGE_USD':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/exchange/FX_USDKRW"
+            api_url = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
-                # 네이버 폴링 API 공통 응답 파싱
+                # 응답 형태 유연성 대응 (폴링형태 vs 단건 api 형태)
                 stocks_data = res_json.get('datas', [])
                 if not stocks_data and 'result' in res_json:
                     stocks_data = res_json.get('result', {}).get('datas', [])
@@ -104,8 +104,9 @@ def fetch_realtime_data(ticker):
 
                 if stocks_data:
                     item = stocks_data[0]
+                    # 필드명 우선순위 매핑 (종가, 현재가, 환율 기준환율 등)
                     cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
-                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or 0
+                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or 0
                     sign = str(item.get('sign', ''))
                     
                     if cur_price is not None:
