@@ -54,7 +54,7 @@ def fetch_yahoo_data(ticker):
     
     try:
         req = urllib.request.Request(url, headers=yahoo_headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             result_arr = res_json.get('chart', {}).get('result')
             
@@ -120,7 +120,7 @@ def fetch_realtime_data(ticker):
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
                 item = None
@@ -166,7 +166,7 @@ def fetch_naver_finance_news():
     news_list = []
     try:
         req = urllib.request.Request(rss_url, headers=headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             items = root.findall('.//item')
@@ -237,7 +237,6 @@ def fetch_naver_finance_news():
             
     return news_list
 
-# [영역 2 수정] 미국 주도, 테마 핵심 종목, 국내 수혜 연동주, 리스크 및 대응 전략 관점 반영
 def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -258,10 +257,8 @@ def generate_theme_sync_analysis(quotes):
 def generate_smart_money_analysis(quotes):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    sox = quotes.get('phlx', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    wti = quotes.get('wti', {'price': '70.00', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
     
@@ -314,6 +311,7 @@ def index():
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
+    # 병렬 스레드 풀 수단 최적화 (15개 동시 처리로 로딩 속도 극대화)
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
         
