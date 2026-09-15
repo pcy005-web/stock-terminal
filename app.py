@@ -22,7 +22,6 @@ MARKET_CATEGORIES = [
             {'code': 'dow', 'name': '다우존스', 'ticker': '^DJI'},
             {'code': 'nasdaq', 'name': '나스닥', 'ticker': '^IXIC'},
             {'code': 'sp500', 'name': 'S&P 500', 'ticker': '^GSPC'},
-            # 👇 해외 주요 지수 선물 추가 완료
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
             {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'ES=F'},
@@ -185,6 +184,26 @@ def generate_premarket_summary(quotes):
     summary = f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
     return summary
 
+def generate_ai_comprehensive_briefing(quotes, news_list):
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
+    
+    top_news = news_list[0]['title'] if news_list else "실시간 경제 속보 모니터링 중"
+    
+    briefing = (
+        f"[AlphaFlow AI 실시간 종합 시장 분석 리포트]\n\n"
+        f"■ 거시경제 및 지표 동향\n"
+        f"- 나스닥 선물 등 글로벌 주요 지표의 변동성 속에서 원/달러 환율은 현재 {usdkrw['price']}원({usdkrw['rate']})을 기록하며 국내 증시 수급에 직접적인 영향을 미치고 있습니다.\n"
+        f"- 변동성 지수(VIX)는 {vix['price']}선으로, 시장의 경계감과 위험선호 심리가 교차하는 구간입니다.\n\n"
+        f"■ 실시간 핵심 이슈 & 밸류체인\n"
+        f"- 최신 주요 헤드라인: '{top_news}'\n"
+        f"- 연관된 반도체, 전력기기, 방산 등의 핵심 종목 군으로 기관 및 외국인 스마트머니의 유입 여부를 장중 지속 체크해야 합니다.\n\n"
+        f"■ 종합 투자 전략\n"
+        f"- 지수 선물 흐름과 환율 추이를 연동하여 장 초반 변동성 확대 시 과도한 추격 매수를 자제하고, 실적 가시성이 높은 주도 섹터 중심의 선별적 대응을 권장합니다."
+    )
+    return briefing
+
 @app.route('/')
 def index():
     price_map = {}
@@ -203,6 +222,7 @@ def index():
     theme_text = generate_theme_sync_analysis(price_map)
     smart_money_text = generate_smart_money_analysis(price_map)
     premarket_text = generate_premarket_summary(price_map)
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
     return render_template(
         'index.html', 
@@ -211,7 +231,8 @@ def index():
         news_list=live_news,
         theme_summary=theme_text,
         smart_money_summary=smart_money_text,
-        premarket_summary=premarket_text
+        premarket_summary=premarket_text,
+        ai_briefing=ai_briefing_text
     )
 
 if __name__ == '__main__':
