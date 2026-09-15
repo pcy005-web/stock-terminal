@@ -291,17 +291,18 @@ def generate_premarket_summary_bullets(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
     return [
-        f"필라델피아 반도체 지수({sox.get('rate')}) 변동에 따라 국내 IT 대형주 및 주도주 전반의 투자 심리 영향.",
-        f"원/달러 환율({usdkrw.get('price')}원) 등락에 따른 외국인 수급 유출입 환경 조성.",
-        f"나스닥 선물({nasdaq_fut.get('rate')}) 흐름 연동 낙폭 과대 우량주 중심 선별적 접근 유효."
+        f"미국 10년물 금리 장중 5.0% 상회 및 AI 속도조절 우려 속 필라델피아 반도체 지수({sox.get('rate')}) 약세 연동 주의.",
+        f"원/달러 환율({usdkrw.get('price')}원) 및 9월 FOMC 경계감 속 증시 멀티플 디레이팅 압력과 실시간 수급 동향 점검.",
+        f"나스닥 선물({nasdaq_fut.get('rate')}) 등락에 따른 변동성 장세 속 은행·보험·지주 등 주주환원 업종으로의 방어적 분산 대안 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 실시간 수급 연동 지표 중심 주도주 선별 대응 권장"
+    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 금리 5% 돌파 노이즈 속 9월 FOMC 대기하며 주도주 및 방어주 분산 대응 권장"
 
 @app.route('/')
 def index():
