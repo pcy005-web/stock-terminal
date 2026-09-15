@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 MARKET_CATEGORIES = [
     {
-        'title': '*국내증시',
+        'title': '🇰🇷 국내 증시',
         'stocks': [
             {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_KOSPI'},
             {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_KOSDAQ'},
@@ -18,25 +18,20 @@ MARKET_CATEGORIES = [
         ]
     },
     {
-        'title': '*해외증시',
+        'title': '🌍 해외 증시 및 변동성',
         'stocks': [
             {'code': 'sp500', 'name': 'S&P 500', 'ticker': '^GSPC'},
             {'code': 'dow', 'name': '다우존스', 'ticker': '^DJI'},
             {'code': 'nasdaq', 'name': '나스닥', 'ticker': '^IXIC'},
-            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'}
-        ]
-    },
-    {
-        'title': '*해외증시 및 변동성',
-        'stocks': [
             {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'ES=F'},
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
-            {'code': 'vix', 'name': 'VIX', 'ticker': '^VIX'}
+            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'},
+            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': '^VIX'}
         ]
     },
     {
-        'title': '*원자재 및 환율',
+        'title': '🛢️ 원자재 및 환율',
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'CL=F'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'GC=F'},
