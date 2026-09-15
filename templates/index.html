@@ -123,7 +123,7 @@
             <div class="group-title">📊 해외 선물 및 변동성</div>
             <div class="market-unified-box">
                 {% for code in ['sp500_fut', 'dow_fut', 'nasdaq_fut', 'vix'] %}
-                {% set stock = {'sp500_fut': {'name': 'S&P 500 선물'}, 'dow_fut': {'name': '다우존스 선물'}, 'nasdaq_fut': {'name': '나스닥 선물'}, 'vix': {'name': 'S&P 500 VIX'}}[code] %}
+                {% set stock = {'sp500_fut': {'name': 'S&P 500 선물'}, 'dow_fut': {'name': '다우존스 선물'}, 'nasdaq_fut': {'name': '나스닥 선물'}, 'vix': {'name': 'S&P 500 VIX (VX)'}}[code] %}
                 {% set q = quotes[code] %}
                 <div class="stock-row">
                     <div class="stock-name">{{ stock.name }}</div>
@@ -223,7 +223,7 @@
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (관련 종목 헤드라인 다음 줄 배치 적용) -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 -->
     <div class="dashboard-section" id="sec-6">
         <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
