@@ -22,6 +22,10 @@ MARKET_CATEGORIES = [
             {'code': 'dow', 'name': '다우존스', 'ticker': '^DJI'},
             {'code': 'nasdaq', 'name': '나스닥', 'ticker': '^IXIC'},
             {'code': 'sp500', 'name': 'S&P 500', 'ticker': '^GSPC'},
+            # 👇 해외 주요 지수 선물 추가 완료
+            {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
+            {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
+            {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'ES=F'},
             {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'},
             {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': '^VIX'}
         ]
@@ -46,7 +50,7 @@ def fetch_realtime_data(ticker):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
-    encoded_ticker = ticker.replace('^', '%5E')
+    encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1d&range=5d"
     
     try:
@@ -152,16 +156,14 @@ def fetch_naver_finance_news():
     return news_list
 
 def generate_theme_sync_analysis(quotes):
-    """2번: 미·한 테마 연동성 실시간 분석 생성"""
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    nasdaq = quotes.get('nasdaq', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
     direction = "상승 동조화" if sox.get('is_up', True) else "조정 압력 연동"
-    analysis = f"현재 필라델피아 반도체 지수({sox['rate']})와 나스닥({nasdaq['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
+    analysis = f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 선물 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
     return analysis
 
 def generate_smart_money_analysis(quotes):
-    """3번: 스마트머니 수급 레이더 실시간 분석 생성"""
     vix = quotes.get('vix', {'price': '15.00', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
@@ -175,12 +177,12 @@ def generate_smart_money_analysis(quotes):
     return analysis
 
 def generate_premarket_summary(quotes):
-    nasdaq = quotes.get('nasdaq', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    sp500 = quotes.get('sp500', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
-    summary = f"미 증시 주요 지표 연동 결과, 나스닥({nasdaq['rate']}) 및 S&P 500({sp500['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
+    summary = f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
     return summary
 
 @app.route('/')
