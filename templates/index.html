@@ -11,11 +11,11 @@
             --bg-card: #334155;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            --accent-red: #ef4444;   /* 상승 */
-            --accent-blue: #3b82f6;  /* 하락 */
-            --badge-green: #059669;  /* 호재 (초록) */
-            --badge-orange: #d97706; /* 중립 (주황) */
-            --badge-red: #dc2626;    /* 리스크 (빨강) */
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --badge-green: #059669;
+            --badge-orange: #d97706;
+            --badge-red: #dc2626;
             --accent-main: #38bdf8;
             --border-color: #475569;
         }
@@ -37,7 +37,6 @@
         .group-container { margin-bottom: 20px; }
         .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
 
-        /* 1번 항목 통합 박스 및 한 줄 정렬 스타일 (원본 보존) */
         .market-unified-box { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
         .stock-row:last-child { border-bottom: none; }
@@ -82,11 +81,10 @@
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
-    <!-- 1. 실제 증시 지표 팩트체크 (원본 완벽 보존) -->
+    <!-- 1. 실제 증시 지표 팩트체크 -->
     <div class="dashboard-section" id="sec-1">
         <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
         
-        <!-- 국내 증시 -->
         <div class="group-container">
             <div class="group-title">🇰🇷 국내 증시</div>
             <div class="market-unified-box">
@@ -104,7 +102,6 @@
             </div>
         </div>
 
-        <!-- 해외 현물 증시 -->
         <div class="group-container">
             <div class="group-title">🌍 해외 증시 (현물)</div>
             <div class="market-unified-box">
@@ -122,7 +119,6 @@
             </div>
         </div>
 
-        <!-- 해외 선물 및 변동성 -->
         <div class="group-container">
             <div class="group-title">📊 해외 선물 및 변동성</div>
             <div class="market-unified-box">
@@ -140,7 +136,6 @@
             </div>
         </div>
 
-        <!-- 원자재 및 환율 -->
         <div class="group-container">
             <div class="group-title">🛢️ 원자재 및 환율</div>
             <div class="market-unified-box">
@@ -159,7 +154,7 @@
         </div>
     </div>
 
-    <!-- 2. 미·한 테마 연동성 및 리스크 구분 (요청 관점 반영 수정) -->
+    <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
     <div class="dashboard-section" id="sec-2">
         <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
