@@ -82,74 +82,47 @@ def fetch_realtime_data(ticker):
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
 
-        # 4. 원자재(WTI, 금) 및 환율 (네이버 증권 시장지표 API 활용)
-        elif ticker in ['NAVER_ENERGY_WTI', 'NAVER_METAL_GOLD', 'NAVER_EXCHANGE_USD']:
-            api_url = "https://api.stock.naver.com/marketindex/majors/part1"
+        # 4. 원자재 및 환율 개별 단건 API 활용 (정확한 경로 매칭)
+        elif ticker == 'NAVER_ENERGY_WTI':
+            api_url = "https://api.stock.naver.com/marketindex/energy/CLcv1"
+        elif ticker == 'NAVER_METAL_GOLD':
+            api_url = "https://api.stock.naver.com/marketindex/metals/GCcv1"
+        elif ticker == 'NAVER_EXCHANGE_USD':
+            api_url = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
-                # 시장지표 API(majors/part1) 응답 구조 파싱 처리
-                if ticker in ['NAVER_ENERGY_WTI', 'NAVER_METAL_GOLD', 'NAVER_EXCHANGE_USD']:
-                    target_market = 'exchange' if ticker == 'NAVER_EXCHANGE_USD' else ('energy' if ticker == 'NAVER_ENERGY_WTI' else 'metals')
-                    market_items = res_json.get(target_market, [])
-                    
-                    item = None
-                    for m in market_items:
-                        code_val = m.get('code', '')
-                        if ticker == 'NAVER_EXCHANGE_USD' and code_val == 'FX_USDKRW':
-                            item = m
-                            break
-                        elif ticker == 'NAVER_ENERGY_WTI' and code_val == 'CLcv1':
-                            item = m
-                            break
-                        elif ticker == 'NAVER_METAL_GOLD' and code_val == 'GCcv1':
-                            item = m
-                            break
-                    
-                    # 매칭되는 항목이 없으면 카테고리의 첫 번째 항목 기본 지정
-                    if not item and market_items:
-                        item = market_items[0]
-                        
-                    if item:
-                        cur_price = item.get('closePrice') or item.get('price')
-                        fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or 0
-                        sign = str(item.get('sign', ''))
-                        
-                        if cur_price is not None:
-                            price_val = float(str(cur_price).replace(',', ''))
-                            rate_val = float(str(fluc_rate).replace('%', '').replace('+', '')) if fluc_rate else 0.0
-                            is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
-                            return {
-                                'price': f"{price_val:,.2f}" if ticker != 'NAVER_EXCHANGE_USD' else f"{price_val:,.2f}", 
-                                'rate': f"{rate_val:+.2f}%", 
-                                'is_up': is_up
-                            }
-                else:
-                    # 일반 폴링 API 응답 파싱
-                    stocks_data = res_json.get('datas', [])
-                    if not stocks_data and 'result' in res_json:
-                        stocks_data = res_json.get('result', {}).get('datas', [])
-                    if not stocks_data and isinstance(res_json, dict):
-                        stocks_data = [res_json]
+                # 단건 API 및 폴링 API 공통 데이터 추출
+                item = None
+                if isinstance(res_json, dict):
+                    # 단건 API 응답 구조 (바로 객체 형태이거나 result 내부에 있는 경우)
+                    if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json:
+                        item = res_json
+                    elif 'result' in res_json and isinstance(res_json['result'], dict):
+                        item = res_json['result']
+                    elif 'datas' in res_json and len(res_json['datas']) > 0:
+                        item = res_json['datas'][0]
+                
+                if not item and isinstance(res_json, list) and len(res_json) > 0:
+                    item = res_json[0]
 
-                    if stocks_data:
-                        item = stocks_data[0]
-                        cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price')
-                        fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or 0
-                        sign = str(item.get('sign', ''))
-                        
-                        if cur_price is not None:
-                            price_val = float(str(cur_price).replace(',', ''))
-                            rate_val = float(str(fluc_rate).replace('%', '').replace('+', '')) if fluc_rate else 0.0
-                            is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
-                            return {
-                                'price': f"{price_val:,.2f}", 
-                                'rate': f"{rate_val:+.2f}%", 
-                                'is_up': is_up
-                            }
+                if item:
+                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
+                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or 0
+                    sign = str(item.get('sign', ''))
+                    
+                    if cur_price is not None:
+                        price_val = float(str(cur_price).replace(',', ''))
+                        rate_val = float(str(fluc_rate).replace('%', '').replace('+', '')) if fluc_rate else 0.0
+                        is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
+                        return {
+                            'price': f"{price_val:,.2f}", 
+                            'rate': f"{rate_val:+.2f}%", 
+                            'is_up': is_up
+                        }
 
     except Exception as e:
         print(f"통신 에러 발생 ({ticker}): {e}")
