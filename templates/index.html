@@ -11,8 +11,11 @@
             --bg-card: #334155;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            --accent-red: #ef4444;   /* 상승 */
-            --accent-blue: #3b82f6;  /* 하락 */
+            --accent-red: #ef4444;   /* 상승 / 리스크 */
+            --accent-blue: #3b82f6;  /* 하락 / 호재 배경 등 */
+            --badge-green: #059669;  /* 호재 */
+            --badge-orange: #d97706; /* 중립 */
+            --badge-red: #dc2626;    /* 리스크 */
             --accent-main: #38bdf8;
             --border-color: #475569;
         }
@@ -51,13 +54,6 @@
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
-        /* 6번 뉴스 항목 스타일 (헤드라인 다음 줄 배치) */
-        .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
-        .news-box:last-child { border-bottom: none; }
-        .news-item { color: var(--text-main); text-decoration: none; font-size: 0.88rem; font-weight: 600; line-height: 1.4; }
-        .news-item:hover { color: var(--accent-main); text-decoration: underline; }
-        .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
-
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
 </head>
@@ -254,23 +250,28 @@
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (관련 종목 헤드라인 다음 줄 배치 적용) -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 -->
     <div class="dashboard-section" id="sec-6">
         <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
-            <h3>실시간 경제 속보 헤드라인 TOP 10 (클릭 시 원문 이동)</h3>
-            <div style="margin-top: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
                 {% for news in news_list %}
-                <div class="news-box">
-                    <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
-                        {{ loop.index }}. {{ news.title }}
-                    </a>
-                    <div class="news-stock">🏷️ 관련 종목: {{ news.stock }}</div>
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); text-decoration: none; line-height: 1.4; max-width: 85%;">
+                            {{ loop.index }}. {{ news.title }}
+                        </a>
+                        <!-- 상태 뱃지 (type 값에 따라 호재: green, 중립: orange, 리스크: red 적용 가능) -->
+                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: {% if news.type == '호재' %}var(--badge-green){% elif news.type == '중립' %}var(--badge-orange){% else %}var(--badge-red){% endif %};">{{ news.type if news.type else '리스크' }}</span>
+                    </div>
+                    {% if news.comment %}
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ news.comment }}</div>
+                    {% endif %}
+                    <div class="tag-list" style="margin-top: 8px;">
+                        <span class="tag">{{ news.stock }}</span>
+                    </div>
                 </div>
                 {% endfor %}
-            </div>
-            <div class="tag-list" style="margin-top: 14px;">
-                <span class="tag">팩트 검증: 실시간 뉴스 및 핵심 종목 링킹 완료</span>
             </div>
         </div>
     </div>
