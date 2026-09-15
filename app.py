@@ -46,6 +46,47 @@ def get_ssl_context():
     ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
+def fetch_yahoo_data(ticker):
+    """네이버 환율 API 실패 시 보조로 사용할 야후 파이낸스 데이터 조회 함수"""
+    yahoo_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
+    
+    try:
+        req = urllib.request.Request(url, headers=yahoo_headers)
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
+            res_json = json.loads(response.read().decode('utf-8'))
+            result_arr = res_json.get('chart', {}).get('result')
+            
+            if not result_arr:
+                return None
+                
+            meta = result_arr[0].get('meta', {})
+            cur = meta.get('regularMarketPrice')
+            prev = meta.get('previousClose') or meta.get('chartPreviousClose')
+            
+            if cur is None:
+                quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
+                valid_closes = [c for c in quotes if c is not None]
+                if not valid_closes:
+                    return None
+                cur = valid_closes[-1]
+                prev = valid_closes[-2] if len(valid_closes) >= 2 else cur
+
+            if prev is None:
+                prev = cur
+
+            diff = cur - prev
+            pct = (diff / prev) * 100 if prev else 0.0
+            
+            return {
+                'price': f"{cur:,.2f}",
+                'rate': f"{pct:+.2f}%",
+                'is_up': diff >= 0
+            }
+    except Exception:
+        return None
+
 def fetch_realtime_data(ticker):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -82,7 +123,7 @@ def fetch_realtime_data(ticker):
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
 
-        # 4. 원자재 및 환율 개별 단건 API 활용 (정확한 경로 매칭)
+        # 4. 원자재 및 환율 개별 단건 API 활용
         elif ticker == 'NAVER_ENERGY_WTI':
             api_url = "https://api.stock.naver.com/marketindex/energy/CLcv1"
         elif ticker == 'NAVER_METAL_GOLD':
@@ -95,11 +136,9 @@ def fetch_realtime_data(ticker):
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
-                # 단건 API 및 폴링 API 공통 데이터 추출
                 item = None
                 if isinstance(res_json, dict):
-                    # 단건 API 응답 구조 (바로 객체 형태이거나 result 내부에 있는 경우)
-                    if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json:
+                    if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
                         item = res_json
                     elif 'result' in res_json and isinstance(res_json['result'], dict):
                         item = res_json['result']
@@ -125,9 +164,16 @@ def fetch_realtime_data(ticker):
                         }
 
     except Exception as e:
-        print(f"통신 에러 발생 ({ticker}): {e}")
+        print(f"네이버 API 통신 에러 발생 ({ticker}): {e}")
         pass
         
+    # [환율 전용 백업] 네이버 환율 API 호출 실패 시 야후 파이낸스(USDKRW=X)로 자동 전환
+    if ticker == 'NAVER_EXCHANGE_USD':
+        print("네이버 환율 API 실패 -> 야후 파이낸스(USDKRW=X)로 백업 전환합니다.")
+        yahoo_data = fetch_yahoo_data('USDKRW=X')
+        if yahoo_data:
+            return yahoo_data
+
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
