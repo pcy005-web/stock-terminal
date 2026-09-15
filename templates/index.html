@@ -12,70 +12,78 @@
             color: #333;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             background: #ffffff;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 30px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         h1 {
-            font-size: 22px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 12px;
+            font-size: 24px;
+            color: #1a1a1a;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
             margin-top: 0;
         }
-        .market-section {
-            margin-bottom: 20px;
+        .category-box {
+            margin-bottom: 25px;
         }
         .category-title {
+            font-size: 16px;
             font-weight: bold;
-            font-size: 15px;
-            color: #111;
-            margin-bottom: 6px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+            padding-left: 8px;
         }
-        .market-table {
-            width: 100%;
-            border-collapse: collapse;
-            border-top: 1px solid #ccc;
-            border-bottom: 1px solid #ccc;
+        .stock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 12px;
         }
-        .market-table th, .market-table td {
-            padding: 7px 10px;
+        .stock-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stock-name {
             font-size: 14px;
-            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            color: #495057;
         }
-        .market-table tr:last-child td {
-            border-bottom: none;
-        }
-        .name-col {
-            text-align: left;
-            width: 50%;
-        }
-        .price-col {
+        .stock-info {
             text-align: right;
-            width: 25%;
         }
-        .rate-col {
-            text-align: right;
-            width: 25%;
+        .stock-price {
+            font-size: 14px;
+            font-weight: bold;
+            color: #212529;
+        }
+        .stock-rate {
+            font-size: 12px;
+            margin-top: 2px;
         }
         .text-red {
-            color: #d32f2f;
+            color: #e03131;
         }
         .text-blue {
-            color: #1976d2;
+            color: #1971c2;
         }
         .card {
             background: #fdfdfd;
             border: 1px solid #e1e4e8;
-            border-radius: 6px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 20px;
             margin-top: 20px;
         }
         .card h3 {
             margin-top: 0;
-            font-size: 15px;
+            font-size: 16px;
             color: #2c3e50;
         }
         .news-list {
@@ -84,9 +92,9 @@
             margin: 0;
         }
         .news-list li {
-            padding: 6px 0;
+            padding: 8px 0;
             border-bottom: 1px dashed #eee;
-            font-size: 13px;
+            font-size: 14px;
         }
         .news-list li a {
             text-decoration: none;
@@ -102,26 +110,28 @@
 <div class="container">
     <h1>📈 실시간 증시 대시보드 & AI 리포트</h1>
 
-    <!-- 1. 실제 증시 지표 (요청하신 엑셀 테이블 디자인 적용) -->
+    <!-- 실시간 지표 카드 그리드 영역 -->
     {% for cat in categories %}
-    <div class="market-section">
+    <div class="category-box">
         <div class="category-title">{{ cat.title }}</div>
-        <table class="market-table">
+        <div class="stock-grid">
             {% for stock in cat.stocks %}
             {% set q = quotes.get(stock.code, {'price': '-', 'rate': '+0.00%', 'is_up': True}) %}
-            <tr>
-                <td class="name-col">{{ stock.name }}</td>
-                <td class="price-col">{{ q.price }}</td>
-                <td class="rate-col {% if q.is_up %}text-red{% else %}text-blue{% endif %}">
-                    {{ q.rate }}
-                </td>
-            </tr>
+            <div class="stock-card">
+                <div class="stock-name">{{ stock.name }}</div>
+                <div class="stock-info">
+                    <div class="stock-price">{{ q.price }}</div>
+                    <div class="stock-rate {% if q.is_up %}text-red{% else %}text-blue{% endif %}">
+                        {{ q.rate }}
+                    </div>
+                </div>
+            </div>
             {% endfor %}
-        </table>
+        </div>
     </div>
     {% endfor %}
 
-    <!-- 복구된 나머지 메뉴 영역 -->
+    <!-- 분석 및 리포트 영역 -->
     <div class="card">
         <h3>🔍 테마 동조화 분석</h3>
         <p>{{ theme_summary }}</p>
