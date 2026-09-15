@@ -12,30 +12,30 @@ MARKET_CATEGORIES = [
     {
         'title': '🇰🇷 국내 증시',
         'stocks': [
-            {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_KOSPI'},
-            {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_KOSDAQ'},
-            {'code': 'kospi200', 'name': '코스피 200 선물', 'ticker': 'NAVER_FUT'}
+            {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_DOMESTIC_KOSPI'},
+            {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_DOMESTIC_KOSDAQ'},
+            {'code': 'kospi200', 'name': '코스피 200 선물', 'ticker': 'NAVER_DOMESTIC_FUT'}
         ]
     },
     {
         'title': '🌍 해외 증시 및 변동성',
         'stocks': [
-            {'code': 'sp500', 'name': 'S&P 500', 'ticker': '^GSPC'},
-            {'code': 'dow', 'name': '다우존스', 'ticker': '^DJI'},
-            {'code': 'nasdaq', 'name': '나스닥', 'ticker': '^IXIC'},
-            {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'ES=F'},
-            {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
-            {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
-            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'},
-            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': '^VIX'}
+            {'code': 'sp500', 'name': 'S&P 500', 'ticker': 'NAVER_WORLD_SPOT_SP'},
+            {'code': 'dow', 'name': '다우존스', 'ticker': 'NAVER_WORLD_SPOT_DOW'},
+            {'code': 'nasdaq', 'name': '나스닥', 'ticker': 'NAVER_WORLD_SPOT_NAS'},
+            {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'NAVER_WORLD_ES'},
+            {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'NAVER_WORLD_YM'},
+            {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NAVER_WORLD_NQ'},
+            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': 'NAVER_WORLD_SOX'},
+            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': 'NAVER_WORLD_VIX'}
         ]
     },
     {
         'title': '🛢️ 원자재 및 환율',
         'stocks': [
-            {'code': 'wti', 'name': 'WTI원유', 'ticker': 'CL=F'},
-            {'code': 'gold', 'name': '금현물', 'ticker': 'GC=F'},
-            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'USDKRW=X'}
+            {'code': 'wti', 'name': 'WTI원유', 'ticker': 'NAVER_ENERGY_WTI'},
+            {'code': 'gold', 'name': '금현물', 'ticker': 'NAVER_METAL_GOLD'},
+            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'}
         ]
     }
 ]
@@ -47,99 +47,82 @@ def get_ssl_context():
     return ctx
 
 def fetch_realtime_data(ticker):
-    # 1. 네이버 폴링 API를 이용한 국내 선물(FUT) 및 지수 연동
-    if ticker.startswith('NAVER_'):
-        # 티커에 따라 폴링 엔드포인트 구분 (예: KOSPI, KOSDAQ, FUT 등)
-        target = ticker.replace('NAVER_', '')
-        api_url = f"https://polling.finance.naver.com/api/realtime/domestic/index/{target}"
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Referer': 'https://stock.naver.com/'
-        }
-        
-        try:
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Referer': 'https://stock.naver.com/',
+        'Accept': 'application/json, text/plain, */*'
+    }
+
+    try:
+        api_url = None
+
+        # 1. 국내 지수 및 선물 폴링 API
+        if ticker.startswith('NAVER_DOMESTIC_'):
+            target = ticker.replace('NAVER_DOMESTIC_', '')
+            api_url = f"https://polling.finance.naver.com/api/realtime/domestic/index/{target}"
+
+        # 2. 해외 증시 현물 폴링 API (S&P500, 다우존스, 나스닥)
+        elif ticker.startswith('NAVER_WORLD_SPOT_'):
+            spot_map = {'SP': '.INX', 'DOW': '.DJI', 'NAS': '.IXIC'}
+            symbol = spot_map.get(ticker.replace('NAVER_WORLD_SPOT_', ''), '.IXIC')
+            api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
+
+        # 3. 해외 증시 선물 및 글로벌 지표 폴링 API (선물 및 지수 혼용 대응)
+        elif ticker.startswith('NAVER_WORLD_'):
+            world_map = {
+                'ES': 'EScv1', 
+                'YM': 'YMcv1', 
+                'NQ': 'NQcv1', 
+                'SOX': '.SOX', 
+                'VIX': '.VIX'
+            }
+            symbol = world_map.get(ticker.replace('NAVER_WORLD_', ''), 'NQcv1')
+            if symbol.startswith('.'):
+                api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
+            else:
+                api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
+
+        # 4. 원자재 및 환율 폴링 API
+        elif ticker == 'NAVER_ENERGY_WTI':
+            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/item/CLcv1"
+        elif ticker == 'NAVER_METAL_GOLD':
+            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/metals/GCcv1"
+        elif ticker == 'NAVER_EXCHANGE_USD':
+            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/exchange/FX_USDKRW"
+
+        if api_url:
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
-                # 네이버 폴링 API의 응답 구조에 맞춘 파싱 (datas 배열 또는 result 내부 확인)
-                # 구조에 따라 필드명이 다를 수 있으므로 대표적인 키값들을 방어적으로 추출합니다.
+                # 네이버 폴링 API 공통 응답 파싱
                 stocks_data = res_json.get('datas', [])
                 if not stocks_data and 'result' in res_json:
                     stocks_data = res_json.get('result', {}).get('datas', [])
-                
+                if not stocks_data and isinstance(res_json, dict):
+                    stocks_data = [res_json]
+
                 if stocks_data:
-                    item = stocks_data[0] # 첫 번째 데이터 항목
-                    cur_price = item.get('closePrice') or item.get('nowValue')
-                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate')
-                    sign = item.get('sign') # 2: 상승, 5: 하락 등
+                    item = stocks_data[0]
+                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
+                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or 0
+                    sign = str(item.get('sign', ''))
                     
-                    if cur_price:
+                    if cur_price is not None:
                         price_val = float(str(cur_price).replace(',', ''))
                         rate_val = float(str(fluc_rate).replace('%', '').replace('+', '')) if fluc_rate else 0.0
-                        
-                        is_up = True
-                        if sign in ['4', '5'] or str(fluc_rate).startswith('-'):
-                            is_up = False
-                        
+                        is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
                         return {
-                            'price': f"{price_val:,.2f}",
-                            'rate': f"{rate_val:+.2f}%",
+                            'price': f"{price_val:,.2f}", 
+                            'rate': f"{rate_val:+.2f}%", 
                             'is_up': is_up
                         }
-        except Exception:
-            pass
+
+    except Exception as e:
+        print(f"통신 에러 발생 ({ticker}): {e}")
+        pass
         
-        # 예외 상황 시 대체값 반환
-        fallback_map = {
-            'KOSPI': {'price': '2,500.00', 'rate': '+0.00%', 'is_up': True},
-            'KOSDAQ': {'price': '850.00', 'rate': '+0.00%', 'is_up': True},
-            'FUT': {'price': '330.00', 'rate': '+0.00%', 'is_up': True}
-        }
-        return fallback_map.get(target, {'price': '0.00', 'rate': '+0.00%', 'is_up': True})
-
-    # 2. 해외 증시 및 글로벌 지표 (야후 파이낸스 데이터 보정)
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-    }
-    encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
-    
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
-            res_json = json.loads(response.read().decode('utf-8'))
-            result_arr = res_json.get('chart', {}).get('result')
-            
-            if not result_arr:
-                return None
-                
-            meta = result_arr[0].get('meta', {})
-            cur = meta.get('regularMarketPrice')
-            prev = meta.get('previousClose') or meta.get('chartPreviousClose')
-            
-            if cur is None:
-                quotes = result_arr[0].get('indicators', {}).get('quote', [{}])[0].get('close', [])
-                valid_closes = [c for c in quotes if c is not None]
-                if not valid_closes:
-                    return None
-                cur = valid_closes[-1]
-                prev = valid_closes[-2] if len(valid_closes) >= 2 else cur
-
-            if prev is None:
-                prev = cur
-
-            diff = cur - prev
-            pct = (diff / prev) * 100 if prev else 0.0
-            
-            return {
-                'price': f"{cur:,.2f}",
-                'rate': f"{pct:+.2f}%",
-                'is_up': diff >= 0
-            }
-    except Exception:
-        return None
+    return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
     rss_url = "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101"
@@ -217,41 +200,32 @@ def fetch_naver_finance_news():
 def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    
     direction = "상승 동조화" if sox.get('is_up', True) else "조정 압력 연동"
-    analysis = f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 선물 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
-    return analysis
+    return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 선물 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
 
 def generate_smart_money_analysis(quotes):
     vix = quotes.get('vix', {'price': '15.00', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    
     try:
         vix_val = float(vix['price'].replace(',', ''))
     except:
         vix_val = 15.0
-        
     sentiment = "안정적 위험선호 (Risk-On)" if vix_val < 20 else "변동성 경계 (Risk-Off)"
-    analysis = f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원)을 기반으로 한 시장 심리는 '{sentiment}' 상태입니다. 기관 및 외국인 스마트머니는 AI 인프라, 전력기기, 방산 등 실적 가시성이 높은 주도 섹터로 집중 유입되는 양상을 보이고 있습니다."
-    return analysis
+    return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원)을 기반으로 한 시장 심리는 '{sentiment}' 상태입니다. 기관 및 외국인 스마트머니는 AI 인프라, 전력기기, 방산 등 실적 가시성이 높은 주도 섹터로 집중 유입되는 양상을 보이고 있습니다."
 
 def generate_premarket_summary(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    
-    summary = f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
-    return summary
+    return f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
-    
     top_news = news_list[0]['title'] if news_list else "실시간 경제 속보 모니터링 중"
-    
-    briefing = (
+    return (
         f"[AlphaFlow AI 실시간 종합 시장 분석 리포트]\n\n"
         f"■ 거시경제 및 지표 동향\n"
         f"- 나스닥 선물 등 글로벌 주요 지표의 변동성 속에서 원/달러 환율은 현재 {usdkrw['price']}원({usdkrw['rate']})을 기록하며 국내 증시 수급에 직접적인 영향을 미치고 있습니다.\n"
@@ -262,7 +236,6 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
         f"■ 종합 투자 전략\n"
         f"- 지수 선물 흐름과 환율 추이를 연동하여 장 초반 변동성 확대 시 과도한 추격 매수를 자제하고, 실적 가시성이 높은 주도 섹터 중심의 선별적 대응을 권장합니다."
     )
-    return briefing
 
 @app.route('/')
 def index():
@@ -271,7 +244,6 @@ def index():
         for stock in cat['stocks']:
             code = stock['code']
             ticker = stock['ticker']
-            
             data = fetch_realtime_data(ticker)
             if data:
                 price_map[code] = data
