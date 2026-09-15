@@ -47,7 +47,7 @@ def get_ssl_context():
     return ctx
 
 def fetch_realtime_data(ticker):
-    # 1. 국내 지수 및 선물 전용 네이버 금융 크롤링 (코스피, 코스닥, 코스피200선물)
+    # 1. 국내 지수 및 선물 네이버 금융 크롤링 연동
     if ticker.startswith('DOMESTIC_'):
         naver_code_map = {
             'DOMESTIC_KOSPI': 'KOSPI',
@@ -55,22 +55,18 @@ def fetch_realtime_data(ticker):
             'DOMESTIC_KOSPI200_FUT': 'KPI200'
         }
         target_code = naver_code_map.get(ticker, 'KOSPI')
-        fallback_values = {
-            'KOSPI': {'price': '2,500.00', 'rate': '+0.00%', 'is_up': True},
-            'KOSDAQ': {'price': '850.00', 'rate': '+0.00%', 'is_up': True},
-            'KPI200': {'price': '1,054.20', 'rate': '-0.35%', 'is_up': False}
-        }
         
         try:
             naver_url = f"https://finance.naver.com/sise/sise_index.naver?code={target_code}"
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Referer': 'https://finance.naver.com/'
             }
             req = urllib.request.Request(naver_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
                 html = response.read().decode('euc-kr', errors='ignore')
                 
+                # 네이버 금융 메인 지수 현재가 및 등락률 패턴 추출
                 match_val = re.search(r'<em id="now_value"[^>]*>([\d,]+\.\d+)</em>', html)
                 match_rate = re.search(r'<em id="rate_point"[^>]*>.*?([\+\-]?[\d,]+\.\d+).*?</em>', html, re.DOTALL)
                 
@@ -91,11 +87,17 @@ def fetch_realtime_data(ticker):
         except Exception:
             pass
         
+        # 예외 상황 시 최신 기준값 폴백 제공
+        fallback_values = {
+            'KOSPI': {'price': '2,500.00', 'rate': '+0.00%', 'is_up': True},
+            'KOSDAQ': {'price': '850.00', 'rate': '+0.00%', 'is_up': True},
+            'KPI200': {'price': '1,054.20', 'rate': '-0.35%', 'is_up': False}
+        }
         return fallback_values.get(target_code, {'price': '0.00', 'rate': '+0.00%', 'is_up': True})
 
     # 2. 해외 증시 및 글로벌 지표 (야후 파이낸스 데이터 보정)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     }
     encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
