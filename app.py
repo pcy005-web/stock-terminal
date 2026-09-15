@@ -190,17 +190,17 @@ def fetch_naver_finance_news():
                     comment = "실시간 뉴스 모니터링 및 시장 영향 분석 중"
 
                     if any(k in clean_title for k in ["반도체", "AI", "삼성", "하이닉스", "급등", "상승", "호조", "확대"]):
-                        related_stock = "삼성전자, SK하이닉스"
+                        related_stock = "삼성전자, SK하이닉스, 한미반도체"
                         news_type = "호재"
-                        comment = "글로벌 반도체 업종 반등 및 IT 대형주 투자 심리 개선 기대"
+                        comment = "글로벌 반도체 업종 반등 및 IT 주도주 수급 유입 기대"
                     elif any(k in clean_title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준"]):
-                        related_stock = "원/달러 환율, 금융주"
+                        related_stock = "KB금융, 신한지주, 원/달러 환율"
                         news_type = "리스크"
                         comment = "환율 및 금리 변동성 확대에 따른 국내 증시 수급 영향 점검"
                     elif any(k in clean_title for k in ["방산", "수출", "한화", "현대", "조선", "수주"]):
-                        related_stock = "현대로템, HD현대일렉트릭"
+                        related_stock = "현대로템, HD현대일렉트릭, 한화에어로스페이스"
                         news_type = "호재"
-                        comment = "실적 기반 수주 모멘텀 지속 및 하단 지지력 강화"
+                        comment = "실적 기반 수주 모멘텀 지속 및 주도주 하단 지지력 강화"
                     else:
                         news_type = "중립"
                         comment = "지수 연동 흐름에 따른 중립적 수급 대응 필요"
@@ -221,16 +221,16 @@ def fetch_naver_finance_news():
     while len(news_list) < 10:
         idx = len(news_list) + 1
         fallback_data = [
-            ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "https://search.naver.com/search.naver?where=news&query=AI+인프라+반도체", "삼성전자, SK하이닉스", "AI 인프라 투자 확대가 반도체 소부장 수급에 긍정적 영향", "호재"),
-            ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "https://search.naver.com/search.naver?where=news&query=원달러+환율+외국인수급", "원/달러 환율", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "중립"),
-            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "https://search.naver.com/search.naver?where=news&query=밸류업+프로그램+주주환원", "KB금융, 현대차", "저PBR 종목군에 대한 정책 기대감 유입", "호재"),
-            ("K-방산 주요국 추가 수출 협상 본계약 임박", "https://search.naver.com/search.naver?where=news&query=K방산+수출+협상", "현대로템, LIG넥스원", "해외 수주 실적 가시화에 따른 트레이딩 유효", "호재"),
-            ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "https://search.naver.com/search.naver?where=news&query=국채금리+기술주+경계감", "미국 국채금리", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "리스크"),
-            ("조선업 슈퍼사이클 친환경 선박 수주 랠리", "https://search.naver.com/search.naver?where=news&query=조선업+친환경선박+수주", "HD한국조선해양", "수주 잔고 기반 실적 턴어라운드 가속화", "호재"),
-            ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "https://search.naver.com/search.naver?where=news&query=바이오+CDMO+계약", "삼성바이오로직스", "안정적인 실적 성장 모멘텀 확보", "호재"),
-            ("전력기기 및 변압기 수출 사상 최대 기록 경신", "https://search.naver.com/search.naver?where=news&query=전력기기+변압기+수출", "HD현대일렉트릭", "북미 전력망 교체 수요에 따른 수혜 집중", "호재"),
-            ("국내 증시 거래대금 점진적 회복 국면 진입", "https://search.naver.com/search.naver?where=news&query=국내증시+거래대금", "코스피, 코스닥", "시장 유동성 유입 여부 지속 체크 필요", "중립"),
-            ("글로벌 원자재 공급망 및 유가 변동성 점검", "https://search.naver.com/search.naver?where=news&query=원자재+공급망+유가", "WTI원유, 금현물", "원자재 가격 변동에 따른 인플레 압력 주시", "리스크")
+            ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "https://search.naver.com/search.naver?where=news&query=AI+인프라+반도체", "삼성전자, SK하이닉스, 한미반도체", "AI 인프라 투자 확대가 반도체 소부장 주도주 수급에 긍정적 영향", "호재"),
+            ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "https://search.naver.com/search.naver?where=news&query=원달러+환율+외국인수급", "KB금융, 신한지주, 원/달러 환율", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "중립"),
+            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "https://search.naver.com/search.naver?where=news&query=밸류업+프로그램+주주환원", "KB금융, 현대차, 기아", "저PBR 종목군에 대한 정책 기대감 및 주도주 유입", "호재"),
+            ("K-방산 주요국 추가 수출 협상 본계약 임박", "https://search.naver.com/search.naver?where=news&query=K방산+수출+협상", "현대로템, LIG넥스원, 한화에어로스페이스", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "호재"),
+            ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "https://search.naver.com/search.naver?where=news&query=국채금리+기술주+경계감", "미국 국채금리, NAVER, 카카오", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "리스크"),
+            ("조선업 슈퍼사이클 친환경 선박 수주 랠리", "https://search.naver.com/search.naver?where=news&query=조선업+친환경선박+수주", "HD한국조선해양, HD현대중공업", "수주 잔고 기반 실적 턴어라운드 및 조선 주도주 가속화", "호재"),
+            ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "https://search.naver.com/search.naver?where=news&query=바이오+CDMO+계약", "삼성바이오로직스, 셀트리온, 알테오젠", "안정적인 실적 성장 및 바이오 주도주 모멘텀 확보", "호재"),
+            ("전력기기 및 변압기 수출 사상 최대 기록 경신", "https://search.naver.com/search.naver?where=news&query=전력기기+변압기+수출", "HD현대일렉트릭, 효성중공업, 제룡전기", "북미 전력망 교체 수요에 따른 수혜 집중 및 주도주 급등", "호재"),
+            ("국내 증시 거래대금 점진적 회복 국면 진입", "https://search.naver.com/search.naver?where=news&query=국내증시+거래대금", "코스피, 코스닥 대형주 및 주도주", "시장 유동성 유입 여부 지속 체크 필요", "중립"),
+            ("글로벌 원자재 공급망 및 유가 변동성 점검", "https://search.naver.com/search.naver?where=news&query=원자재+공급망+유가", "WTI원유, 금현물, 흥구석유", "원자재 가격 변동에 따른 인플레 압력 주시", "리스크")
         ]
         t, l, s, c, tp = fallback_data[idx - 1]
         news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp})
@@ -280,11 +280,11 @@ def generate_smart_money_analysis(quotes):
 
 def generate_strategies(quotes):
     return [
-        {"title": "반도체 대형주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 중심 분할 매집", "stock": "삼성전자, SK하이닉스", "rank": "TOP 1"},
-        {"title": "전력 인프라 수출 모멘텀 유지", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업", "rank": "TOP 2"},
-        {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온", "rank": "TOP 3"},
-        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "현대로템, 한화에어로스페이스", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차", "rank": "TOP 5"}
+        {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
+        {"title": "전력 인프라 수출 모멘텀 유지", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
+        {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
+        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "현대로템, 한화에어로스페이스, LIG넥스원", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
 def generate_premarket_summary_bullets(quotes):
@@ -292,7 +292,7 @@ def generate_premarket_summary_bullets(quotes):
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     return [
-        f"필라델피아 반도체 지수({sox.get('rate')}) 변동에 따라 국내 IT 대형주 전반의 투자 심리 영향.",
+        f"필라델피아 반도체 지수({sox.get('rate')}) 변동에 따라 국내 IT 대형주 및 주도주 전반의 투자 심리 영향.",
         f"원/달러 환율({usdkrw.get('price')}원) 등락에 따른 외국인 수급 유출입 환경 조성.",
         f"나스닥 선물({nasdaq_fut.get('rate')}) 흐름 연동 낙폭 과대 우량주 중심 선별적 접근 유효."
     ]
@@ -301,7 +301,7 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 실시간 수급 연동 지표 중심 보수적 대응 권장"
+    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 실시간 수급 연동 지표 중심 주도주 선별 대응 권장"
 
 @app.route('/')
 def index():
@@ -311,7 +311,6 @@ def index():
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
-    # 병렬 스레드 풀 수단 최적화 (15개 동시 처리로 로딩 속도 극대화)
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
         
