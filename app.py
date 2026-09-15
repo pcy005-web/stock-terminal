@@ -237,14 +237,24 @@ def fetch_naver_finance_news():
             
     return news_list
 
-# [영역 2] 기존 유지
+# [영역 2 수정] 미국 주도, 테마 핵심 종목, 국내 수혜 연동주, 리스크 및 대응 전략 관점 반영
 def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    direction = "상승 동조화" if sox.get('is_up', True) else "조정 압력 연동"
-    return f"현재 필라델피아 반도체 지수 및 나스daq 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다."
+    is_up = sox.get('is_up', True)
+    
+    us_driver = f"필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']}) {'강세 흐름 주도' if is_up else '조정 압력 연동'}"
+    core_stocks = "NVIDIA, 마이크론 테크놀로지, 인텔"
+    domestic_stocks = "삼성전자, SK하이닉스, 한미반도체"
+    risk_strategy = "미국채 금리 변동성 및 차익실현 매물 출회 가능성에 대비한 눌림목 중심 분할 매집" if is_up else "지수 하방 압력 연동에 따른 보수적 접근 및 현금 비중 확보 우선"
+    
+    return {
+        'us_driver': us_driver,
+        'core_stocks': core_stocks,
+        'domestic_stocks': domestic_stocks,
+        'risk_strategy': risk_strategy
+    }
 
-# [영역 3] 새로고침 시 실시간 스마트머니 레이더 데이터 집계
 def generate_smart_money_analysis(quotes):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
@@ -271,7 +281,6 @@ def generate_smart_money_analysis(quotes):
         'fx_oil': fx_oil_text
     }
 
-# [영역 4] 새로고침 시 실시간 전략 TOP 5 집계
 def generate_strategies(quotes):
     return [
         {"title": "반도체 대형주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 중심 분할 매집", "stock": "삼성전자, SK하이닉스", "rank": "TOP 1"},
@@ -281,7 +290,6 @@ def generate_strategies(quotes):
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차", "rank": "TOP 5"}
     ]
 
-# [영역 5] 새로고침 시 장전 5분 마켓 핵심 요약 집계
 def generate_premarket_summary_bullets(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
