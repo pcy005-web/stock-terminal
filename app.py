@@ -21,7 +21,7 @@ def fetch_realtime_data(ticker):
 
         # 3. 원자재 - WTI 원유 (Polling API 규격 적용)
         elif ticker == 'NAVER_ENERGY_WTI':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/item/CLcv1"
+            api_url = "https://stock.naver.com/api/securityFe/api/fchart/marketindex/energy/CLcv1"
 
         # 4. 금현물 (Polling API)
         elif ticker == 'NAVER_METAL_GOLD':
@@ -29,7 +29,7 @@ def fetch_realtime_data(ticker):
 
         # 5. 원/달러 환율 (Polling API 규격 적용)
         elif ticker == 'NAVER_EXCHANGE_USD':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/exchange/FX_USDKRW"
+            api_url = "https://stock.naver.com/api/stockSecurity/exchange-rates/v2/USD?bankType=hana&size=20"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
