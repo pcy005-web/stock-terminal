@@ -67,7 +67,7 @@ def fetch_realtime_data(ticker):
             symbol = spot_map.get(ticker.replace('NAVER_WORLD_SPOT_', ''), '.IXIC')
             api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
 
-        # 3. 해외 증시 선물 및 글로벌 지표 폴링 API (선물 및 지수 혼용 대응)
+        # 3. 해외 증시 선물 및 글로벌 지표 폴링 API
         elif ticker.startswith('NAVER_WORLD_'):
             world_map = {
                 'ES': 'EScv1', 
@@ -82,9 +82,9 @@ def fetch_realtime_data(ticker):
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
 
-        # 4. 원자재 및 환율 폴링 API
+        # 4. 원자재 및 환율 네이버 폴링 API 매핑 (제안해주신 energy 경로 적용)
         elif ticker == 'NAVER_ENERGY_WTI':
-            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/item/CLcv1"
+            api_url = "https://polling.finance.naver.com/api/realtime/marketindex/energy/CLcv1"
         elif ticker == 'NAVER_METAL_GOLD':
             api_url = "https://polling.finance.naver.com/api/realtime/marketindex/metals/GCcv1"
         elif ticker == 'NAVER_EXCHANGE_USD':
@@ -126,9 +126,7 @@ def fetch_realtime_data(ticker):
 
 def fetch_naver_finance_news():
     rss_url = "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     news_list = []
     try:
         req = urllib.request.Request(rss_url, headers=headers)
@@ -201,7 +199,7 @@ def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     direction = "상승 동조화" if sox.get('is_up', True) else "조정 압력 연동"
-    return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 선물 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
+    return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다."
 
 def generate_smart_money_analysis(quotes):
     vix = quotes.get('vix', {'price': '15.00', 'rate': '+0.00%', 'is_up': True})
@@ -211,31 +209,18 @@ def generate_smart_money_analysis(quotes):
     except:
         vix_val = 15.0
     sentiment = "안정적 위험선호 (Risk-On)" if vix_val < 20 else "변동성 경계 (Risk-Off)"
-    return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원)을 기반으로 한 시장 심리는 '{sentiment}' 상태입니다. 기관 및 외국인 스마트머니는 AI 인프라, 전력기기, 방산 등 실적 가시성이 높은 주도 섹터로 집중 유입되는 양상을 보이고 있습니다."
+    return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원) 기반 심리는 '{sentiment}' 상태입니다."
 
 def generate_premarket_summary(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    return f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
+    return f"나스닥 선물({nasdaq_fut['rate']}) 및 원/달러 환율({usdkrw['price']}원) 연동 결과, 장 초반 변동성에 대비한 모니터링이 필요합니다."
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
-    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
-    top_news = news_list[0]['title'] if news_list else "실시간 경제 속보 모니터링 중"
-    return (
-        f"[AlphaFlow AI 실시간 종합 시장 분석 리포트]\n\n"
-        f"■ 거시경제 및 지표 동향\n"
-        f"- 나스닥 선물 등 글로벌 주요 지표의 변동성 속에서 원/달러 환율은 현재 {usdkrw['price']}원({usdkrw['rate']})을 기록하며 국내 증시 수급에 직접적인 영향을 미치고 있습니다.\n"
-        f"- 변동성 지수(VIX)는 {vix['price']}선으로, 시장의 경계감과 위험선호 심리가 교차하는 구간입니다.\n\n"
-        f"■ 실시간 핵심 이슈 & 밸류체인\n"
-        f"- 최신 주요 헤드라인: '{top_news}'\n"
-        f"- 연관된 반도체, 전력기기, 방산 등의 핵심 종목 군으로 기관 및 외국인 스마트머니의 유입 여부를 장중 지속 체크해야 합니다.\n\n"
-        f"■ 종합 투자 전략\n"
-        f"- 지수 선물 흐름과 환율 추이를 연동하여 장 초반 변동성 확대 시 과도한 추격 매수를 자제하고, 실적 가시성이 높은 주도 섹터 중심의 선별적 대응을 권장합니다."
-    )
+    top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
+    return f"[AI 종합 리포트]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}"
 
 @app.route('/')
 def index():
