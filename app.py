@@ -239,14 +239,28 @@ def generate_theme_sync_analysis(quotes):
     return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다."
 
 def generate_smart_money_analysis(quotes):
-    vix = quotes.get('vix', {'price': '15.00', 'rate': '+0.00%', 'is_up': True})
+    """[스마트머니 수급 레이더 고도화] 국내 지수 동조화, 미국 디커플링, 환율/유가 및 지수 상/하방 정보 분석"""
+    kospi = quotes.get('kospi', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    try:
-        vix_val = float(vix['price'].replace(',', ''))
-    except:
-        vix_val = 15.0
-    sentiment = "안정적 위험선호 (Risk-On)" if vix_val < 20 else "변동성 경계 (Risk-Off)"
-    return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원) 기반 심리는 '{sentiment}' 상태입니다."
+    wti = quotes.get('wti', {'price': '70.00', 'rate': '+0.00%', 'is_up': True})
+    
+    # 동조화 vs 디커플링 판단
+    kospi_up = kospi.get('is_up', True)
+    us_up = nasdaq_fut.get('is_up', True)
+    
+    if kospi_up == us_up:
+        sync_text = "미국 증시와 '동조화(Coupling)' 흐름"
+    else:
+        sync_text = "미국 증시와 '디커플링(Decoupling)' 차별화"
+        
+    # 지수 상/하방 압력 판단
+    direction_text = "지수 상방 압력 우세" if kospi_up else "지수 하방 압력 우세"
+    
+    return (
+        f"[{sync_text}] 코스피가 나스닥 선물({nasdaq_fut['rate']})과 연동되며, "
+        f"원/달러 환율({usdkrw['price']}원, {usdkrw['rate']}) 및 WTI유({wti.get('price')}$, {wti.get('rate')})의 수급 변동 속에서 현재 **{direction_text}**을 나타내고 있습니다."
+    )
 
 def generate_premarket_summary(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -263,14 +277,12 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
 def index():
     price_map = {}
     
-    # [최적화 핵심] 병렬 처리(ThreadPoolExecutor)를 사용하여 모든 종목/환율/원자재를 동시에 조회
     tasks = []
     for cat in MARKET_CATEGORIES:
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
     with ThreadPoolExecutor(max_workers=15) as executor:
-        # 각 티커별로 비동기 실행 맵핑
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
         
         for future in as_completed(future_to_code):
