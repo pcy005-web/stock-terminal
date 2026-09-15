@@ -11,8 +11,8 @@
             --bg-card: #334155;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
-            --accent-red: #ef4444;   
-            --accent-blue: #3b82f6;  
+            --accent-red: #ef4444;   /* 상승 */
+            --accent-blue: #3b82f6;  /* 하락 */
             --badge-green: #059669;  /* 호재 (초록) */
             --badge-orange: #d97706; /* 중립 (주황) */
             --badge-red: #dc2626;    /* 리스크 (빨강) */
@@ -37,6 +37,7 @@
         .group-container { margin-bottom: 20px; }
         .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
 
+        /* 1번 항목 통합 박스 및 한 줄 정렬 스타일 */
         .market-unified-box { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
         .stock-row:last-child { border-bottom: none; }
@@ -52,6 +53,16 @@
         .content-card h3 { font-size: 0.95rem; color: var(--accent-main); margin-bottom: 8px; }
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        
+        /* 6번 뉴스 항목 스타일 (헤드라인 다음 줄 배치 및 코멘트/뱃지) */
+        .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
+        .news-box:last-child { border-bottom: none; }
+        .news-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .news-item { color: var(--text-main); text-decoration: none; font-size: 0.88rem; font-weight: 600; line-height: 1.4; }
+        .news-item:hover { color: var(--accent-main); text-decoration: underline; }
+        .news-comment { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
+        .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
+
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
 </head>
@@ -72,9 +83,11 @@
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
-    <!-- 1. 실제 증시 지표 팩트체크 -->
+    <!-- 1. 실제 증시 지표 팩트체크 (원본 유지) -->
     <div class="dashboard-section" id="sec-1">
         <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
+        
+        <!-- 국내 증시 -->
         <div class="group-container">
             <div class="group-title">🇰🇷 국내 증시</div>
             <div class="market-unified-box">
@@ -91,22 +104,79 @@
                 {% endfor %}
             </div>
         </div>
-    </div>
 
-    <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
-    <div class="dashboard-section" id="sec-2">
-        <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
-        <div class="content-card">
-            <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로 실시간 연동</h3>
-            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">{{ theme_summary }}</p>
-            <div class="tag-list" style="margin-top: 12px;">
-                <span class="tag">관련 종목: 삼성전자</span>
-                <span class="tag">SK하이닉스</span>
+        <!-- 해외 현물 증시 -->
+        <div class="group-container">
+            <div class="group-title">🌍 해외 증시 (현물)</div>
+            <div class="market-unified-box">
+                {% for code in ['sp500', 'dow', 'nasdaq', 'phlx'] %}
+                {% set stock = {'sp500': {'name': 'S&P 500'}, 'dow': {'name': '다우존스'}, 'nasdaq': {'name': '나스닥'}, 'phlx': {'name': '필라델피아 반도체'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 해외 선물 및 변동성 -->
+        <div class="group-container">
+            <div class="group-title">📊 해외 선물 및 변동성</div>
+            <div class="market-unified-box">
+                {% for code in ['sp500_fut', 'dow_fut', 'nasdaq_fut', 'vix'] %}
+                {% set stock = {'sp500_fut': {'name': 'S&P 500 선물'}, 'dow_fut': {'name': '다우존스 선물'}, 'nasdaq_fut': {'name': '나스닥 선물'}, 'vix': {'name': 'S&P 500 VIX'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 원자재 및 환율 -->
+        <div class="group-container">
+            <div class="group-title">🛢️ 원자재 및 환율</div>
+            <div class="market-unified-box">
+                {% for code in ['wti', 'gold', 'usdkrw'] %}
+                {% set stock = {'wti': {'name': 'WTI원유'}, 'gold': {'name': '금현물'}, 'usdkrw': {'name': '원/달러 환율'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- 3. 스마트머니 수급 레이더 (새로고침 시 실시간 동적 연동) -->
+    <!-- 2. 미·한 테마 연동성 및 리스크 구분 (원본 유지) -->
+    <div class="dashboard-section" id="sec-2">
+        <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
+        <div class="content-card">
+            <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로 실시간 연동</h3>
+            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
+                {{ theme_summary }}
+            </p>
+            <div class="tag-list" style="margin-top: 12px;">
+                <span class="tag">관련 종목: 삼성전자</span>
+                <span class="tag">SK하이닉스</span>
+                <span class="tag">한미반도체</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 스마트머니 수급 레이더 (새로고침 시 실시간 동적 집계 연동) -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
@@ -122,7 +192,7 @@
         </div>
     </div>
 
-    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 (새로고침 시 실시간 동적 연동) -->
+    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 (새로고침 시 실시간 동적 집계 연동) -->
     <div class="dashboard-section" id="sec-4">
         <div class="section-header-title">4. 거래소 확정 수급 기반 전략 TOP 5</div>
         <div class="content-card">
@@ -143,7 +213,7 @@
         </div>
     </div>
 
-    <!-- 5. 장전 5분 마켓 핵심 요약 (새로고침 시 실시간 동적 연동) -->
+    <!-- 5. 장전 5분 마켓 핵심 요약 (새로고침 시 실시간 동적 집계 연동) -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
@@ -160,26 +230,24 @@
         </div>
     </div>
 
-    <!-- 6. 실시간 핵심 뉴스 10선 및 AI 리스크/호재 분류 (서브 코멘트 및 개별 타입 반영) -->
+    <!-- 6. 실시간 핵심 뉴스 10선 및 리스크 검증 (호재/중립/리스크 뱃지 + 서브 코멘트 동적 연동) -->
     <div class="dashboard-section" id="sec-6">
         <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
             <div style="display: flex; flex-direction: column; gap: 16px;">
                 {% for news in news_list %}
-                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); text-decoration: none; line-height: 1.4; max-width: 85%;">
+                <div class="news-box">
+                    <div class="news-header-row">
+                        <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
                             {{ loop.index }}. {{ news.title }}
                         </a>
                         <!-- 호재(초록), 중립(주황), 리스크(빨강) 자동 분기 뱃지 -->
-                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: {% if news.type == '호재' %}var(--badge-green){% elif news.type == '중립' %}var(--badge-orange){% else %}var(--badge-red){% endif %};">{{ news.type }}</span>
+                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: {% if news.type == '호재' %}var(--badge-green){% elif news.type == '중립' %}var(--badge-orange){% else %}var(--badge-red){% endif %}; white-space: nowrap;">{{ news.type }}</span>
                     </div>
                     {% if news.comment %}
-                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ news.comment }}</div>
+                    <div class="news-comment">{{ news.comment }}</div>
                     {% endif %}
-                    <div class="tag-list" style="margin-top: 8px;">
-                        <span class="tag">{{ news.stock }}</span>
-                    </div>
+                    <div class="news-stock">🏷️ 관련 종목: {{ news.stock }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -191,7 +259,10 @@
         <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
+            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 심층 리포트를 작성합니다.</p>
+            
             <button class="btn" onclick="toggleAiBriefing()">✨ 실시간 AI 브리핑 리포트 생성</button>
+            
             <div id="ai-report-box" style="display: none; margin-top: 16px; background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 14px; white-space: pre-wrap; font-size: 0.88rem; line-height: 1.6; color: var(--text-main);">
 {{ ai_briefing }}
             </div>
