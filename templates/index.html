@@ -37,7 +37,7 @@
         .group-container { margin-bottom: 20px; }
         .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
 
-        /* 1번 항목 통합 박스 및 한 줄 정렬 스타일 */
+        /* 1번 항목 통합 박스 및 한 줄 정렬 스타일 (원본 보존) */
         .market-unified-box { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
         .stock-row:last-child { border-bottom: none; }
@@ -54,7 +54,6 @@
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
-        /* 6번 뉴스 항목 스타일 (헤드라인 다음 줄 배치 및 코멘트/뱃지) */
         .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .news-box:last-child { border-bottom: none; }
         .news-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
@@ -83,7 +82,7 @@
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
-    <!-- 1. 실제 증시 지표 팩트체크 (원본 유지) -->
+    <!-- 1. 실제 증시 지표 팩트체크 (원본 완벽 보존) -->
     <div class="dashboard-section" id="sec-1">
         <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
         
@@ -160,23 +159,23 @@
         </div>
     </div>
 
-    <!-- 2. 미·한 테마 연동성 및 리스크 구분 (원본 유지) -->
+    <!-- 2. 미·한 테마 연동성 및 리스크 구분 (요청 관점 반영 수정) -->
     <div class="dashboard-section" id="sec-2">
         <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
-            <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로 실시간 연동</h3>
-            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
-                {{ theme_summary }}
-            </p>
-            <div class="tag-list" style="margin-top: 12px;">
-                <span class="tag">관련 종목: 삼성전자</span>
-                <span class="tag">SK하이닉스</span>
-                <span class="tag">한미반도체</span>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; line-height: 1.5;">
+                <div><strong style="color: var(--accent-main);">🇺🇸 미국 주도:</strong> {{ theme_summary.us_driver }}</div>
+                <div><strong style="color: var(--accent-main);">🔥 테마 핵심 종목:</strong> {{ theme_summary.core_stocks }}</div>
+                <div><strong style="color: var(--accent-main);">🇰🇷 국내 수혜 연동주:</strong> {{ theme_summary.domestic_stocks }}</div>
+                <div><strong style="color: var(--accent-main);">⚠️ 리스크 및 대응 전략:</strong> {{ theme_summary.risk_strategy }}</div>
+            </div>
+            <div class="tag-list" style="margin-top: 14px;">
+                <span class="tag">관련 테마: 반도체·IT 슈퍼사이클</span>
             </div>
         </div>
     </div>
 
-    <!-- 3. 스마트머니 수급 레이더 (새로고침 시 실시간 동적 집계 연동) -->
+    <!-- 3. 스마트머니 수급 레이더 -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
@@ -192,7 +191,7 @@
         </div>
     </div>
 
-    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 (새로고침 시 실시간 동적 집계 연동) -->
+    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 -->
     <div class="dashboard-section" id="sec-4">
         <div class="section-header-title">4. 거래소 확정 수급 기반 전략 TOP 5</div>
         <div class="content-card">
@@ -213,7 +212,7 @@
         </div>
     </div>
 
-    <!-- 5. 장전 5분 마켓 핵심 요약 (새로고침 시 실시간 동적 집계 연동) -->
+    <!-- 5. 장전 5분 마켓 핵심 요약 -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
@@ -230,7 +229,7 @@
         </div>
     </div>
 
-    <!-- 6. 실시간 핵심 뉴스 10선 및 리스크 검증 (호재/중립/리스크 뱃지 + 서브 코멘트 동적 연동) -->
+    <!-- 6. 실시간 핵심 뉴스 10선 및 리스크 검증 -->
     <div class="dashboard-section" id="sec-6">
         <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
@@ -241,7 +240,6 @@
                         <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
                             {{ loop.index }}. {{ news.title }}
                         </a>
-                        <!-- 호재(초록), 중립(주황), 리스크(빨강) 자동 분기 뱃지 -->
                         <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: {% if news.type == '호재' %}var(--badge-green){% elif news.type == '중립' %}var(--badge-orange){% else %}var(--badge-red){% endif %}; white-space: nowrap;">{{ news.type }}</span>
                     </div>
                     {% if news.comment %}
