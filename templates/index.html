@@ -55,8 +55,8 @@
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
-        .news-item { display: block; color: var(--text-main); text-decoration: none; padding: 6px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; }
-        .news-item:hover { color: var(--accent-main); }
+        .news-item { display: block; color: var(--text-main); text-decoration: none; padding: 8px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; }
+        .news-item:hover { color: var(--accent-main); text-decoration: underline; }
 
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
@@ -148,33 +148,36 @@
         </script>
     </div>
 
-    <!-- 5. 장전 5분 마켓 핵심 요약 -->
+    <!-- 5. 장전 5분 마켓 핵심 요약 (실시간 데이터 동적 연동) -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
-            <h3>미증시 마감 요약 및 국내 개장 영향 분석</h3>
-            <div class="tag-list">
-                <span class="tag">체크포인트: 국채 금리</span>
-                <span class="tag">WTI 원유가</span>
-                <span class="tag">VIX 지수</span>
+            <h3>실시간 시장 지표 기반 자동 생성 브리핑</h3>
+            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
+                {{ premarket_summary }}
+            </p>
+            <div class="tag-list" style="margin-top: 12px;">
+                <span class="tag">체크포인트: 미증시 지수</span>
+                <span class="tag">원/달러 환율</span>
+                <span class="tag">변동성(VIX)</span>
             </div>
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS 연동) -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS 및 새창 링크) -->
     <div class="dashboard-section" id="sec-6">
-        <div class="section-header-title">6. 핵심 뉴스 10선 및 팩트 리스크 검증 (실시간 RSS)</div>
+        <div class="section-header-title">6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS)</div>
         <div class="content-card">
-            <h3>네이버 증권 실시간 경제 뉴스 헤드라인</h3>
+            <h3>네이버 증권 실시간 경제 뉴스 헤드라인 (클릭 시 원문 새창 이동)</h3>
             <div style="margin-top: 10px;">
                 {% for news in news_list %}
-                <a href="{{ news.link }}" target="_blank" class="news-item">
+                <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
                     • {{ news.title }}
                 </a>
                 {% endfor %}
             </div>
-            <div class="tag-list" style="margin-top: 12px;">
-                <span class="tag">팩트 검증: 실시간 속보 기반 연동 완료</span>
+            <div class="tag-list" style="margin-top: 14px;">
+                <span class="tag">팩트 검증: 실시간 속보 피드 연동</span>
             </div>
         </div>
     </div>
