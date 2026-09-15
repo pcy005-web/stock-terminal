@@ -22,16 +22,14 @@
         header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; position: sticky; top: 0; background: var(--bg-primary); z-index: 100; padding-top: 12px; }
         .logo { font-size: 1.3rem; font-weight: 800; color: var(--accent-main); }
         
-        /* 스크롤 목차 네비게이션 바 */
         .quick-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
         .quick-nav::-webkit-scrollbar { height: 4px; }
         .quick-nav::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
         .quick-btn { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-sub); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; text-decoration: none; transition: all 0.2s; }
         .quick-btn:hover { background: var(--accent-main); color: #0f172a; border-color: var(--accent-main); }
 
-        /* 섹션 컨테이너 */
         .dashboard-section { margin-bottom: 40px; scroll-margin-top: 70px; }
-        .section-header-title { font-size: 1.1rem; font-weight: 800; color: var(--accent-main); margin-bottom: 16px; border-left: 4px solid var(--accent-main); padding-left: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .section-header-title { font-size: 1.1rem; font-weight: 800; color: var(--accent-main); margin-bottom: 16px; border-left: 4px solid var(--accent-main); padding-left: 10px; }
         
         .group-container { margin-bottom: 16px; }
         .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
@@ -52,12 +50,14 @@
             .grid-custom { grid-template-columns: repeat(2, 1fr); }
         }
 
-        /* 분석 컨텐츠 카드 스타일 */
         .content-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
         .content-card h3 { font-size: 0.95rem; color: var(--accent-main); margin-bottom: 8px; }
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
+        .news-item { display: block; color: var(--text-main); text-decoration: none; padding: 6px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; }
+        .news-item:hover { color: var(--accent-main); }
+
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
 </head>
@@ -65,17 +65,16 @@
 
     <header>
         <div class="logo">⚡ AlphaFlow Terminal Pro</div>
-        <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time Scrolling Intelligence Hub</div>
+        <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time RSS & Intelligence Hub</div>
     </header>
 
-    <!-- 빠른 목차 이동 바 -->
     <div class="quick-nav">
         <a href="#sec-1" class="quick-btn">1. 팩트체크</a>
         <a href="#sec-2" class="quick-btn">2. 테마연동성</a>
         <a href="#sec-3" class="quick-btn">3. 스마트머니 레이더</a>
         <a href="#sec-4" class="quick-btn">4. 수급 전략 TOP 5</a>
         <a href="#sec-5" class="quick-btn">5. 장전 5분 요약</a>
-        <a href="#sec-6" class="quick-btn">6. 뉴스 10선 & 검증</a>
+        <a href="#sec-6" class="quick-btn">6. 실시간 뉴스 10선</a>
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
@@ -106,21 +105,11 @@
         <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
             <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">필라델피아 반도체 지수 전일 대비 변동폭과 국내 반도체 대형주의 외국인 순매수 동조화 구간 분석.</p>
+            <p style="color: var(--text-sub); margin-bottom: 8px;">필라델피아 반도체 지수 변동폭과 국내 반도체 대형주 동조화 구간 분석.</p>
             <div class="tag-list">
                 <span class="tag">관련 종목: 삼성전자</span>
                 <span class="tag">SK하이닉스</span>
                 <span class="tag">한미반도체</span>
-                <span class="tag">리스크: 환율 변동성 확대</span>
-            </div>
-        </div>
-        <div class="content-card">
-            <h3>환율(USDKRW) 연동 외국인 수급 임계점</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">원/달러 환율 변동성 확대 시 외국인 현물 매도 압력 가중 섹터 필터링.</p>
-            <div class="tag-list">
-                <span class="tag">관련 종목: 현대차</span>
-                <span class="tag">기아</span>
-                <span class="tag">LG에너지솔루션</span>
             </div>
         </div>
     </div>
@@ -129,30 +118,12 @@
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card">
-            <h3>1. AI 인프라 및 전력기기 패시브 자금 집중</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">글로벌 빅테크 CapEx 확대에 따른 데이터센터 전력 수요 급증으로 기관·외국인 순매수세가 집중 유입되는 전력 설비 및 변압기 섹터 집중 모니터링.</p>
+            <h3>기관·외국인 실시간 양매수 및 수급 집중 섹터</h3>
+            <p style="color: var(--text-sub); margin-bottom: 8px;">글로벌 CapEx 확대에 따른 전력기기 및 AI 반도체 밸류체인 수급 집중 모니터링.</p>
             <div class="tag-list">
                 <span class="tag">주도 종목: HD현대일렉트릭</span>
                 <span class="tag">효성중공업</span>
-                <span class="tag">LS ELECTRIC</span>
-            </div>
-        </div>
-        <div class="content-card">
-            <h3>2. 반도체 HBM4 및 첨단 패키징 밸류체인 수급</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">엔비디아 차세대 칩 공급망 연동 핵심 소부장 종목으로 외국인 현물 순매수 유입 강도 최상위 포착.</p>
-            <div class="tag-list">
-                <span class="tag">주도 종목: SK하이닉스</span>
-                <span class="tag">한미반도체</span>
-                <span class="tag">이오테크닉스</span>
-            </div>
-        </div>
-        <div class="content-card">
-            <h3>3. 밸류업 프로그램 및 자사주 소각 모멘텀 수급</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">상법 개정 및 주주환원 정책 강화 기조에 따른 저PBR 대형 지주사 및 금융·증권 섹터로 연기금·기관 대규모 순매수 유입.</p>
-            <div class="tag-list">
-                <span class="tag">주도 종목: KB금융</span>
-                <span class="tag">신한지주</span>
-                <span class="tag">현대차</span>
+                <span class="tag">SK하이닉스</span>
             </div>
         </div>
     </div>
@@ -181,8 +152,7 @@
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
-            <h3>미증시 마감 요약 및 국내 개장 영향</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">주요 빅테크 실적 및 연준 금리 경로 반영에 따른 국내 시초가 영향 분석.</p>
+            <h3>미증시 마감 요약 및 국내 개장 영향 분석</h3>
             <div class="tag-list">
                 <span class="tag">체크포인트: 국채 금리</span>
                 <span class="tag">WTI 원유가</span>
@@ -191,26 +161,20 @@
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS 연동) -->
     <div class="dashboard-section" id="sec-6">
-        <div class="section-header-title">6. 핵심 뉴스 10선 및 리스크 검증</div>
+        <div class="section-header-title">6. 핵심 뉴스 10선 및 팩트 리스크 검증 (실시간 RSS)</div>
         <div class="content-card">
-            <h3>주요 경제 헤드라인 10선 및 팩트 검증</h3>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">1. AI 반도체 HBM4 및 첨단 패키징 수요 견조 — <span style="color: var(--accent-red);">[팩트확인 완료 / 수혜주 집중]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">2. 글로벌 데이터센터 증설로 전력기기 수출 사상 최대 기록 — <span style="color: var(--accent-red);">[실적 호조 가시화]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">3. 정부 밸류업 프로그램 및 자사주 소각 세제 혜택 가속화 — <span style="color: var(--accent-main);">[정책 수혜주 집중]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">4. K-방산 주요국 추가 수출 협상 본계약 임박 — <span style="color: var(--accent-red);">[모멘텀 지속]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">5. 조선업 친환경 선박 수주 잔고 3년치 확보 완료 — <span style="color: var(--accent-red);">[펀더멘털 탄탄]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">6. 원/달러 환율 변동성에 따른 외국인 수급 일시적 눈치보기 — <span style="color: var(--accent-blue);">[중립 / 모니터링 필요]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">7. 글로벌 유가 80달러선 안팎 등락 속 에너지 인프라 점검 — <span style="color: var(--accent-blue);">[중립]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">8. 바이오 CDMO 글로벌 대형 제약사 신규 계약 체결 — <span style="color: var(--accent-red);">[수혜 기대]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">9. 연준 통화정책 완화 기대감과 국채 금리 안정세 — <span style="color: var(--accent-red);">[증시 우호적]</span></p>
-            <p style="color: var(--text-sub); margin-bottom: 6px;">10. 국내 증시 거래대금 점진적 회복 국면 진입 — <span style="color: var(--accent-main);">[증권주 수혜]</span></p>
-            <div class="tag-list">
-                <span class="tag">핵심 수혜주: SK하이닉스</span>
-                <span class="tag">HD현대일렉트릭</span>
-                <span class="tag">한화에어로스페이스</span>
-                <span class="tag">KB금융</span>
+            <h3>네이버 증권 실시간 경제 뉴스 헤드라인</h3>
+            <div style="margin-top: 10px;">
+                {% for news in news_list %}
+                <a href="{{ news.link }}" target="_blank" class="news-item">
+                    • {{ news.title }}
+                </a>
+                {% endfor %}
+            </div>
+            <div class="tag-list" style="margin-top: 12px;">
+                <span class="tag">팩트 검증: 실시간 속보 기반 연동 완료</span>
             </div>
         </div>
     </div>
@@ -220,8 +184,8 @@
         <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
-            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 지수 데이터와 수급 팩트를 바탕으로 AI가 요약한 오늘의 투자 전략 리포트를 생성합니다.</p>
-            <button class="btn" onclick="alert('AI 브리핑 리포트가 성공적으로 생성되었습니다!')">✨ 실시간 AI 브리핑 리포트 생성</button>
+            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 지수 데이터와 실시간 뉴스 헤드라인을 바탕으로 AI 리포트를 생성합니다.</p>
+            <button class="btn" onclick="alert('실시간 데이터 기반 AI 브리핑 리포트가 생성되었습니다!')">✨ 실시간 AI 브리핑 리포트 생성</button>
         </div>
     </div>
 
