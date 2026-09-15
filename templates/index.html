@@ -74,7 +74,7 @@
         <a href="#sec-3" class="quick-btn">3. 스마트머니 레이더</a>
         <a href="#sec-4" class="quick-btn">4. 수급 전략 TOP 5</a>
         <a href="#sec-5" class="quick-btn">5. 장전 5분 요약</a>
-        <a href="#sec-6" class="quick-btn">6. 실시간 뉴스 10선</a>
+        <a href="#sec-6" class="quick-btn">6. 핵심 뉴스 10선</a>
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
@@ -148,7 +148,7 @@
         </script>
     </div>
 
-    <!-- 5. 장전 5분 마켓 핵심 요약 (실시간 데이터 동적 연동) -->
+    <!-- 5. 장전 5분 마켓 핵심 요약 -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
@@ -164,20 +164,20 @@
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS 및 새창 링크) -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (개별 고유 링크 적용) -->
     <div class="dashboard-section" id="sec-6">
-        <div class="section-header-title">6. 핵심 뉴스 10선 및 리스크 검증 (실시간 RSS)</div>
+        <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
-            <h3>네이버 증권 실시간 경제 뉴스 헤드라인 (클릭 시 원문 새창 이동)</h3>
+            <h3>실시간 경제 속보 헤드라인 TOP 10 (클릭 시 해당 기사 원문 이동)</h3>
             <div style="margin-top: 10px;">
                 {% for news in news_list %}
                 <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
-                    • {{ news.title }}
+                    • {{ loop.index }}. {{ news.title }}
                 </a>
                 {% endfor %}
             </div>
             <div class="tag-list" style="margin-top: 14px;">
-                <span class="tag">팩트 검증: 실시간 속보 피드 연동</span>
+                <span class="tag">팩트 검증: 개별 뉴스 링킹 완료</span>
             </div>
         </div>
     </div>
