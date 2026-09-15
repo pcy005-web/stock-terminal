@@ -55,8 +55,10 @@
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
         
-        .news-item { display: block; color: var(--text-main); text-decoration: none; padding: 8px 0; border-bottom: 1px dashed var(--border-color); font-size: 0.85rem; }
+        .news-box { padding: 10px 0; border-bottom: 1px dashed var(--border-color); }
+        .news-item { display: block; color: var(--text-main); text-decoration: none; font-size: 0.88rem; font-weight: 600; margin-bottom: 4px; }
         .news-item:hover { color: var(--accent-main); text-decoration: underline; }
+        .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; }
 
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
@@ -100,13 +102,15 @@
         {% endfor %}
     </div>
 
-    <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
+    <!-- 2. 미·한 테마 연동성 및 리스크 구분 (실시간 지표 연동 동적 분석) -->
     <div class="dashboard-section" id="sec-2">
         <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
-            <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">필라델피아 반도체 지수 변동폭과 국내 반도체 대형주 동조화 구간 분석.</p>
-            <div class="tag-list">
+            <h3>미국 기술주(나스닥/반도체) ➔ 국내 증시 파급 경로 실시간 연동</h3>
+            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
+                {{ theme_summary }}
+            </p>
+            <div class="tag-list" style="margin-top: 12px;">
                 <span class="tag">관련 종목: 삼성전자</span>
                 <span class="tag">SK하이닉스</span>
                 <span class="tag">한미반도체</span>
@@ -114,13 +118,15 @@
         </div>
     </div>
 
-    <!-- 3. 스마트머니 수급 레이더 -->
+    <!-- 3. 스마트머니 수급 레이더 (실시간 변동성 및 환율 연동 동적 분석) -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card">
-            <h3>기관·외국인 실시간 양매수 및 수급 집중 섹터</h3>
-            <p style="color: var(--text-sub); margin-bottom: 8px;">글로벌 CapEx 확대에 따른 전력기기 및 AI 반도체 밸류체인 수급 집중 모니터링.</p>
-            <div class="tag-list">
+            <h3>기관·외국인 실시간 수급 심리 및 집중 섹터 분석</h3>
+            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
+                {{ smart_money_summary }}
+            </p>
+            <div class="tag-list" style="margin-top: 12px;">
                 <span class="tag">주도 종목: HD현대일렉트릭</span>
                 <span class="tag">효성중공업</span>
                 <span class="tag">SK하이닉스</span>
@@ -164,20 +170,23 @@
         </div>
     </div>
 
-    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 (개별 고유 링크 적용) -->
+    <!-- 6. 핵심 뉴스 10선 및 리스크 검증 -->
     <div class="dashboard-section" id="sec-6">
         <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
         <div class="content-card">
-            <h3>실시간 경제 속보 헤드라인 TOP 10 (클릭 시 해당 기사 원문 이동)</h3>
+            <h3>실시간 경제 속보 헤드라인 TOP 10 (클릭 시 원문 이동)</h3>
             <div style="margin-top: 10px;">
                 {% for news in news_list %}
-                <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
-                    • {{ loop.index }}. {{ news.title }}
-                </a>
+                <div class="news-box">
+                    <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
+                        {{ loop.index }}. {{ news.title }}
+                    </a>
+                    <span class="news-stock">🏷️ 관련 종목: {{ news.stock }}</span>
+                </div>
                 {% endfor %}
             </div>
             <div class="tag-list" style="margin-top: 14px;">
-                <span class="tag">팩트 검증: 개별 뉴스 링킹 완료</span>
+                <span class="tag">팩트 검증: 실시간 뉴스 및 핵심 종목 링킹 완료</span>
             </div>
         </div>
     </div>
