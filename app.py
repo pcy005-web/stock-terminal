@@ -209,24 +209,30 @@ def generate_theme_sync_analysis(quotes):
     return f"현재 필라델피아 반도체 지수 및 나스닥 선물({nasdaq_fut['rate']})의 실시간 변동 흐름에 따라 국내 반도체/IT 섹터가 밀접한 {direction} 국면에 진입해 있습니다. 미국 기술주 선물 수급 변화가 국내 장 초반 외국인 순매수 강도에 직결되는 구간입니다."
 
 def generate_smart_money_analysis(quotes):
-    vix = quotes.get('vix', {'price': '18.52', 'rate': '+0.09%', 'is_up': True})
+    vix = quotes.get('vix', {'price': '18.55', 'rate': '+0.09%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     try:
         vix_val = float(vix['price'].replace(',', ''))
     except:
-        vix_val = 18.52
+        vix_val = 18.55
         
     sentiment = "안정적 위험선호 (Risk-On)" if vix_val < 20 else "변동성 경계 (Risk-Off)"
     return f"현재 VIX 변동성 지수({vix['price']}) 및 원/달러 환율({usdkrw['price']}원)을 기반으로 한 시장 심리는 '{sentiment}' 상태입니다. 기관 및 외국인 스마트머니는 AI 인프라, 전력기기, 방산 등 실적 가시성이 높은 주도 섹터로 집중 유입되는 양상을 보이고 있습니다."
 
-def generate_premarket_summary(quotes):
+def generate_premarket_summary(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
-    return f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 직접적인 영향을 미치고 있습니다. 현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})을 기록 중이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장 경계감 속 종목별 차별화 장세가 예상됩니다."
+    top_news = news_list[0]['title'] if news_list else "글로벌 증시 주요 이슈 모니터링 중"
+    direction = "상승" if nasdaq_fut.get('is_up', True) else "하락"
+    
+    return (
+        f"전일 미 증시는 주요 이슈인 '{top_news}' 등의 영향으로 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})이 {direction} 압력을 받으며 연동되었습니다. "
+        f"현재 원/달러 환율은 {usdkrw['price']}원({usdkrw['rate']})이며, 변동성 지수(VIX)는 {vix['price']}로 나타나 시장의 원인별 수급 반응과 종목별 차별화 장세가 전개되고 있습니다."
+    )
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
@@ -262,7 +268,7 @@ def index():
     live_news = fetch_naver_finance_news()
     theme_text = generate_theme_sync_analysis(price_map)
     smart_money_text = generate_smart_money_analysis(price_map)
-    premarket_text = generate_premarket_summary(price_map)
+    premarket_text = generate_premarket_summary(price_map, live_news)  # 뉴스 리스트 인자 전달 반영
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
     return render_template(
