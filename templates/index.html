@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockFlow Terminal Monitor</title>
+    <title>AlphaFlow Terminal Pro</title>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -67,7 +67,7 @@
 <body>
 
     <header>
-        <div class="logo">⚡ StockFlow Terminal Monitor</div>
+        <div class="logo">⚡ AlphaFlow Terminal Pro</div>
         <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time RSS & Intelligence Hub</div>
     </header>
 
@@ -216,10 +216,13 @@
                 <li style="margin-bottom: 6px;">{{ bullet }}</li>
                 {% endfor %}
             </ul>
-            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목:</div>
+            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
             <div class="tag-list" style="margin-top: 6px;">
                 <span class="tag">삼성전자</span>
                 <span class="tag">SK하이닉스</span>
+                <span class="tag">한미반도체</span>
+                <span class="tag">알테오젠</span>
+                <span class="tag">HD현대일렉트릭</span>
             </div>
         </div>
     </div>
@@ -240,7 +243,7 @@
                     {% if news.comment %}
                     <div class="news-comment">{{ news.comment }}</div>
                     {% endif %}
-                    <div class="news-stock">🏷️ 관련 종목: {{ news.stock }}</div>
+                    <div class="news-stock">🏷️ 관련 종목 및 주도주: {{ news.stock }}</div>
                 </div>
                 {% endfor %}
             </div>
