@@ -5,6 +5,7 @@ import json
 import ssl
 import xml.etree.ElementTree as ET
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
@@ -47,14 +48,13 @@ def get_ssl_context():
     return ctx
 
 def fetch_yahoo_data(ticker):
-    """네이버 환율 API 실패 시 보조로 사용할 야후 파이낸스 데이터 조회 함수"""
     yahoo_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
     
     try:
         req = urllib.request.Request(url, headers=yahoo_headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             result_arr = res_json.get('chart', {}).get('result')
             
@@ -97,33 +97,20 @@ def fetch_realtime_data(ticker):
     try:
         api_url = None
 
-        # 1. 국내 지수 및 선물 폴링 API
         if ticker.startswith('NAVER_DOMESTIC_'):
             target = ticker.replace('NAVER_DOMESTIC_', '')
             api_url = f"https://polling.finance.naver.com/api/realtime/domestic/index/{target}"
-
-        # 2. 해외 증시 현물 폴링 API
         elif ticker.startswith('NAVER_WORLD_SPOT_'):
             spot_map = {'SP': '.INX', 'DOW': '.DJI', 'NAS': '.IXIC'}
             symbol = spot_map.get(ticker.replace('NAVER_WORLD_SPOT_', ''), '.IXIC')
             api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
-
-        # 3. 해외 증시 선물 및 지표 폴링 API
         elif ticker.startswith('NAVER_WORLD_'):
-            world_map = {
-                'ES': 'EScv1', 
-                'YM': 'YMcv1', 
-                'NQ': 'NQcv1', 
-                'SOX': '.SOX', 
-                'VIX': '.VIX'
-            }
+            world_map = {'ES': 'EScv1', 'YM': 'YMcv1', 'NQ': 'NQcv1', 'SOX': '.SOX', 'VIX': '.VIX'}
             symbol = world_map.get(ticker.replace('NAVER_WORLD_', ''), 'NQcv1')
             if symbol.startswith('.'):
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/index/{symbol}"
             else:
                 api_url = f"https://polling.finance.naver.com/api/realtime/worldstock/futures/{symbol}"
-
-        # 4. 원자재 및 환율 개별 단건 API 활용
         elif ticker == 'NAVER_ENERGY_WTI':
             api_url = "https://api.stock.naver.com/marketindex/energy/CLcv1"
         elif ticker == 'NAVER_METAL_GOLD':
@@ -133,7 +120,7 @@ def fetch_realtime_data(ticker):
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 
                 item = None
@@ -163,13 +150,11 @@ def fetch_realtime_data(ticker):
                             'is_up': is_up
                         }
 
-    except Exception as e:
-        print(f"네이버 API 통신 에러 발생 ({ticker}): {e}")
+    except Exception:
         pass
         
-    # [환율 전용 백업] 네이버 환율 API 호출 실패 시 야후 파이낸스(USDKRW=X)로 자동 전환
+    # 네이버 환율 API 실패 시 야후 파이낸스 백업
     if ticker == 'NAVER_EXCHANGE_USD':
-        print("네이버 환율 API 실패 -> 야후 파이낸스(USDKRW=X)로 백업 전환합니다.")
         yahoo_data = fetch_yahoo_data('USDKRW=X')
         if yahoo_data:
             return yahoo_data
@@ -182,7 +167,7 @@ def fetch_naver_finance_news():
     news_list = []
     try:
         req = urllib.request.Request(rss_url, headers=headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             items = root.findall('.//item')
@@ -277,14 +262,26 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
 @app.route('/')
 def index():
     price_map = {}
+    
+    # [최적화 핵심] 병렬 처리(ThreadPoolExecutor)를 사용하여 모든 종목/환율/원자재를 동시에 조회
+    tasks = []
     for cat in MARKET_CATEGORIES:
         for stock in cat['stocks']:
-            code = stock['code']
-            ticker = stock['ticker']
-            data = fetch_realtime_data(ticker)
-            if data:
-                price_map[code] = data
-            else:
+            tasks.append((stock['code'], stock['ticker']))
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        # 각 티커별로 비동기 실행 맵핑
+        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
+        
+        for future in as_completed(future_to_code):
+            code = future_to_code[future]
+            try:
+                data = future.result()
+                if data:
+                    price_map[code] = data
+                else:
+                    price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+            except Exception:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
     live_news = fetch_naver_finance_news()
