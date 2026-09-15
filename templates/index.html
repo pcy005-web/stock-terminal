@@ -171,7 +171,7 @@
         </div>
     </div>
 
-    <!-- 3. 스마트머니 수급 레이더 (수정 완료) -->
+    <!-- 3. 스마트머니 수급 레이더 -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
@@ -190,35 +190,66 @@
     <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 -->
     <div class="dashboard-section" id="sec-4">
         <div class="section-header-title">4. 거래소 확정 수급 기반 전략 TOP 5</div>
-        <script>
-            const top5List = [
-                { rank: 1, title: "AI 전력 인프라 및 변압기 슈퍼사이클", stocks: "효성중공업, HD현대일렉트릭, LS일렉트릭" },
-                { rank: 2, title: "글로벌 방산 수출 모멘텀 지속", stocks: "현대로템, 한화에어로스페이스, LIG넥스원" },
-                { rank: 3, title: "조선업 슈퍼사이클 수주 랠리", stocks: "HD한국조선해양, 삼성중공업, 한화오션" },
-                { rank: 4, title: "바이오 CDMO 글로벌 수주 확대", stocks: "삼성바이오로직스, 셀트리온, 에스티팜" },
-                { rank: 5, title: "저PBR 및 주주환원 정책 모멘텀", stocks: "KB금융, 신한지주, 현대차" }
-            ];
-            document.write(top5List.map(item => `
-                <div class="content-card">
-                    <h3>TOP ${item.rank}. ${item.title}</h3>
-                    <div class="tag-list">관련 종목: ${item.stocks.split(', ').map(s => `<span class="tag">${s}</span>`).join('')}</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">1. 필반 반동 연동 대형 반도체주 타점 공략</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">TOP 1</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">미국 반도체 강세 대비 낙폭 과대 우량주 분할</div>
+                    <div class="tag-list" style="margin-top: 8px;"><span class="tag">삼성전자</span><span class="tag">SK하이닉스</span></div>
                 </div>
-            `).join(''));
-        </script>
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">2. 전력인프라 실적주 조정 매입</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">TOP 2</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">구조적 성장 모멘텀 보유 종목 타점 관리</div>
+                    <div class="tag-list" style="margin-top: 8px;"><span class="tag">HD현대일렉트릭</span><span class="tag">효성중공업</span></div>
+                </div>
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">3. 제약-바이오 방어주 스윙</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">TOP 3</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">시장 변동성 회피를 위한 대형 제약주</div>
+                    <div class="tag-list" style="margin-top: 8px;"><span class="tag">삼성바이오로직스</span><span class="tag">셀트리온</span></div>
+                </div>
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">4. 방산 수주 모멘텀 트레이딩</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">TOP 4</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">지정학적 리스크 연동 방산주</div>
+                    <div class="tag-list" style="margin-top: 8px;"><span class="tag">한화에어로스페이스</span><span class="tag">현대로템</span></div>
+                </div>
+                <div style="position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">5. 배당 및 밸류업 하단 지지선 공략</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">TOP 5</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">저PBR 및 금융주 방어력 활용</div>
+                    <div class="tag-list" style="margin-top: 8px;"><span class="tag">KB금융</span><span class="tag">신한지주</span></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 5. 장전 5분 마켓 핵심 요약 -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
-            <h3>실시간 시장 지표 기반 자동 생성 브리핑</h3>
-            <p style="color: var(--text-main); font-size: 0.9rem; line-height: 1.5; margin-top: 6px;">
-                {{ premarket_summary }}
-            </p>
-            <div class="tag-list" style="margin-top: 12px;">
-                <span class="tag">체크포인트: 미증시 지수</span>
-                <span class="tag">원/달러 환율</span>
-                <span class="tag">변동성(VIX)</span>
+            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
+                <li style="margin-bottom: 6px;"><strong>글로벌 증시 마감:</strong> 필라델피아 반도체(+1.81%)와 나스닥 100(+0.91%)은 반등했으나, 원유($103.21) 상승 및 달러인덱스(99.36) 강세 지속.</li>
+                <li style="margin-bottom: 6px;"><strong>국내 시장 현황:</strong> 코스피(6,710.35, -2.89%) 및 코스닥(810.98, -1.18%) 동반 하락세로 미국장과 디커플링 양상 전개.</li>
+                <li><strong>대응 전략:</strong> 공포지수(VIX 15.84, -11.21%)가 안정세를 보이고 있으므로 낙폭 과대 우량주 중심의 침착한 분할 접근 유효.</li>
+            </ul>
+            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목:</div>
+            <div class="tag-list" style="margin-top: 6px;">
+                <span class="tag">삼성전자</span>
+                <span class="tag">SK하이닉스</span>
+                <span class="tag">HD현대일렉트릭</span>
             </div>
         </div>
     </div>
