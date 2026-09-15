@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 MARKET_CATEGORIES = [
     {
-        'title': '*국내증시',
+        'title': '🇰🇷 국내 증시',
         'stocks': [
             {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_KOSPI'},
             {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_KOSDAQ'},
@@ -18,25 +18,20 @@ MARKET_CATEGORIES = [
         ]
     },
     {
-        'title': '*해외증시',
+        'title': '🌍 해외 증시 및 변동성',
         'stocks': [
             {'code': 'sp500', 'name': 'S&P 500', 'ticker': '^GSPC'},
             {'code': 'dow', 'name': '다우존스', 'ticker': '^DJI'},
             {'code': 'nasdaq', 'name': '나스닥', 'ticker': '^IXIC'},
-            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'}
-        ]
-    },
-    {
-        'title': '*해외증시 및 변동성',
-        'stocks': [
             {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'ES=F'},
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'YM=F'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NQ=F'},
-            {'code': 'vix', 'name': 'VIX', 'ticker': '^VIX'}
+            {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': '^SOX'},
+            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': '^VIX'}
         ]
     },
     {
-        'title': '*원자재 및 환율',
+        'title': '🛢️ 원자재 및 환율',
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'CL=F'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'GC=F'},
@@ -171,8 +166,8 @@ def generate_smart_money_analysis(quotes):
 def generate_premarket_summary(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     sp500_fut = quotes.get('sp500_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
+    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
     return f"미 증시 주요 선물 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']}) 및 S&P 500 선물({sp500_fut['rate']})의 흐름이 국내 시초가에 영향을 미치고 있습니다."
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
