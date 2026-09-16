@@ -283,7 +283,6 @@ def generate_strategies(quotes):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    # 실시간 시세 값 추출
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
@@ -291,16 +290,15 @@ def generate_premarket_summary_bullets(quotes, news_list):
     n_rate = nasdaq_fut.get('rate', '-0.6%')
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
-    is_nasdaq_up = nasdaq_fut.get('is_up', False)
+    is_up = nasdaq_fut.get('is_up', False)
     
-    # 첫 번째 실시간 뉴스 타이틀
-    top_news_title = news_list[0]['title'] if news_list else "글로벌 매크로 지표 및 증시 동향 점검"
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
-    # 샘플 구조(키움 한지영 리포트 스타일)에 맞춰 매일 실시간 데이터로 자동 조합되는 핵심 요약 4가지
-    bullet_1 = f"해외 증시 및 주요 지표 연동: 나스닥 선물({n_rate}), 원/달러 환율({w_price}원) 등 마켓 변동성 점검."
-    bullet_2 = f"실시간 핵심 노이즈 및 이슈: '{top_news_title}' 관련 시장 반응 및 수급 영향력 추적."
-    bullet_3 = f"반도체 및 기술주 동향: 필라델피아 반도체 지수({s_rate}) 변동에 따른 대장주 하방 경직성 검증 국면."
-    bullet_4 = "대응 전략: 추격 매도 자제, 지수 하방 지지력 확인 후 주도주 및 주주환원(은행·보험 등) 방어주 분산 대안 유효."
+    # 보내주신 증권사 모닝 리포트 분석 톤과 형태(매크로 해석 + 시장 영향 + 전략적 대안)를 반영한 동적 갱신 불릿
+    bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 환율({w_price}원) 흐름 속에서 매크로 변동성과 실시간 이슈('{top_news}')의 영향을 복합적으로 소화하는 모습입니다."
+    bullet_2 = f"핵심 노이즈 및 시장 심리: 금리 및 정책 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 기술주 섹터가 단기 변동성 검증대에 놓였으며, 앞자리가 바뀐 지표들에 대한 심리적 경계감이 상존하고 있습니다."
+    bullet_3 = "지수 하단 지지력 점검: 다만 증시가 장 초반의 낙폭을 상당 부분 만회하거나 하방 경직성을 시도한다는 점은, 시장이 극단적 우려보다는 연준의 속도 조절이나 기존 예상 범주 내의 충돌로 받아들이고 있음을 시사합니다."
+    bullet_4 = "오늘의 대응 전략: 현 시점의 변동성을 추세 훼손 신호로 과도하게 해석하기보다는, 주요 지표 안정 여부를 확인하면서 무리한 추격 매도를 자제하고 은행·보험·주주환원주 및 주도주 눌림목으로 포트폴리오를 분산하는 대안이 유효합니다."
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
@@ -310,10 +308,10 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 및 수급 모니터링"
     
     return (
-        "[장전 5분 마켓 핵심 요약 및 AI 전략 리포트 (매일 자동 갱신)]\n"
-        f"- 글로벌 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
-        f"- 당일 주요 이슈: {top_news}\n"
-        "- 시장 전망 및 대안: 전일 미국 증시 및 환율 연동 인식을 바탕으로 국내 증시가 낙폭 만회 및 하방 경직성 테스트를 거칠 것으로 예상. 반도체 변동성 속 무리한 추격 매도보다는 실적 우량주 및 주주환원/방어주로 포트폴리오 비중을 분산하는 전략이 유리."
+        "[장전 마켓 인사이트 & AI 종합 브리핑 (매일 아침 자동 갱신)]\n"
+        f"- 대외 실시간 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
+        f"- 핵심 뉴스 및 노이즈: {top_news}\n"
+        "- 시황 분석 및 혜안: 글로벌 채권금리 및 기술주 노이즈로 인해 단기 변동성이 확대되고 있으나, 시장의 하방 지지력과 매물 소화 과정을 주시해야 합니다. 무리한 포지션 축소보다는 하방 경직성이 확보된 주도주 및 방어적 대안(주주환원/배당주) 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
     )
 
 @app.route('/')
