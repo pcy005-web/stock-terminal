@@ -3,8 +3,8 @@ import urllib.request
 import urllib.parse
 import json
 import ssl
-import xml.etree.ElementTree as ET
 import re
+from bs4 import BeautifulSoup # HTML 파싱을 위해 추가 (없을 경우 pip install beautifulsoup4 필요)
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -161,64 +161,50 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
-    # 네이버 금융 메인 뉴스 RSS 및 증시 주요 RSS 다중 시도
-    rss_urls = [
-        "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101",
-        "https:// 그녀의 RSS 등 다른 서브섹션 혹은 네이버 뉴스 검색 기반 대체 경로"
-        "https://api.stock.naver.com/news/flash"
-    ]
-    # 실질적으로 작동하는 주요 금융 RSS 및 API 엔드포인트 목록
-    target_urls = [
-        "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101", # 경제 일반
-        "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=258", # 금융
-    ]
-    
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    """네이버 뉴스 검색(증시/경제 키워드)을 통해 실시간 최신 헤드라인을 동적으로 긁어옵니다."""
     news_list = []
+    queries = ["증시", "코스피", "반도체", "뉴욕증시", "미국증시"]
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
-    for rss_url in target_urls:
+    for q in queries:
         try:
-            req = urllib.request.Request(rss_url, headers=headers)
+            encoded_q = urllib.parse.quote(q)
+            url = f"https://search.naver.com/search.naver?where=news&query={encoded_q}&sort=1" # sort=1: 최신순 정렬
+            req = urllib.request.Request(url, headers=headers)
+            
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
-                xml_data = response.read()
-                root = ET.fromstring(xml_data)
-                items = root.findall('.//item')
+                html_data = response.read().decode('utf-8')
+                soup = BeautifulSoup(html_data, 'html.parser')
                 
-                for item in items:
-                    title_elem = item.find('title')
-                    link_elem = item.find('link')
-                    
-                    if title_elem is not None and title_elem.text:
-                        clean_title = re.sub('<.*?>', '', title_elem.text).strip()
-                        raw_link = link_elem.text.strip() if link_elem is not None and link_elem.text else ""
+                # 네이버 뉴스 검색 결과 리스트 아이템 추출
+                articles = soup.select('.news_area')
+                for article in articles:
+                    title_tag = article.select_one('.news_tit')
+                    if title_tag:
+                        title = title_tag.get_text().strip()
+                        link = title_tag.get('href', '#')
                         
-                        if not raw_link or raw_link == "https://finance.naver.com" or "index.nhn" in raw_link:
-                            encoded_title = urllib.parse.quote(clean_title[:20])
-                            news_link = f"https://search.naver.com/search.naver?where=news&query={encoded_title}"
-                        else:
-                            news_link = raw_link
-                        
-                        # 중복 제목 방지
-                        if any(n['title'] == clean_title for n in news_list):
+                        # 중복 방지
+                        if any(n['title'] == title for n in news_list):
                             continue
-
+                        
                         related_stock = "시장 전체"
                         news_type = "중립"
                         comment = "실시간 시장 연동성 및 수급 영향 모니터링"
 
-                        if any(k in clean_title for k in ["반도체", "AI", "삼성", "하이닉스", "메모리", "칩", "급등", "상승", "호조"]):
+                        if any(k in title for k in ["반도체", "AI", "삼성", "하이닉스", "메모리", "칩", "급등", "상승", "호조"]):
                             related_stock = "삼성전자, SK하이닉스, 한미반도체"
                             news_type = "호재"
                             comment = "글로벌 반도체 업종 반등 및 IT 주도주 수급 유입 기대"
-                        elif any(k in clean_title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준", "인플레"]):
+                        elif any(k in title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준", "인플레"]):
                             related_stock = "KB금융, 신한지주, 원/달러 환율"
                             news_type = "리스크"
                             comment = "환율 및 금리 변동성 확대에 따른 국내 증시 수급 영향 점검"
-                        elif any(k in clean_title for k in ["방산", "수출", "한화", "현대", "조선", "수주", "계약"]):
+                        elif any(k in title for k in ["방산", "수출", "한화", "현대", "조선", "수주", "계약"]):
                             related_stock = "현대로템, HD현대일렉트릭, 한화에어로스페이스"
                             news_type = "호재"
                             comment = "실적 기반 수주 모멘텀 지속 및 주도주 하단 지지력 강화"
-                        elif any(k in clean_title for k in ["바이오", "제약", "셀트리온", "임상", "CDMO"]):
+                        elif any(k in title for k in ["바이오", "제약", "셀트리온", "임상", "CDMO"]):
                             related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
                             news_type = "호재"
                             comment = "바이오 섹터 대형 계약 및 신약 모멘텀 수급 집중"
@@ -227,8 +213,8 @@ def fetch_naver_finance_news():
                             comment = "지수 연동 흐름에 따른 개별 종목별 순환매 대응 필요"
 
                         news_list.append({
-                            'title': clean_title,
-                            'link': news_link,
+                            'title': title,
+                            'link': link,
                             'stock': related_stock,
                             'comment': comment,
                             'type': news_type
@@ -238,30 +224,9 @@ def fetch_naver_finance_news():
                             break
         except Exception:
             continue
-        
+            
         if len(news_list) >= 10:
             break
-            
-    # 실시간 RSS 수집 건수가 부족할 경우 동적으로 시점 타임스탬프 기반 다변화 폴백 제공 (고정 현상 방지)
-    if len(news_list) < 10:
-        fallback_pool = [
-            ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "https://search.naver.com/search.naver?where=news&query=AI+인프라+반도체", "삼성전자, SK하이닉스, 한미반도체", "AI 인프라 투자 확대가 반도체 소부장 주도주 수급에 긍정적 영향", "호재"),
-            ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "https://search.naver.com/search.naver?where=news&query=원달러+환율+외국인수급", "KB금융, 신한지주, 원/달러 환율", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "중립"),
-            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "https://search.naver.com/search.naver?where=news&query=밸류업+프로그램+주주환원", "KB금융, 현대차, 기아", "저PBR 종목군에 대한 정책 기대감 및 주도주 유입", "호재"),
-            ("K-방산 주요국 추가 수출 협상 본계약 임박", "https://search.naver.com/search.naver?where=news&query=K방산+수출+협상", "현대로템, LIG넥스원, 한화에어로스페이스", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "호재"),
-            ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "https://search.naver.com/search.naver?where=news&query=국채금리+기술주+경계감", "미국 국채금리, NAVER, 카카오", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "리스크"),
-            ("조선업 슈퍼사이클 친환경 선박 수주 랠리", "https://search.naver.com/search.naver?where=news&query=조선업+친환경선박+수주", "HD한국조선해양, HD현대중공업", "수주 잔고 기반 실적 턴어라운드 및 조선 주도주 가속화", "호재"),
-            ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "https://search.naver.com/search.naver?where=news&query=바이오+CDMO+계약", "삼성바이오로직스, 셀트리온, 알테오젠", "안정적인 실적 성장 및 바이오 주도주 모멘텀 확보", "호재"),
-            ("전력기기 및 변압기 수출 사상 최대 기록 경신", "https://search.naver.com/search.naver?where=news&query=전력기기+변압기+수출", "HD현대일렉트릭, 효성중공업, 제룡전기", "북미 전력망 교체 수요에 따른 수혜 집중 및 주도주 급등", "호재"),
-            ("국내 증시 거래대금 점진적 회복 국면 진입", "https://search.naver.com/search.naver?where=news&query=국내증시+거래대금", "코스피, 코스닥 대형주 및 주도주", "시장 유동성 유입 여부 지속 체크 필요", "중립"),
-            ("글로벌 원자재 공급망 및 유가 변동성 점검", "https://search.naver.com/search.naver?where=news&query=원자재+공급망+유가", "WTI원유, 금현물, 흥구석유", "원자재 가격 변동에 따른 인플레 압력 주시", "리스크")
-        ]
-        
-        for t, l, s, c, tp in fallback_pool:
-            if len(news_list) >= 10:
-                break
-            if not any(n['title'] == t for n in news_list):
-                news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp})
             
     return news_list[:10]
 
@@ -321,10 +286,10 @@ def generate_premarket_summary_bullets(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
     return [
-        f"미국 10년물 금리 장중 변동성 및 FOMC 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동 점검).",
-        f"AI 성장성 자체보다 '빠른 기술 발전'이라는 노이즈가 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 단기 충격 발생.",
-        "추격 매도 자제 및 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
-        "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
+        f"미국 국채 금리 및 매크로 변동성 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동 점검).",
+        f"AI 성장성 및 반도체 관련 모멘텀 부각에 따른 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 흐름 주목.",
+        "추격 매도 자제 및 주요 이벤트 대기, 주도주 하방 경직성 확보 주시.",
+        "코스피 대형주 및 최근 강세를 보이는 주주환원/방어 업종으로의 일부 비중 분산 대안 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
