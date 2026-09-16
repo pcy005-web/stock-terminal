@@ -89,7 +89,6 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
-    # 업비트 API를 활용한 가상화폐 시세 처리
     if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
         try:
             market_code = "KRW-BTC" if ticker == 'NAVER_COIN_BTC' else "KRW-ETH"
@@ -298,7 +297,7 @@ def generate_strategies(quotes):
         {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
         {"title": "전력 인프라 수출 모멘텀 유입", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
         {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
-        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로ส페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
+        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로스페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
@@ -320,21 +319,24 @@ def generate_premarket_summary_bullets(quotes, news_list):
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
+    import datetime
+    now_time = datetime.datetime.now().strftime('%H시 %M분')
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
     return (
-        "⚡ [AI 하이브리드 마켓 종합 인사이트 리포트]\n\n"
-        f"• 실시간 대외 지표 연동:\n"
-        f"  - 나스닥 선물: {nasdaq_fut['rate']} | 필라델피아 반도체: {sox['rate']}\n"
-        f"  - 원/달러 환율: {usdkrw['price']}원 수준 변동성 체크\n\n"
-        f"🔍 [실시간 노이즈 및 수급 분석]:\n"
-        f"  - 주요 헤드라인: \"{top_news}\"\n"
-        f"  - 대형주 중심의 하방 방어력과 지수 소화 과정이 진행 중이며, 금리 경계감 및 섹터별 차별화 장세가 뚜렷하게 나타나고 있습니다.\n\n"
-        "💡 [실전 대응 전략 가이드]:\n"
-        "  - 무리한 추격 매수보다는 수급이 유입되는 거래대금 상위 주도주 및 하방 지지력이 확인된 저PBR/배당주 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
+        f"🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n"
+        f"📊 [시황 총평]\n"
+        f"실시간 대외 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체 지수({sox['rate']})의 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율({usdkrw['price']}원) 추이에 따라 외국인 수급 방향성이 결정되는 국면입니다.\n\n"
+        f"🔍 [핵심 체크포인트]\n"
+        f"• 주요 헤드라인: \"{top_news}\"\n"
+        f"• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n"
+        f"• 환율 안정세 안착 여부 및 외국인 선물 수급 동향 모니터링\n\n"
+        f"💡 [실전 대응 가이드]\n"
+        f"• 지수 변동성 구간에서는 무리한 추격 매수보다는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n"
+        f"• 매크로 리스크 방어를 위한 실적 우량주 및 배당/정책 모멘텀 주식 분산 병행"
     )
 
 @app.route('/')
@@ -401,6 +403,29 @@ def api_quotes():
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
     return json.dumps(price_map, ensure_ascii=False)
+
+@app.route('/api/ai-briefing')
+def api_ai_briefing():
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+        for stock in cat['stocks']:
+            tasks.append((stock['code'], stock['ticker']))
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
+        for future in as_completed(future_to_code):
+            code = future_to_code[future]
+            try:
+                data = future.result()
+                if data:
+                    price_map[code] = data
+            except Exception:
+                pass
+
+    live_news = fetch_naver_finance_news()
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+    return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
 
 if __name__ == '__main__':
     app.run(debug=True)
