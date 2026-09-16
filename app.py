@@ -89,6 +89,29 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
+    # 업비트 API를 활용한 가상화폐 시세 처리
+    if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
+        try:
+            market_code = "KRW-BTC" if ticker == 'NAVER_COIN_BTC' else "KRW-ETH"
+            api_url = f"https://api.upbit.com/v1/ticker?markets={market_code}"
+            
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+                res_json = json.loads(response.read().decode('utf-8'))
+                if res_json and isinstance(res_json, list):
+                    item = res_json[0]
+                    cur_price = item.get('trade_price', 0)
+                    signed_change_rate = item.get('signed_change_rate', 0)
+                    rate_val = signed_change_rate * 100
+                    is_up = rate_val >= 0
+                    return {
+                        'price': f"{float(cur_price):,.2f}",
+                        'rate': f"{rate_val:+.2f}%",
+                        'is_up': is_up
+                    }
+        except Exception:
+            pass
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Referer': 'https://m.stock.naver.com/',
@@ -118,10 +141,6 @@ def fetch_realtime_data(ticker):
             api_url = "https://api.stock.naver.com/marketindex/metals/GCcv1"
         elif ticker == 'NAVER_EXCHANGE_USD':
             api_url = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
-        elif ticker == 'NAVER_COIN_BTC':
-            api_url = "https://api.coinone.co.kr/public/v2/ticker_new/krw/BTC"
-        elif ticker == 'NAVER_COIN_ETH':
-            api_url = "https://api.coinone.co.kr/public/v2/ticker_new/krw/ETH"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
@@ -129,26 +148,20 @@ def fetch_realtime_data(ticker):
                 res_json = json.loads(response.read().decode('utf-8'))
                 
                 item = None
-                if 'coinone' in api_url:
-                    # 코인원 API 응답 포맷 대응
-                    ticker_data = res_json.get('ticker', [{}])
-                    if ticker_data:
-                        item = ticker_data[0] if isinstance(ticker_data, list) else ticker_data
-                else:
-                    if isinstance(res_json, dict):
-                        if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
-                            item = res_json
-                        elif 'result' in res_json and isinstance(res_json['result'], dict):
-                            item = res_json['result']
-                        elif 'datas' in res_json and len(res_json['datas']) > 0:
-                            item = res_json['datas'][0]
-                    
-                    if not item and isinstance(res_json, list) and len(res_json) > 0:
-                        item = res_json[0]
+                if isinstance(res_json, dict):
+                    if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
+                        item = res_json
+                    elif 'result' in res_json and isinstance(res_json['result'], dict):
+                        item = res_json['result']
+                    elif 'datas' in res_json and len(res_json['datas']) > 0:
+                        item = res_json['datas'][0]
+                
+                if not item and isinstance(res_json, list) and len(res_json) > 0:
+                    item = res_json[0]
 
                 if item:
-                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate') or item.get('targetPrice') or item.get('last')
-                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or item.get('yesterday_rate') or 0
+                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
+                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or 0
                     sign = str(item.get('sign', ''))
                     
                     if cur_price is not None:
@@ -166,14 +179,6 @@ def fetch_realtime_data(ticker):
         
     if ticker == 'NAVER_EXCHANGE_USD':
         yahoo_data = fetch_yahoo_data('USDKRW=X')
-        if yahoo_data:
-            return yahoo_data
-    elif ticker == 'NAVER_COIN_BTC':
-        yahoo_data = fetch_yahoo_data('BTC-USD')
-        if yahoo_data:
-            return yahoo_data
-    elif ticker == 'NAVER_COIN_ETH':
-        yahoo_data = fetch_yahoo_data('ETH-USD')
         if yahoo_data:
             return yahoo_data
 
@@ -293,7 +298,7 @@ def generate_strategies(quotes):
         {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
         {"title": "전력 인프라 수출 모멘텀 유입", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
         {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
-        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로스페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
+        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로ส페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
