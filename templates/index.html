@@ -267,7 +267,7 @@
         <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
-            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 심층 리포트를 작성합니다.</p>
+            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 시황 총평, 핵심 체크포인트, 실전 대응 가이드를 작성합니다.</p>
             
             <button class="btn" onclick="toggleAiBriefing()">✨ 실시간 AI 브리핑 리포트 생성</button>
             
@@ -278,13 +278,12 @@
     </div>
 
     <script>
-        // AI 브리핑 생성 버튼 클릭 시 비동기로 서버 요청
         function toggleAiBriefing() {
             const reportBox = document.getElementById('ai-report-box');
             
             if (reportBox.style.display === 'none') {
                 reportBox.style.display = 'block';
-                reportBox.textContent = '⏳ 실시간 데이터를 기반으로 AI 브리핑을 새로 생성하는 중입니다...';
+                reportBox.textContent = '⏳ 시황 총평 및 대응 가이드를 새롭게 분석하는 중입니다...';
                 reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
                 fetch('/api/ai-briefing')
