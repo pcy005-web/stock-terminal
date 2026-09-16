@@ -5,6 +5,7 @@ import json
 import ssl
 import xml.etree.ElementTree as ET
 import re
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -288,16 +289,26 @@ def generate_strategies(quotes):
     ]
 
 def generate_premarket_summary_bullets(quotes):
+    current_hour = datetime.now().hour
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
-    return [
-        f"미국 10년물 금리 장중 5.0% 상회 및 FOMC 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동 점검).",
-        f"AI 성장성 자체보다 '빠른 기술 발전'이라는 노이즈가 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 단기 충격 발생.",
-        "추격 매도 자제 및 9월 FOMC에서 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
-        "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
-    ]
+    # 오전 7시 이후 (장 시작 전 아침 갱신 로직)
+    if current_hour >= 7:
+        return [
+            f"[오전 7시 이후 장전 개장 뷰] 미국 10년물 금리 장중 5.0% 상회 노이즈 및 9월 FOMC 대기 경계감 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
+            f"AI 반도체 쏠림 및 기술 발전 속도 노이즈로 필라델피아 반도체 지수({sox.get('rate')}) 변동성 확대 및 단기 충격 반영.",
+            "지수 추격 매도를 자제하고, 연준의 추가 인상 신중론 확인 전까지 반도체 하방 경직성 및 지지선 테스트 집중 주시.",
+            "코스피 반도체 의존도 완화 흐름 속 은행·보험·지주 등 주주환원 우위 업종으로의 분산 투자 대안 적극 유효."
+        ]
+    else:
+        # 새벽 및 오전 7시 이전 야간/전일 마감 뷰
+        return [
+            f"[야간/새벽 마감 요약] 전일 글로벌 증시 마감 지표 및 뉴욕 야간 선물 연동 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
+            f"미국 금리 및 반도체 섹터 동향({sox.get('rate')})에 따른 야간 변동성 누적 확인.",
+            "오전 7시 이후 당일 장전 핵심 지표 확정 시 개장 전략 브리핑이 자동 갱신됩니다."
+        ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
