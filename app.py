@@ -31,7 +31,7 @@ MARKET_CATEGORIES = [
         ]
     },
     {
-        'title': '🛢️ 원자재, 환율 및 가상자산',
+        'title': '🛢️ 원자재 및 환율',
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'NAVER_ENERGY_WTI'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'NAVER_METAL_GOLD'},
@@ -303,18 +303,15 @@ def generate_premarket_summary_bullets(quotes, news_list):
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.76%'})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 및 수급 모니터링"
     
     return (
-        "⚡ [AI 하이브리드 마켓 브리핑]\n\n"
-        f"• 시황 총평: SK하이닉스와 삼성전자 등 대형주 강세에 힘입어 코스피({kospi.get('rate', '+0.76%')}) 소폭 강세 시현 중\n\n"
-        f"🔍 [핵심 체크포인트]\n"
-        f"  - 수급 디커플링: 기관이 대형주 중심(금리·FOMC 경계감 방어)으로 지수를 떠받치고 있으나, 코스닥은 외인·기관 동반 매도 및 개별 악재 종목 약세로 온도 차 발생\n"
-        f"  - 글로벌 노이즈: \"{top_news}\" 관련 매크로 변동성 및 반도체 지수({sox['rate']}) 흐름 복합 연동\n\n"
-        "💡 [실전 대응 가이드]\n"
-        "  - \"지수 전반의 공포에 매도하기보다, 수급이 집중되는 주도주의 눌림목을 활용하고 변동성이 큰 개별 이슈 종목은 보수적으로 접근하세요.\""
+        "[장전 마켓 인사이트 & AI 종합 브리핑 (매일 아침 자동 갱신)]\n"
+        f"- 대외 실시간 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
+        f"- 핵심 뉴스 및 노이즈: {top_news}\n"
+        "- 시황 분석 및 혜안: 글로벌 채권금리 및 기술주 노이즈로 인해 단기 변동성이 확대되고 있으나, 시장의 하방 지지력과 매물 소화 과정을 주시해야 합니다. 무리한 포지션 축소보다는 하방 경직성이 확보된 주도주 및 방어적 대안(주주환원/배당주) 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
     )
 
 @app.route('/')
