@@ -27,17 +27,17 @@ MARKET_CATEGORIES = [
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'NAVER_WORLD_YM'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NAVER_WORLD_NQ'},
             {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': 'NAVER_WORLD_SOX'},
-            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': 'NAVER_WORLD_VIX'},
-            {'code': 'btc', 'name': '비트코인 (USD)', 'ticker': 'YAHOO_BTC_USD'},
-            {'code': 'eth', 'name': '이더리움 (USD)', 'ticker': 'YAHOO_ETH_USD'}
+            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': 'NAVER_WORLD_VIX'}
         ]
     },
     {
-        'title': '🛢️ 원자재 및 환율',
+        'title': '🛢️ 원자재, 환율 및 가상자산',
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'NAVER_ENERGY_WTI'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'NAVER_METAL_GOLD'},
-            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'}
+            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'},
+            {'code': 'btc', 'name': '비트코인 (USD)', 'ticker': 'YAHOO_BTC_USD'},
+            {'code': 'eth', 'name': '이더리움 (USD)', 'ticker': 'YAHOO_ETH_USD'}
         ]
     }
 ]
@@ -89,7 +89,6 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
-    # 야후 파이낸스 심볼 처리 (비트코인, 이더리움 등)
     if ticker.startswith('YAHOO_'):
         y_ticker = ticker.replace('YAHOO_', '').replace('_', '-')
         y_data = fetch_yahoo_data(y_ticker)
