@@ -291,11 +291,12 @@ def generate_premarket_summary_bullets(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    vix = quotes.get('vix', {'price': '-', 'rate': '+0.00%'})
+    
     return [
-        f"미국 10년물 금리 장중 5.0% 상회 및 AI 속도조절 우려 속 필라델피아 반도체 지수({sox.get('rate')}) 약세 연동 주의.",
-        f"원/달러 환율({usdkrw.get('price')}원) 및 9월 FOMC 경계감 속 증시 멀티플 디레이팅 압력과 실시간 수급 동향 점검.",
-        f"나스닥 선물({nasdaq_fut.get('rate')}) 등락에 따른 변동성 장세 속 은행·보험·지주 등 주주환원 업종으로의 방어적 분산 대안 유효."
+        f"미국 10년물 금리 장중 5.0% 상회 및 FOMC 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동 점검).",
+        f"AI 성장성 자체보다 '빠른 기술 발전'이라는 노이즈가 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 단기 충격 발생.",
+        "추격 매도 자제 및 9월 FOMC에서 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
+        "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
