@@ -89,7 +89,6 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
-    # 업비트 API를 활용한 가상화폐 시세 처리
     if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
         try:
             market_code = "KRW-BTC" if ticker == 'NAVER_COIN_BTC' else "KRW-ETH"
@@ -298,7 +297,7 @@ def generate_strategies(quotes):
         {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
         {"title": "전력 인프라 수출 모멘텀 유입", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
         {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
-        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로ส페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
+        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로스페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
@@ -325,8 +324,12 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
+    # 7. 팩트 기반 AI 브리핑 생성기 (시황 총평 포함 보강)
     return (
         "⚡ [AI 하이브리드 마켓 종합 인사이트 리포트]\n\n"
+        "📊 [오늘의 시황 총평]:\n"
+        "  - 글로벌 매크로 변동성과 대외 지표의 혼조세 속에서 국내 증시는 대형주 중심의 하방 방어력과 지수 소화 과정을 거치고 있습니다.\n"
+        "  - 무조건적인 추격 매수보다는 리스크 관리를 병행하며 주도 섹터와 실적 우량주 위주로 압축 대응하는 전략이 유리한 구간입니다.\n\n"
         f"• 실시간 대외 지표 연동:\n"
         f"  - 나스닥 선물: {nasdaq_fut['rate']} | 필라델피아 반도체: {sox['rate']}\n"
         f"  - 원/달러 환율: {usdkrw['price']}원 수준 변동성 체크\n\n"
