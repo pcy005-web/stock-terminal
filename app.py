@@ -294,6 +294,7 @@ def generate_premarket_summary_bullets(quotes):
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
+    # 오전 7시 이후 (장 시작 전 아침 갱신 로직)
     if current_hour >= 7:
         return [
             f"[오전 7시 이후 장전 개장 뷰] 미국 10년물 금리 장중 5.0% 상회 노이즈 및 9월 FOMC 대기 경계감 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
@@ -302,6 +303,7 @@ def generate_premarket_summary_bullets(quotes):
             "코스피 반도체 의존도 완화 흐름 속 은행·보험·지주 등 주주환원 우위 업종으로의 분산 투자 대안 적극 유효."
         ]
     else:
+        # 새벽 및 오전 7시 이전 야간/전일 마감 뷰
         return [
             f"[야간/새벽 마감 요약] 전일 글로벌 증시 마감 지표 및 뉴욕 야간 선물 연동 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
             f"미국 금리 및 반도체 섹터 동향({sox.get('rate')})에 따른 야간 변동성 누적 확인.",
