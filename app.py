@@ -6,7 +6,7 @@ import ssl
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
-import re # 정규식 활용을 위한 모듈 추가
+import re
 
 app = Flask(__name__)
 
@@ -220,9 +220,21 @@ def fetch_naver_finance_news():
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 💡 [업그레이드] 뉴스 제목 내부에서 작은따옴표('...')로 강조된 종목명 추출 시도
+                # 💡 [보완된 추출 및 필터링 로직]
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                extracted_stocks_from_quotes = ", ".join([m for m in quoted_matches if len(m) <= 10 and not any(w in m for w in ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥"])])
+                exclude_words = [
+                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
+                    "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
+                ]
+                
+                valid_stocks = []
+                for m in quoted_matches:
+                    # 6글자 초과, 숫자가 포함된 경우, 시황/일반 명사 단어가 포함된 경우는 종목명에서 배제
+                    if len(m) > 6 or any(char.isdigit() for char in m) or any(ew in m for ew in exclude_words):
+                        continue
+                    valid_stocks.append(m)
+                
+                extracted_stocks_from_quotes = ", ".join(valid_stocks)
 
                 related_stock = ""
                 news_type = "중립"
@@ -237,7 +249,7 @@ def fetch_naver_finance_news():
                 negative_keywords = ["악재", "실종", "급락", "하락", "폭락", "위기", "침체", "이탈", "우려", "경고", "부진", "하회", "적자"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
-                # 💡 [업그레이드] 제목에 추출된 종목이 있으면 우선 반영, 없으면 키워드 기반 세부 종목 매칭
+                # 종목 매핑 적용
                 if extracted_stocks_from_quotes:
                     related_stock = f"{extracted_stocks_from_quotes} (관련주)"
                 else:
