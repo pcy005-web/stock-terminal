@@ -174,11 +174,7 @@ def fetch_naver_finance_news():
                 link_elem = item.find('link')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
-                if " - " in title:
-                    title_clean = title.rsplit(" - ", 1)[0]
-                else:
-                    title_clean = title
-                    
+                title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 related_stock = "삼성전자 (005930), SK하이닉스 (000660)"
@@ -256,7 +252,6 @@ def generate_smart_money_analysis(quotes):
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
-    
     badge_text = "외인/기관 순매수 유입" if kospi_up else "외인/기관 매도 우위"
     badge_class = "up" if kospi_up else "down"
     
@@ -290,11 +285,8 @@ def generate_premarket_summary_bullets(quotes, news_list):
     n_rate = nasdaq_fut.get('rate', '-0.6%')
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
-    is_up = nasdaq_fut.get('is_up', False)
-    
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
-    # 보내주신 증권사 모닝 리포트 분석 톤과 형태(매크로 해석 + 시장 영향 + 전략적 대안)를 반영한 동적 갱신 불릿
     bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 환율({w_price}원) 흐름 속에서 매크로 변동성과 실시간 이슈('{top_news}')의 영향을 복합적으로 소화하는 모습입니다."
     bullet_2 = f"핵심 노이즈 및 시장 심리: 금리 및 정책 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 기술주 섹터가 단기 변동성 검증대에 놓였으며, 앞자리가 바뀐 지표들에 대한 심리적 경계감이 상존하고 있습니다."
     bullet_3 = "지수 하단 지지력 점검: 다만 증시가 장 초반의 낙폭을 상당 부분 만회하거나 하방 경직성을 시도한다는 점은, 시장이 극단적 우려보다는 연준의 속도 조절이나 기존 예상 범주 내의 충돌로 받아들이고 있음을 시사합니다."
@@ -354,6 +346,31 @@ def index():
         market_summary_bullets=market_summary_bullets,
         ai_briefing=ai_briefing_text
     )
+
+# 새로고침 없이 5초마다 실시간 지표를 갱신하기 위해 추가된 API 엔드포인트
+@app.route('/api/quotes')
+def api_quotes():
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+        for stock in cat['stocks']:
+            tasks.append((stock['code'], stock['ticker']))
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
+        
+        for future in as_completed(future_to_code):
+            code = future_to_code[future]
+            try:
+                data = future.result()
+                if data:
+                    price_map[code] = data
+                else:
+                    price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+            except Exception:
+                price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+                
+    return json.dumps(price_map, ensure_ascii=False)
 
 if __name__ == '__main__':
     app.run(debug=True)
