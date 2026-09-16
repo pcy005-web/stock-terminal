@@ -161,81 +161,83 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
+def analyze_news_content(clean_title):
+    """뉴스 제목 키워드를 기반으로 관련 종목, 리스크/호재 구분을 동적으로 생성합니다."""
+    if any(k in clean_title for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아", "칩", "파운드리"]):
+        return "삼성전자, SK하이닉스, 한미반도체", "호재", "글로벌 반도체 업종 모멘텀 및 IT 주도주 수급 유입 기대"
+    elif any(k in clean_title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준", "급락", "경고"]):
+        return "KB금융, 신한지주, 원/달러 환율", "리스크", "환율 및 금리 변동성 확대에 따른 국내 증시 수급 영향 점검"
+    elif any(k in clean_title for k in ["방산", "수출", "한화", "현대", "조선", "수주", "원자력", "전력", "변압기"]):
+        return "현대로템, HD현대일렉트릭, 한화에어로스페이스", "호재", "실적 기반 수주 모멘텀 지속 및 주도주 하단 지지력 강화"
+    elif any(k in clean_title for k in ["바이오", "임상", "신약", "제약", "셀트리온", "FDA"]):
+        return "삼성바이오로직스, 셀트리온, 알테오젠", "호재", "바이오 섹터 순환매 및 제약주 수급 개선 기대"
+    elif any(k in clean_title for k in ["밸류업", "배당", "저PBR", "주주환원", "자사주"]):
+        return "KB금융, 현대차, 기아", "호재", "주주환원 정책 모멘텀 및 방어주 중심 외인 수급 지지"
+    else:
+        return "코스피/코스닥 대형주", "중립", "지수 연동 흐름에 따른 실시간 개별 이슈 수급 대응 필요"
+
 def fetch_naver_finance_news():
-    rss_url = "https://news.naver.com/main/rss/rss1.id?mid=sec&sid1=101"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    """실시간 네이버 금융 주요 뉴스 및 한국경제 RSS를 동적으로 수집합니다."""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
     news_list = []
+    seen_titles = set()
+
+    # 1. 네이버 금융 메인 실시간 주요 뉴스 크롤링
     try:
-        req = urllib.request.Request(rss_url, headers=headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
-            xml_data = response.read()
-            root = ET.fromstring(xml_data)
-            items = root.findall('.//item')
+        url = "https://finance.naver.com/news/mainnews.naver"
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+            html = response.read().decode('euc-kr', errors='ignore')
+            matches = re.findall(r'<d[dt] class="articleSubject">\s*<a href="([^"]+)">(.*?)</a>', html, re.DOTALL)
             
-            for item in items:
-                title_elem = item.find('title')
-                link_elem = item.find('link')
-                
-                if title_elem is not None and title_elem.text:
-                    clean_title = re.sub('<.*?>', '', title_elem.text).strip()
-                    raw_link = link_elem.text.strip() if link_elem is not None and link_elem.text else ""
-                    
-                    if not raw_link or raw_link == "https://finance.naver.com" or "index.nhn" in raw_link:
-                        encoded_title = urllib.parse.quote(clean_title[:20])
-                        news_link = f"https://search.naver.com/search.naver?where=news&query={encoded_title}"
-                    else:
-                        news_link = raw_link
-                    
-                    related_stock = "시장 전체"
-                    news_type = "중립"
-                    comment = "실시간 뉴스 모니터링 및 시장 영향 분석 중"
-
-                    if any(k in clean_title for k in ["반도체", "AI", "삼성", "하이닉스", "급등", "상승", "호조", "확대"]):
-                        related_stock = "삼성전자, SK하이닉스, 한미반도체"
-                        news_type = "호재"
-                        comment = "글로벌 반도체 업종 반등 및 IT 주도주 수급 유입 기대"
-                    elif any(k in clean_title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준"]):
-                        related_stock = "KB금융, 신한지주, 원/달러 환율"
-                        news_type = "리스크"
-                        comment = "환율 및 금리 변동성 확대에 따른 국내 증시 수급 영향 점검"
-                    elif any(k in clean_title for k in ["방산", "수출", "한화", "현대", "조선", "수주"]):
-                        related_stock = "현대로템, HD현대일렉트릭, 한화에어로스페이스"
-                        news_type = "호재"
-                        comment = "실적 기반 수주 모멘텀 지속 및 주도주 하단 지지력 강화"
-                    else:
-                        news_type = "중립"
-                        comment = "지수 연동 흐름에 따른 중립적 수급 대응 필요"
-
+            for link, title in matches:
+                clean_title = re.sub('<.*?>', '', title).strip()
+                clean_title = clean_title.replace('&quot;', '"').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+                if clean_title and clean_title not in seen_titles:
+                    seen_titles.add(clean_title)
+                    full_link = f"https://finance.naver.com{link}" if link.startswith('/') else link
+                    stock, news_type, comment = analyze_news_content(clean_title)
                     news_list.append({
                         'title': clean_title,
-                        'link': news_link,
-                        'stock': related_stock,
+                        'link': full_link,
+                        'stock': stock,
                         'comment': comment,
                         'type': news_type
                     })
-                    
                 if len(news_list) >= 10:
                     break
     except Exception:
         pass
-        
-    while len(news_list) < 10:
-        idx = len(news_list) + 1
-        fallback_data = [
-            ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "https://search.naver.com/search.naver?where=news&query=AI+인프라+반도체", "삼성전자, SK하이닉스, 한미반도체", "AI 인프라 투자 확대가 반도체 소부장 주도주 수급에 긍정적 영향", "호재"),
-            ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "https://search.naver.com/search.naver?where=news&query=원달러+환율+외국인수급", "KB금융, 신한지주, 원/달러 환율", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "중립"),
-            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "https://search.naver.com/search.naver?where=news&query=밸류업+프로그램+주주환원", "KB금융, 현대차, 기아", "저PBR 종목군에 대한 정책 기대감 및 주도주 유입", "호재"),
-            ("K-방산 주요국 추가 수출 협상 본계약 임박", "https://search.naver.com/search.naver?where=news&query=K방산+수출+협상", "현대로템, LIG넥스원, 한화에어로스페이스", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "호재"),
-            ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "https://search.naver.com/search.naver?where=news&query=국채금리+기술주+경계감", "미국 국채금리, NAVER, 카카오", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "리스크"),
-            ("조선업 슈퍼사이클 친환경 선박 수주 랠리", "https://search.naver.com/search.naver?where=news&query=조선업+친환경선박+수주", "HD한국조선해양, HD현대중공업", "수주 잔고 기반 실적 턴어라운드 및 조선 주도주 가속화", "호재"),
-            ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "https://search.naver.com/search.naver?where=news&query=바이오+CDMO+계약", "삼성바이오로직스, 셀트리온, 알테오젠", "안정적인 실적 성장 및 바이오 주도주 모멘텀 확보", "호재"),
-            ("전력기기 및 변압기 수출 사상 최대 기록 경신", "https://search.naver.com/search.naver?where=news&query=전력기기+변압기+수출", "HD현대일렉트릭, 효성중공업, 제룡전기", "북미 전력망 교체 수요에 따른 수혜 집중 및 주도주 급등", "호재"),
-            ("국내 증시 거래대금 점진적 회복 국면 진입", "https://search.naver.com/search.naver?where=news&query=국내증시+거래대금", "코스피, 코스닥 대형주 및 주도주", "시장 유동성 유입 여부 지속 체크 필요", "중립"),
-            ("글로벌 원자재 공급망 및 유가 변동성 점검", "https://search.naver.com/search.naver?where=news&query=원자재+공급망+유가", "WTI원유, 금현물, 흥구석유", "원자재 가격 변동에 따른 인플레 압력 주시", "리스크")
-        ]
-        t, l, s, c, tp = fallback_data[idx - 1]
-        news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp})
-            
+
+    # 2. 부족할 경우 한국경제 실시간 증권/경제 RSS 보충 수집
+    if len(news_list) < 10:
+        try:
+            hk_url = "https://www.hankyung.com/feed/finance"
+            req = urllib.request.Request(hk_url, headers=headers)
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+                xml_data = response.read().decode('utf-8', errors='ignore')
+                root = ET.fromstring(xml_data)
+                for item in root.findall('.//item'):
+                    title_elem = item.find('title')
+                    link_elem = item.find('link')
+                    if title_elem is not None and title_elem.text:
+                        clean_title = re.sub('<.*?>', '', title_elem.text).strip()
+                        if clean_title not in seen_titles:
+                            seen_titles.add(clean_title)
+                            raw_link = link_elem.text.strip() if link_elem is not None and link_elem.text else f"https://search.naver.com/search.naver?where=news&query={urllib.parse.quote(clean_title[:20])}"
+                            stock, news_type, comment = analyze_news_content(clean_title)
+                            news_list.append({
+                                'title': clean_title,
+                                'link': raw_link,
+                                'stock': stock,
+                                'comment': comment,
+                                'type': news_type
+                            })
+                            if len(news_list) >= 10:
+                                break
+        except Exception:
+            pass
+
     return news_list
 
 def generate_theme_sync_analysis(quotes):
@@ -280,13 +282,80 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes):
-    return [
-        {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
-        {"title": "전력 인프라 수출 모멘텀 유지", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
-        {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
-        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "현대로템, 한화에어로스페이스, LIG넥스원", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
-    ]
+    """실시간 해외/국내 지수 및 환율 동향을 반영하여 수급 기반 전략 TOP 5를 동적으로 편성합니다."""
+    sox = quotes.get('phlx', {'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
+    kospi = quotes.get('kospi', {'rate': '+0.00%', 'is_up': True})
+    
+    sox_up = sox.get('is_up', True)
+    kospi_up = kospi.get('is_up', True)
+    
+    strategies = []
+    
+    # 1. 반도체 전략
+    if sox_up:
+        strategies.append({
+            "title": f"필반 지수 강세({sox.get('rate')}) 연동 반도체 집중 공략",
+            "desc": "외국인 순매수 유입 가능성이 높은 IT 주도주 중심 분할 매집",
+            "stock": "삼성전자, SK하이닉스, 한미반도체",
+            "score": 95
+        })
+    else:
+        strategies.append({
+            "title": f"반도체 섹터 단기 숨고르기({sox.get('rate')}) 대응 전략",
+            "desc": "추격 매수 자제 및 눌림목 지지선 확인 후 하단 분할 대응",
+            "stock": "삼성전자, SK하이닉스, 한미반도체",
+            "score": 75
+        })
+
+    # 2. 전력/방산 수주주 전략
+    strategies.append({
+        "title": "전력 인프라 및 방산 수주 모멘텀 유지",
+        "desc": "북미/유럽 수출 실적 가시화 및 수주 잔고 기반 조정 시 매수",
+        "stock": "HD현대일렉트릭, 한화에어로스페이스, 현대로템",
+        "score": 90 if sox_up else 92
+    })
+
+    # 3. 금융/방어주 전략
+    if not kospi_up or '-' in str(usdkrw.get('rate', '')):
+        strategies.append({
+            "title": f"환율 변동성({usdkrw.get('price')}원) 대비 저PBR/금융주 방어",
+            "desc": "지수 변동성 구간 외국인 방어적 수급 및 고배당 모멘텀 활용",
+            "stock": "KB금융, 신한지주, 현대차",
+            "score": 94
+        })
+    else:
+        strategies.append({
+            "title": "저PBR 밸류업 프로그램 방어력 활용",
+            "desc": "배당 시즌 및 주주환원 정책 모멘텀 보유주 수급 지지",
+            "stock": "KB금융, 현대차, 기아",
+            "score": 82
+        })
+
+    # 4. 바이오 전략
+    strategies.append({
+        "title": "바이오 / CDMO 섹터 순환매 대응",
+        "desc": "기관 수급 유입 및 글로벌 임상/수주 모멘텀 종목 단기 스윙",
+        "stock": "삼성바이오로직스, 셀트리온, 알테오젠",
+        "score": 85
+    })
+
+    # 5. 조선주 전략
+    strategies.append({
+        "title": "조선 및 친환경 선박 수주 랠리 가속",
+        "desc": "선가 상승 및 수주 잔고 증가에 따른 실적 턴어라운드 종목 대응",
+        "stock": "HD한국조선해양, HD현대중공업, 삼성중공업",
+        "score": 88 if not sox_up else 80
+    })
+
+    # 점수 기준 실시간 정렬 후 TOP 1~5 할당
+    strategies.sort(key=lambda x: x['score'], reverse=True)
+    
+    for idx, strat in enumerate(strategies):
+        strat['rank'] = f"TOP {idx + 1}"
+        del strat['score']
+        
+    return strategies
 
 def generate_premarket_summary_bullets(quotes):
     current_hour = datetime.now().hour
@@ -294,7 +363,6 @@ def generate_premarket_summary_bullets(quotes):
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
-    # 오전 7시 이후 (장 시작 전 아침 갱신 로직)
     if current_hour >= 7:
         return [
             f"[오전 7시 이후 장전 개장 뷰] 미국 10년물 금리 장중 5.0% 상회 노이즈 및 9월 FOMC 대기 경계감 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
@@ -303,7 +371,6 @@ def generate_premarket_summary_bullets(quotes):
             "코스피 반도체 의존도 완화 흐름 속 은행·보험·지주 등 주주환원 우위 업종으로의 분산 투자 대안 적극 유효."
         ]
     else:
-        # 새벽 및 오전 7시 이전 야간/전일 마감 뷰
         return [
             f"[야간/새벽 마감 요약] 전일 글로벌 증시 마감 지표 및 뉴욕 야간 선물 연동 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
             f"미국 금리 및 반도체 섹터 동향({sox.get('rate')})에 따른 야간 변동성 누적 확인.",
