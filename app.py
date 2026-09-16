@@ -189,7 +189,6 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    # 💡 when:1d 파라미터 적용으로 최근 24시간 이내 최신 뉴스 집중 타겟팅
     query_str = urllib.parse.quote("코스피 주식 증권 경제 when:1d")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -206,7 +205,7 @@ def fetch_naver_finance_news():
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item')[:10]:
+            for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 
@@ -218,51 +217,67 @@ def fetch_naver_finance_news():
                 news_type = "중립"
                 comment = "실시간 매크로 지표 연동 및 시장 수급 변동성 모니터링 필요"
 
+                # 💡 시장 관심도(조회수/클릭 유도) 가중치 점수 계산
+                interest_score = 0
+                high_interest_keywords = ["특징주", "급등", "서프라이즈", "최대", "돌파", "폭등", "상승", "수주", "공시", "실적", "신고가"]
+                for kw in high_interest_keywords:
+                    if kw in title_clean:
+                        interest_score += 2 # 키워드 매칭당 가중치 부여
+
                 if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
                     related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
                     news_type = "호재"
                     comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
+                    interest_score += 1
                 elif any(k in title_clean for k in ["환율", "달러", "하락", "금리", "연준", "인플레", "위기", "폭락", "관세"]):
                     related_stock = "원/달러 환율, KB금융, 현대차, 대형 방어주"
                     news_type = "리스크"
                     comment = "환율 및 금리 변동성에 따른 외국인 수급 이탈 여부 방어적 점검"
+                    interest_score += 1
                 elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
                     related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기, 스페코"
                     news_type = "호재"
                     comment = "글로벌 대규모 수주 및 실적 턴어라운드 테마 순환매"
+                    interest_score += 1
                 elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
                     related_stock = "삼성바이오로직스, 셀트리온, 알테오젠, 레고켐바이오"
                     news_type = "호재"
                     comment = "글로벌 임상 진척 및 바이오 섹터 고거래량 단기 테마 포착"
+                    interest_score += 1
 
                 news_list.append({
                     'title': title_clean,
                     'link': link,
                     'stock': related_stock,
                     'comment': comment,
-                    'type': news_type
+                    'type': news_type,
+                    'score': interest_score
                 })
+                
+        # 💡 관심도 점수(score) 기준 내림차순 정렬 (인기/이목 집중 뉴스가 상위로 배치됨)
+        news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
+        
     except Exception:
         pass
         
     if len(news_list) < 10:
         dynamic_fallbacks = [
-            (f"[{current_hour_str} 실시간] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체, 오픈엣지테크놀로지", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재"),
-            (f"[{current_hour_str} 실시간] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융, 환율 민감주", "환율 등락에 따른 외국인 자금 유출입 감시", "중립"),
-            (f"[{current_hour_str} 실시간] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 수급 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재"),
-            (f"[{current_hour_str} 실시간] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍, 스페코", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재"),
-            (f"[{current_hour_str} 실시간] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크"),
-            (f"[{current_hour_str} 실시간] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업, 동성화인텍", "조선 기자재 중소형 테마 순환매 포착", "호재"),
-            (f"[{current_hour_str} 실시간] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재"),
-            (f"[{current_hour_str} 실시간] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 산일전기", "전력기기 및 변압기 중소형주 거래대금 집중", "호재"),
-            (f"[{current_hour_str} 실시간] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립"),
-            (f"[{current_hour_str} 실시간] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크")
+            (f"[{current_hour_str} 실시간 특징주] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체, 오픈엣지테크놀로지", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재"),
+            (f"[{current_hour_str} 실시간 시황] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융, 환율 민감주", "환율 등락에 따른 외국인 자금 유출입 감시", "중립"),
+            (f"[{current_hour_str} 실시간 핫이슈] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 수급 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재"),
+            (f"[{current_hour_str} 실시간 특징주] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍, 스페코", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재"),
+            (f"[{current_hour_str} 실시간 리포트] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크"),
+            (f"[{current_hour_str} 실시간 수급] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업, 동성화인텍", "조선 기자재 중소형 테마 순환매 포착", "호재"),
+            (f"[{current_hour_str} 실시간 특징주] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재"),
+            (f"[{current_hour_str} 실시간 핫이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 산일전기", "전력기기 및 변압기 중소형주 거래대금 집중", "호재"),
+            (f"[{current_hour_str} 실시간 시황] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립"),
+            (f"[{current_hour_str} 실시간 리포트] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크")
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp = dynamic_fallbacks.pop(0)
-            news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp})
+            news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp, 'score': 0})
             
-    return news_list
+    return news_list[:10]
 
 def generate_theme_sync_analysis(quotes, news_list):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
