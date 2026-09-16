@@ -276,13 +276,14 @@ def generate_smart_money_analysis(quotes):
 def generate_strategies(quotes):
     return [
         {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
-        {"title": "전력 인프라 수출 모멘텀 유지", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
+        {"title": "전력 인프라 수출 모멘텀 유입", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
         {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
         {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "한화에어로스페이스, 현대로템, LIG넥스원", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
+    # 실시간 시세 값 추출
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
@@ -290,32 +291,29 @@ def generate_premarket_summary_bullets(quotes, news_list):
     n_rate = nasdaq_fut.get('rate', '-0.6%')
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
-    
     is_nasdaq_up = nasdaq_fut.get('is_up', False)
-    market_tone = "위험선호 심리 회복 및 낙폭 만회 시도" if is_nasdaq_up else "장중 변동성 확대 및 디레이팅 압력"
     
-    # 실시간 수집된 첫 번째 주요 뉴스를 장전 핵심 이슈로 반영
-    top_news_title = news_list[0]['title'] if news_list else "글로벌 매크로 변동성 모니터링"
+    # 첫 번째 실시간 뉴스 타이틀
+    top_news_title = news_list[0]['title'] if news_list else "글로벌 매크로 지표 및 증시 동향 점검"
     
-    return [
-        f"실시간 주요 이슈 연동: '{top_news_title}' 흐름 속 국내 증시 반응 주목.",
-        f"미국 증시 및 글로벌 채권금리 변동성에 따른 국내 연동성 점검 (나스닥 선물 {n_rate}, 원/달러 환율 {w_price}원).",
-        f"주요 기술주 및 필라델피아 반도체 지수({s_rate}) 동향에 따른 섹터별 수급 변화 추적.",
-        f"현재 글로벌 매크로 환경은 {market_tone} 국면이며, 추격 매도 자제 및 하방 경직성 확보 중심 대응 유효."
-    ]
+    # 샘플 구조(키움 한지영 리포트 스타일)에 맞춰 매일 실시간 데이터로 자동 조합되는 핵심 요약 4가지
+    bullet_1 = f"해외 증시 및 주요 지표 연동: 나스닥 선물({n_rate}), 원/달러 환율({w_price}원) 등 마켓 변동성 점검."
+    bullet_2 = f"실시간 핵심 노이즈 및 이슈: '{top_news_title}' 관련 시장 반응 및 수급 영향력 추적."
+    bullet_3 = f"반도체 및 기술주 동향: 필라델피아 반도체 지수({s_rate}) 변동에 따른 대장주 하방 경직성 검증 국면."
+    bullet_4 = "대응 전략: 추격 매도 자제, 지수 하방 지지력 확인 후 주도주 및 주주환원(은행·보험 등) 방어주 분산 대안 유효."
+    
+    return [bullet_1, bullet_2, bullet_3, bullet_4]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
-    
-    top_news = news_list[0]['title'] if news_list else "실시간 경제 및 증시 이슈 모니터링 중"
-    news_type = news_list[0].get('type', '중립') if news_list else "중립"
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 및 수급 모니터링"
     
     return (
-        "[실시간 AI 자동 마켓 종합 분석 (매일 장전 갱신)]\n"
-        f"- 대외 변수: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
-        f"- 오늘의 실시간 핫 이슈: {top_news} ({news_type})\n"
-        "- AI 종합 제언: 지수 단기 변동성에 일희일비하기보다는 실시간 수급이 유입되는 핵심 주도주와 하방 방어력이 검증된 업종 중심으로 유연한 포트폴리오 대응 권장"
+        "[장전 5분 마켓 핵심 요약 및 AI 전략 리포트 (매일 자동 갱신)]\n"
+        f"- 글로벌 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
+        f"- 당일 주요 이슈: {top_news}\n"
+        "- 시장 전망 및 대안: 전일 미국 증시 및 환율 연동 인식을 바탕으로 국내 증시가 낙폭 만회 및 하방 경직성 테스트를 거칠 것으로 예상. 반도체 변동성 속 무리한 추격 매도보다는 실적 우량주 및 주주환원/방어주로 포트폴리오 비중을 분산하는 전략이 유리."
     )
 
 @app.route('/')
