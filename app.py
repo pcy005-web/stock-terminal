@@ -189,11 +189,10 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    # 💡 when:12h 파라미터 적용으로 최근 12시간 이내 최신 뉴스 타겟팅
     query_str = urllib.parse.quote("코스피 주식 증권 경제 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
-    seen_titles = set() # 💡 중복 타이틀 체크용 집합
+    seen_titles = set()
     
     try:
         req = urllib.request.Request(
@@ -214,7 +213,6 @@ def fetch_naver_finance_news():
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 
-                # 💡 이미 수집된 동일한 제목의 뉴스가 있다면 건너뜀 (중복 제거)
                 if title_clean in seen_titles:
                     continue
                 seen_titles.add(title_clean)
@@ -231,26 +229,37 @@ def fetch_naver_finance_news():
                     if kw in title_clean:
                         interest_score += 2
 
-                if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
-                    related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
-                    news_type = "호재"
-                    comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
-                    interest_score += 1
-                elif any(k in title_clean for k in ["환율", "달러", "하락", "금리", "연준", "인플레", "위기", "폭락", "관세"]):
-                    related_stock = "원/달러 환율, KB금융, 현대차, 대형 방어주"
+                # 💡 1단계: 부정적 맥락(악재, 하락, 급락, 실종, 위기 등) 우선 필터링
+                negative_keywords = ["악재", "실종", "급락", "하락", "폭락", "위기", "침체", "이탈", "우려", "경고", "부진", "하회", "적자"]
+                is_negative = any(nk in title_clean for nk in negative_keywords)
+
+                if is_negative:
                     news_type = "리스크"
-                    comment = "환율 및 금리 변동성에 따른 외국인 수급 이탈 여부 방어적 점검"
-                    interest_score += 1
-                elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
-                    related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기, 스페코"
-                    news_type = "호재"
-                    comment = "글로벌 대규모 수주 및 실적 턴어라운드 테마 순환매"
-                    interest_score += 1
-                elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
-                    related_stock = "삼성바이오로직스, 셀트리온, 알테오젠, 레고켐바이오"
-                    news_type = "호재"
-                    comment = "글로벌 임상 진척 및 바이오 섹터 고거래량 단기 테마 포착"
-                    interest_score += 1
+                    related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
+                    comment = "매크로 악재 및 거래 대금 위축에 따른 방어적 포트폴리오 점검 필요"
+                    interest_score += 1 # 이슈성이 높으므로 관심도 가중치 부여
+                else:
+                    # 💡 2단계: 긍정/호재성 키워드 분류
+                    if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
+                        related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
+                        news_type = "호재"
+                        comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
+                        interest_score += 1
+                    elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
+                        related_stock = "원/달러 환율, KB금융, 현대차, 대형 방어주"
+                        news_type = "리스크"
+                        comment = "환율 및 금리 변동성에 따른 외국인 수급 이탈 여부 방어적 점검"
+                        interest_score += 1
+                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
+                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기, 스페코"
+                        news_type = "호재"
+                        comment = "글로벌 대규모 수주 및 실적 턴어라운드 테마 순환매"
+                        interest_score += 1
+                    elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
+                        related_stock = "삼성바이오로직스, 셀트리온, 알테오젠, 레고켐바이오"
+                        news_type = "호재"
+                        comment = "글로벌 임상 진척 및 바이오 섹터 고거래량 단기 테마 포착"
+                        interest_score += 1
 
                 news_list.append({
                     'title': title_clean,
