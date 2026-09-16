@@ -220,7 +220,6 @@ def fetch_naver_finance_news():
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 💡 [보완된 추출 및 필터링 로직]
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
                     "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
@@ -229,7 +228,6 @@ def fetch_naver_finance_news():
                 
                 valid_stocks = []
                 for m in quoted_matches:
-                    # 6글자 초과, 숫자가 포함된 경우, 시황/일반 명사 단어가 포함된 경우는 종목명에서 배제
                     if len(m) > 6 or any(char.isdigit() for char in m) or any(ew in m for ew in exclude_words):
                         continue
                     valid_stocks.append(m)
@@ -249,7 +247,6 @@ def fetch_naver_finance_news():
                 negative_keywords = ["악재", "실종", "급락", "하락", "폭락", "위기", "침체", "이탈", "우려", "경고", "부진", "하회", "적자"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
-                # 종목 매핑 적용
                 if extracted_stocks_from_quotes:
                     related_stock = f"{extracted_stocks_from_quotes} (관련주)"
                 else:
@@ -363,9 +360,18 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    if news_list and not news_list[0].get('is_negative', False):
-        n1 = news_list[0]['title']
-        desc_1 = f"실시간 지수 연동 및 이슈('{n1[:25]}...') 기반 수급 유입"
+    # 💡 [보완] AI/반도체와 관련된 뉴스를 우선적으로 탐색하여 TOP 1 전략 설명에 매칭
+    ai_news_title = ""
+    for n in news_list:
+        if any(k in n['title'] for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아", "칩", "인프라"]):
+            ai_news_title = n['title']
+            break
+            
+    if not ai_news_title and news_list:
+        ai_news_title = news_list[0]['title']
+
+    if ai_news_title:
+        desc_1 = f"실시간 지수 연동 및 이슈('{ai_news_title[:25]}...') 기반 수급 유입"
     else:
         desc_1 = "글로벌 AI 인프라 투자 확대 및 반도체 밸류체인 수급 집중"
 
