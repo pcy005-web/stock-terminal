@@ -162,7 +162,6 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def analyze_news_content(clean_title):
-    """뉴스 제목 키워드에 따라 관련 종목과 리스크/호재 성향을 동적으로 매핑합니다."""
     if any(k in clean_title for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아", "칩", "파운드리"]):
         return "삼성전자, SK하이닉스, 한미반도체", "호재", "글로벌 반도체 업종 모멘텀 및 IT 주도주 수급 유입 기대"
     elif any(k in clean_title for k in ["환율", "달러", "외국인", "하락", "불안", "우려", "금리", "연준", "급락", "경고", "물가"]):
@@ -177,12 +176,10 @@ def analyze_news_content(clean_title):
         return "코스피/코스닥 대형주", "중립", "지수 연동 흐름에 따른 실시간 개별 이슈 수급 대응 필요"
 
 def fetch_naver_finance_news():
-    """안정적인 경제/증시 RSS 및 실시간 검색 기반으로 10개의 최신 뉴스를 동적 수집합니다."""
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     news_list = []
     seen_titles = set()
 
-    # 연합인포맥스 및 한국경제 실시간 경제/증시 RSS 피드 복합 수집
     rss_urls = [
         "https://www.hankyung.com/feed/finance",
         "https://rss.hankyung.com/new/market.xml"
@@ -221,12 +218,11 @@ def fetch_naver_finance_news():
         except Exception:
             continue
 
-    # 만약 수집된 뉴스가 10개 미만일 경우 실시간 검색 연동형 금융 헤드라인으로 안전하게 채움
     fallback_pool = [
         ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "AI 인프라 투자 확대가 반도체 소부장 주도주 수급에 긍정적 영향", "삼성전자, SK하이닉스, 한미반도체", "호재"),
         ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "KB금융, 신한지주, 원/달러 환율", "중립"),
         ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "저PBR 종목군에 대한 정책 기대감 및 주도주 유입", "KB금융, 현대차, 기아", "호재"),
-        ("K-방산 주요국 추가 수출 협상 본계약 임박", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "현대로템, LIG넥스원, 한화에어로ส페이스", "호재"),
+        ("K-방산 주요국 추가 수출 협상 본계약 임박", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "현대로템, LIG넥스원, 한화에어로스페이스", "호재"),
         ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "미국 국채금리, NAVER, 카카오", "리스크"),
         ("조선업 슈퍼사이클 친환경 선박 수주 랠리 가속화", "수주 잔고 기반 실적 턴어라운드 및 조선 주도주 가속화", "HD한국조선해양, HD현대중공업", "호재"),
         ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "안정적인 실적 성장 및 바이오 주도주 모멘텀 확보", "삼성바이오로직스, 셀트리온, 알테오젠", "호재"),
@@ -238,10 +234,10 @@ def fetch_naver_finance_news():
     while len(news_list) < 10:
         idx = len(news_list)
         t, c, s, tp = fallback_pool[idx % len(fallback_pool)]
-        # 날짜/시간별로 유니크한 느낌을 주기 위해 타임스탬프 기반 쿼리 생성
+        date_prefix = datetime.now().strftime('%m/%d')
         l = f"https://search.naver.com/search.naver?where=news&query={urllib.parse.quote(t[:15])}"
         news_list.append({
-            'title': f"[{datetime.now().strftime('%m/%d')#일자표시}] {t}",
+            'title': f"[{date_prefix}] {t}",
             'link': l,
             'stock': s,
             'comment': c,
