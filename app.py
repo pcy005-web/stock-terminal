@@ -263,7 +263,7 @@ def fetch_naver_finance_news():
                     elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
                         related_stock = "원/달러 환율, KB금융, 현대차"
                     elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "수주"]):
-                        related_stock = "한화에어로ส페이스, HD현대일렉트릭, 제룡전기"
+                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기"
                     elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
                         related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
                     else:
@@ -328,7 +328,6 @@ def generate_theme_sync_analysis(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
     
-    # 💡 뉴스 헤드라인에 의존하지 않고 실제 지수 등락에 기반한 전문 시황 총평 생성
     sox_rate = sox.get('rate', '+0.00%')
     nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
@@ -361,7 +360,6 @@ def generate_smart_money_analysis(quotes):
     badge_class = "up" if kospi_up else "down"
     
     domestic_text = f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 등락률 반영 현·선물 수급 동향."
-    us_up = nasdaq_fut.get('is_up', True)
     decoupling_text = f"나스닥선물({nasdaq_fut.get('rate')}) 연동 흐름에 따른 글로벌 증시 동조화."
     fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 체크."
 
@@ -458,12 +456,15 @@ def generate_premarket_summary_bullets(quotes, news_list):
     n_rate = nasdaq_fut.get('rate', '-0.6%')
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
-    bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 환율({w_price}원) 흐름 속에서 매크로 변동성과 실시간 이슈('{top_news}')의 영향을 복합적으로 소화하는 모습입니다."
-    bullet_2 = f"핵심 노이즈 및 시장 심리: 금리 및 정책 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 기술주 섹터가 단기 변동성 검증대에 놓였으며, 앞자리가 바뀐 지표들에 대한 심리적 경계감이 상존하고 있습니다."
-    bullet_3 = "지수 하단 지지력 점검: 다만 증시가 장 초반의 낙폭을 상당 부분 만회하거나 하방 경직성을 시도한다는 점은, 시장이 극단적 우려보다는 연준의 속도 조절이나 기존 예상 범주 내의 충돌로 받아들이고 있음을 시사합니다."
-    bullet_4 = "오늘의 대응 전략: 현 시점의 변동성을 추세 훼손 신호로 과도하게 해석하기보다는, 주요 지표 안정 여부를 확인하면서 무리한 추격 매도를 자제하고 은행·보험·주주환원주 및 주도주 눌림목으로 포트폴리오를 분산하는 대안이 유효합니다."
+    # 💡 엉뚱한 뉴스 제목 대신 매크로 지표 중심의 자연스러운 분석 문장 생성
+    is_nasdaq_up = nasdaq_fut.get('is_up', True)
+    macro_context = "기술주 중심의 투자 심리 개선과 유동성 유입" if is_nasdaq_up else "글로벌 금리 경계감 및 기술주 중심의 변동성 확대"
+    
+    bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 원/달러 환율({w_price}원) 흐름 속에서 {macro_context}의 영향을 복합적으로 소화하는 모습입니다."
+    bullet_2 = f"핵심 노이즈 및 시장 심리: 통화정책 및 매크로 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 핵심 섹터의 단기 등락 요인이 국내 증시에 차별적인 수급을 형성하고 있습니다."
+    bullet_3 = "지수 하단 지지력 점검: 다만 증시가 장 초반의 낙폭을 상당 부분 만회하거나 하방 경직성을 시도한다는 점은, 시장이 극단적 우려보다는 예상 범주 내의 충돌로 받아들이고 있음을 시사합니다."
+    bullet_4 = "오늘의 대응 전략: 현 시점의 변동성을 추세 훼손 신호로 과도하게 해석하기보다는, 주요 지표 안정 여부를 확인하면서 무리한 추격 매도를 자제하고 주도주 눌림목 위주로 포트폴리오를 분산하는 대안이 유효합니다."
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
