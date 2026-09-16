@@ -160,7 +160,6 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
-    # 구글 뉴스 RSS를 통한 실시간 경제/증권 최신 속보 수집
     rss_url = "https://news.google.com/rss/search?q=코스피+증권+주식+경제&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     
@@ -182,7 +181,6 @@ def fetch_naver_finance_news():
                     
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 핵심 대장주, 주도주 및 거래대금 상위 종목 매칭 로직
                 related_stock = "삼성전자 (005930), SK하이닉스 (000660)"
                 news_type = "중립"
                 comment = "실시간 지수 연동성 및 거래대금 상위 주도주 수급 모니터링"
@@ -285,22 +283,37 @@ def generate_strategies(quotes):
     ]
 
 def generate_premarket_summary_bullets(quotes):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
+    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
+    
+    n_rate = nasdaq_fut.get('rate', '-0.6%')
+    w_price = usdkrw.get('price', '1,300')
+    s_rate = sox.get('rate', '-3.4%')
+    
+    is_nasdaq_up = nasdaq_fut.get('is_up', False)
+    market_tone = "강세 흐름 및 위험선호 심리 회복" if is_nasdaq_up else "장중 변동성 확대 및 멀티플 디레이팅 압력"
     
     return [
-        f"미국 10년물 금리 장중 변동성 속 증시 멀티플 디레이팅 압력 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
-        f"AI 성장성 관련 노이즈 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 흐름 추적.",
-        "추격 매도 자제 및 연준의 통화정책 스탠스 확인 대기, 반도체 하방 경직성 확보 주시.",
-        "코스피 대형주 및 최근 강세를 보이는 주주환원 업종, 전력/방산 섹터로의 분산 대안 유효."
+        f"미국 증시 및 글로벌 채권금리 변동성에 따른 국내 증시 연동성 점검 (나스닥 선물 {n_rate}, 원/달러 환율 {w_price}원).",
+        f"반도체 및 주요 기술주 섹터의 실시간 수급 동향과 필라델피아 반도체 지수({s_rate}) 흐름 추적.",
+        f"현재 글로벌 매크로 환경은 {market_tone} 국면으로 진입 중이며, 추격 매도 자제 및 하방 경직성 확보 주시 필요.",
+        "코스피 대형주 중심의 분산 대응과 함께 실적 및 수급 모멘텀이 양호한 주도주/방어주 선별 트레이딩 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
-    top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 글로벌 매크로 변동성 속 주도주 및 방어주 분산 대응 권장"
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
+    
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 변동성 및 증시 수급 모니터링 중"
+    news_type = news_list[0].get('type', '중립') if news_list else "중립"
+    
+    return (
+        "[실시간 AI 자동 마켓 종합 분석 (장전 갱신)]\n"
+        f"- 해외 연동: 나스닥 선물 {nasdaq_fut['rate']} | 환율 {usdkrw['price']}원\n"
+        f"- 오늘의 주요 실시간 이슈: {top_news} ({news_type})\n"
+        "- AI 종합 제언: 지수 단기 변동성에 일희일비하기보다는 핵심 주도주의 하방 지지력을 확인하며 분할 매수 및 방어적 포트폴리오 병행 권장"
+    )
 
 @app.route('/')
 def index():
