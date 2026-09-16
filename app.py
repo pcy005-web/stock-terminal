@@ -294,20 +294,20 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
-# [수정됨] 스타일 2(체크포인트)와 스타일 3(심플 총평 + 가이드)을 섞은 하이브리드 브리핑 함수
+# [수정됨] 사용자 수급 맥락(대형주 방어 vs 코스닥 이탈)이 자연스럽게 녹아든 하이브리드 AI 브리핑 함수
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%'})
+    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.76%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
     return (
         "⚡ [AI 하이브리드 마켓 브리핑]\n\n"
-        f"• 시황 총평: 코스피({kospi['rate']}) 중심의 변동성 장세 및 매물 소화 진행 중\n\n"
+        f"• 시황 총평: SK하이닉스와 삼성전자 등 대형주 강세에 힘입어 코스피({kospi.get('rate', '+0.76%')}) 소폭 강세 시현 중\n\n"
         f"🔍 [핵심 체크포인트]\n"
-        f"  - 글로벌 동향: 필라델피아 반도체 지수({sox['rate']}) 연동 기술주 흐름 주목\n"
-        f"  - 주요 노이즈: \"{top_news}\" 관련 투심 영향 모니터링\n\n"
+        f"  - 수급 디커플링: 기관이 대형주 중심(금리·FOMC 경계감 방어)으로 지수를 떠받치고 있으나, 코스닥은 외인·기관 동반 매도 및 개별 악재 종목 약세로 온도 차 발생\n"
+        f"  - 글로벌 노이즈: \"{top_news}\" 관련 매크로 변동성 및 반도체 지수({sox['rate']}) 흐름 복합 연동\n\n"
         "💡 [실전 대응 가이드]\n"
-        "  - \"공포에 따른 무리한 투매를 자제하고, 수급이 살아있는 주도주의 눌림목 기회와 방어적 대안을 함께 검토하세요.\""
+        "  - \"지수 전반의 공포에 매도하기보다, 수급이 집중되는 주도주의 눌림목을 활용하고 변동성이 큰 개별 이슈 종목은 보수적으로 접근하세요.\""
     )
 
 @app.route('/')
