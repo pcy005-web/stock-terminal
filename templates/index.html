@@ -43,20 +43,19 @@
         .stock-name { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
         .stock-info { display: flex; gap: 20px; text-align: right; align-items: center; }
         
-        /* 가격 갱신 시 부드러운 배경색 전환 효과 */
-        .stock-price { 
-            font-size: 0.95rem; 
+        .stock-price { font-size: 0.95rem; font-weight: 700; color: var(--text-main); min-width: 90px; }
+
+        /* 등락률(%) 갱신 시 부드러운 배경색 전환 효과 */
+        .stock-rate { 
+            font-size: 0.85rem; 
             font-weight: 700; 
-            color: var(--text-main); 
-            min-width: 90px; 
+            min-width: 75px; 
             transition: background-color 0.4s ease;
             padding: 2px 4px;
             border-radius: 4px;
         }
         .highlight-up { background-color: rgba(239, 68, 68, 0.25); }   /* 상승 시 연한 레드빛 */
         .highlight-down { background-color: rgba(59, 130, 246, 0.25); } /* 하락 시 연한 블루빛 */
-
-        .stock-rate { font-size: 0.85rem; font-weight: 700; min-width: 75px; }
 
         .up { color: var(--accent-red); }
         .down { color: var(--accent-blue); }
@@ -289,7 +288,7 @@
             }
         }
 
-        // 지표만 3초마다 실시간 자동 갱신 및 값 변경 시 하이라이트 효과 부여
+        // 3초마다 지표 갱신 및 등락률(%) 값 변경 시 깜빡이 효과 부여
         function updateMarketQuotes() {
             fetch('/api/quotes')
                 .then(response => response.json())
@@ -301,16 +300,17 @@
                             const rateElem = row.querySelector('.stock-rate');
                             
                             if (priceElem && rateElem) {
-                                // 이전 가격과 다를 때만 깜빡이 효과 작동
-                                if (priceElem.textContent !== q.price) {
-                                    priceElem.textContent = q.price;
+                                priceElem.textContent = q.price;
+                                
+                                // 이전 등락률과 다를 때만 % 영역에 깜빡이 효과 작동
+                                if (rateElem.textContent !== q.rate) {
                                     rateElem.textContent = q.rate;
                                     
                                     const highlightClass = q.is_up ? 'highlight-up' : 'highlight-down';
-                                    priceElem.classList.add(highlightClass);
+                                    rateElem.classList.add(highlightClass);
                                     
                                     setTimeout(() => {
-                                        priceElem.classList.remove('highlight-up', 'highlight-down');
+                                        rateElem.classList.remove('highlight-up', 'highlight-down');
                                     }, 500);
                                 }
                                 
