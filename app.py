@@ -180,7 +180,6 @@ def fetch_naver_finance_news():
     news_list = []
     seen_titles = set()
 
-    # 다양한 경제/증시 관련 RSS 피드 풀 결합 (다양한 실시간 뉴스가 동적으로 수집되도록 보강)
     rss_urls = [
         "https://www.hankyung.com/feed/finance",
         "https://rss.hankyung.com/new/market.xml",
@@ -216,26 +215,25 @@ def fetch_naver_finance_news():
         except Exception:
             continue
 
-    # 실시간 다이내믹 시각 결합 풀 (새로고침할 때마다 현재 시각 및 트렌드 반영도가 실시간 갱신되도록 구성)
-    timestamp_tag = datetime.now().strftime('%H분 전')
-    dynamic_pool = [
-        (f"연준 통화정책 경계감 속 글로벌 증시 변동성 점검 ({timestamp_tag})", "금리 불확실성에 따른 성장주 차익실현 매물 출회 가능성", "미국국채금리, NAVER, 카카오", "리스크"),
-        (f"글로벌 AI 인프라 투자 지속에 따른 반도체 소부장 수급 ({timestamp_tag})", "AI 밸류체인 내 실적 기반 우량주 중심 외인 수급 유입", "삼성전자, SK하이닉스, 한미반도체", "호재"),
-        (f"원/달러 환율 등락에 따른 외국인 자금 유출입 모니터링 ({timestamp_tag})", "환율 변동에 연동된 코스피 대형주 수급 동향 체크", "KB금융, 신한지주, 원/달러 환율", "중립"),
-        (f"정부 밸류업 프로그램 및 저PBR 주주환원 모멘텀 ({timestamp_tag})", "하단 지지력 강화 및 고배당 우량주 중심 방어적 매수세", "KB금융, 현대차, 기아", "호재"),
-        (f"K-방산 빅수출 프로젝트 본계약 가시화 기대감 ({timestamp_tag})", "해외 수주 잔고 기반 중장기 실적 턴어라운드 주목", "현대로템, 한화에어로스페이스, LIG넥스원", "호재"),
-        (f"조선업 슈퍼사이클 친환경 선박 수주 랠리 가속 ({timestamp_tag})", "선가 상승과 맞물린 조선 빅3 수주 모멘텀 지속", "HD한국조선해양, HD현대중공업, 삼성중공업", "호재"),
-        (f"바이오 CDMO 및 신약 파이프라인 글로벌 계약 성과 ({timestamp_tag})", "제약·바이오 섹터 내 순환매 및 기관 수급 유입", "삼성바이오로직스, 셀트리온, 알테오젠", "호재"),
-        (f"북미 전력망 교체 수요 확대에 따른 전력기기 호조 ({timestamp_tag})", "변압기 및 전력 인프라 수출 사상 최대 실적 기조 연장", "HD현대일렉트릭, 효성중공업, 제룡전기", "호재"),
-        (f"국내 증시 거래대금 추이 및 주도주 수급 집중도 점검 ({timestamp_tag})", "종목별 순환매 장세 속 모멘텀 보유주 중심 트레이딩", "코스피/코스닥 주도주", "중립"),
-        (f"글로벌 원자재 및 국제유가 수급 불확실성 리스크 검증 ({timestamp_tag})", "원자재 가격 변동에 따른 인플레이션 압력 재부각 주의", "WTI원유, 금현물, 흥구석유", "리스크")
+    # 불필요한 (00분전) 태그를 제거하고 깔끔하고 직관적인 실시간 트렌드 헤드라인으로 구성
+    clean_dynamic_pool = [
+        ("연준 통화정책 경계감 속 글로벌 증시 변동성 점검", "금리 불확실성에 따른 성장주 차익실현 매물 출회 가능성", "미국국채금리, NAVER, 카카오", "리스크"),
+        ("글로벌 AI 인프라 투자 지속에 따른 반도체 소부장 수급", "AI 밸류체인 내 실적 기반 우량주 중심 외인 수급 유입", "삼성전자, SK하이닉스, 한미반도체", "호재"),
+        ("원/달러 환율 등락에 따른 외국인 자금 유출입 모니터링", "환율 변동에 연동된 코스피 대형주 수급 동향 체크", "KB금융, 신한지주, 원/달러 환율", "중립"),
+        ("정부 밸류업 프로그램 및 저PBR 주주환원 모멘텀", "하단 지지력 강화 및 고배당 우량주 중심 방어적 매수세", "KB금융, 현대차, 기아", "호재"),
+        ("K-방산 빅수출 프로젝트 본계약 가시화 기대감", "해외 수주 잔고 기반 중장기 실적 턴어라운드 주목", "현대로템, 한화에어로스페이스, LIG넥스원", "호재"),
+        ("조선업 슈퍼사이클 친환경 선박 수주 랠리 가속", "선가 상승과 맞물린 조선 빅3 수주 모멘텀 지속", "HD한국조선해양, HD현대중공업, 삼성중공업", "호재"),
+        ("바이오 CDMO 및 신약 파이프라인 글로벌 계약 성과", "제약·바이오 섹터 내 순환매 및 기관 수급 유입", "삼성바이오로직스, 셀트리온, 알테오젠", "호재"),
+        ("북미 전력망 교체 수요 확대에 따른 전력기기 호조", "변압기 및 전력 인프라 수출 사상 최대 실적 기조 연장", "HD현대일렉트릭, 효성중공업, 제룡전기", "호재"),
+        ("국내 증시 거래대금 추이 및 주도주 수급 집중도 점검", "종목별 순환매 장세 속 모멘텀 보유주 중심 트레이딩", "코스피/코스닥 주도주", "중립"),
+        ("글로벌 원자재 및 국제유가 수급 불확실성 리스크 검증", "원자재 가격 변동에 따른 인플레이션 압력 재부각 주의", "WTI원유, 금현물, 흥구석유", "리스크")
     ]
 
-    for item in dynamic_pool:
+    for item in clean_dynamic_pool:
         if len(news_list) >= 10:
             break
         t, c, s, tp = item
-        if not any(t[:10] in existing['title'] for existing in news_list):
+        if not any(t in existing['title'] for existing in news_list):
             l = f"https://search.naver.com/search.naver?where=news&query={urllib.parse.quote(t[:15])}"
             news_list.append({
                 'title': t,
@@ -245,7 +243,7 @@ def fetch_naver_finance_news():
                 'type': tp
             })
 
-    return news_list[:10]
+    return news_news := news_list[:10]
 
 def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -289,91 +287,32 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes):
-    sox = quotes.get('phlx', {'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    kospi = quotes.get('kospi', {'rate': '+0.00%', 'is_up': True})
-    
-    sox_up = sox.get('is_up', True)
-    kospi_up = kospi.get('is_up', True)
-    
-    strategies = []
-    
-    if sox_up:
-        strategies.append({
-            "title": f"필반 지수 강세({sox.get('rate')}) 연동 반도체 집중 공략",
-            "desc": "외국인 순매수 유입 가능성이 높은 IT 주도주 중심 분할 매집",
-            "stock": "삼성전자, SK하이닉스, 한미반도체",
-            "score": 95
-        })
-    else:
-        strategies.append({
-            "title": f"반도체 섹터 단기 숨고르기({sox.get('rate')}) 대응 전략",
-            "desc": "추격 매수 자제 및 눌림목 지지선 확인 후 하단 분할 대응",
-            "stock": "삼성전자, SK하이닉스, 한미반도체",
-            "score": 75
-        })
-
-    strategies.append({
-        "title": "전력 인프라 및 방산 수주 모멘텀 유지",
-        "desc": "북미/유럽 수출 실적 가시화 및 수주 잔고 기반 조정 시 매수",
-        "stock": "HD현대일렉트릭, 한화에어로스페이스, 현대로템",
-        "score": 90 if sox_up else 92
-    })
-
-    if not kospi_up:
-        strategies.append({
-            "title": f"환율 변동성({usdkrw.get('price')}원) 대비 저PBR/금융주 방어",
-            "desc": "지수 변동성 구간 외국인 방어적 수급 및 고배당 모멘텀 활용",
-            "stock": "KB금융, 신한지주, 현대차",
-            "score": 94
-        })
-    else:
-        strategies.append({
-            "title": "저PBR 밸류업 프로그램 방어력 활용",
-            "desc": "배당 시즌 및 주주환원 정책 모멘텀 보유주 수급 지지",
-            "stock": "KB금융, 현대차, 기아",
-            "score": 82
-        })
-
-    strategies.append({
-        "title": "바이오 / CDMO 섹터 순환매 대응",
-        "desc": "기관 수급 유입 및 글로벌 임상/수주 모멘텀 종목 단기 스윙",
-        "stock": "삼성바이오로직스, 셀트리온, 알테오젠",
-        "score": 85
-    })
-
-    strategies.append({
-        "title": "조선 및 친환경 선박 수주 랠리 가속",
-        "desc": "선가 상승 및 수주 잔고 증가에 따른 실적 턴어라운드 종목 대응",
-        "stock": "HD한국조선해양, HD현대중공업, 삼성중공업",
-        "score": 88 if not sox_up else 80
-    })
-
-    strategies.sort(key=lambda x: x['score'], reverse=True)
-    
-    for idx, strat in enumerate(strategies):
-        strat['rank'] = f"TOP {idx + 1}"
-        del strat['score']
-        
-    return strategies
+    return [
+        {"title": "반도체 주도주 수급 집중 공략", "desc": "외국인 순매수 상위 종목 및 핵심 주도주 중심 분할 매집", "stock": "삼성전자, SK하이닉스, 한미반도체", "rank": "TOP 1"},
+        {"title": "전력 인프라 수출 모멘텀 유지", "desc": "실시간 수주 잔고 기반 조정 시 매수", "stock": "HD현대일렉트릭, 효성중공업, 제룡전기", "rank": "TOP 2"},
+        {"title": "바이오 방어주 순환매 대응", "desc": "기관 수급 유입 확인 후 단기 스윙", "stock": "삼성바이오로직스, 셀트리온, 알테오젠", "rank": "TOP 3"},
+        {"title": "방산 수출 실적주 트레이딩", "desc": "변동성 장세 속 실적 기반 하단 지지", "stock": "현대로템, 한화에어로스페이스, LIG넥스원", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
+    ]
 
 def generate_premarket_summary_bullets(quotes):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
+    # 7시 조건 제거 후 이전의 완성도 높은 직관적 포맷으로 원복
     return [
-        f"뉴욕 야간 선물 및 미 국채 금리 변동성 연동 속 국내 증시 방향성 탐색 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
-        f"글로벌 AI 및 필라델피아 반도체 지수({sox.get('rate')}) 흐름에 따른 국내 IT/반도체 섹터 주도주 수급 탄력성 점검.",
-        "외국인 및 기관의 현·선물 수급 동향에 따른 대형주 등락 분기점 확인 및 방어주 순환매 대응.",
-        "정부 밸류업 정책 모멘텀 및 수주 잔고가 탄탄한 조선·방산·전력기기 섹터 중심의 선별적 접근 유효."
+        f"미국 10년물 금리 장중 변동성 노이즈 및 주요 매크로 지표 대기 경계감 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
+        f"AI 반도체 쏠림 및 기술 발전 속도 노이즈로 필라델피아 반도체 지수({sox.get('rate')}) 변동성 확대 및 단기 충격 반영.",
+        "지수 추격 매도를 자제하고, 주요 지지선 테스트 구간 내 반도체 하방 경직성 집중 주시.",
+        "코스피 반도체 의존도 완화 흐름 속 은행·보험·지주 등 주주환원 우위 업종으로의 분산 투자 대안 적극 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 금리 및 매크로 노이즈 속 실적 기반 주도주와 고배당 방어주 분산 트레이딩 권장"
+    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 글로벌 금리 노이즈 속 주도주 및 방어주 분산 트레이딩 대응 권장"
 
 @app.route('/')
 def index():
