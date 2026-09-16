@@ -256,7 +256,6 @@ def fetch_naver_finance_news():
                         related_stock = "큐라티스, 엠에프씨, 기가레인"
                     elif is_negative:
                         related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
-                    # 💡 [추가 반영] 연료전지 및 AI 전력난 관련 핵심 종목 매핑
                     elif any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
                         related_stock = "한선엔지니어링, 아모센스, LS일렉트릭, 산일전기, 효성중공업"
                     elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
@@ -275,7 +274,6 @@ def fetch_naver_finance_news():
                     comment = "매크로 악재 및 거래 대금 위축에 따른 방어적 포트폴리오 점검 필요"
                     interest_score += 1
                 else:
-                    # 💡 [추가 반영] 연료전지/전력난 뉴스 호재 코멘트 지정
                     if any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
                         news_type = "호재"
                         comment = "글로벌 AI 데이터센터 전력 수요 급증에 따른 신재생·연료전지 수급 집중"
@@ -312,7 +310,7 @@ def fetch_naver_finance_news():
             (f"[{current_hour_str} 실시간 특징주] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재", False),
             (f"[{current_hour_str} 실시간 리포트] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크", True),
             (f"[{current_hour_str} 실시간 수급] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "조선 기자재 중소형 테마 순환매 포착", "호재", False),
-            (f"[{current_hour_str} 실시간 특징주] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재", False),
+            (f"[{current_hour_str} 실시간 특징주] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재", False),
             (f"[{current_hour_str} 실시간 핫이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "전력기기 및 변압기 중소형주 거래대금 집중", "호재", False),
             (f"[{current_hour_str} 실시간 시황] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립", False),
             (f"[{current_hour_str} 실시간 리포트] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크", True)
@@ -330,7 +328,17 @@ def generate_theme_sync_analysis(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
     
-    top_news_title = news_list[0]['title'] if news_list else "매크로 지표 혼조세"
+    # 💡 [보완 반영] 미국/반도체/증시 관련 글로벌 뉴스를 우선 탐색
+    sync_news_title = ""
+    for n in news_list:
+        if any(k in n['title'] for k in ["미국", "나스닥", "증시", "반도체", "연준", "금리", "뉴욕", "증권"]):
+            sync_news_title = n['title']
+            break
+            
+    if not sync_news_title and news_list:
+        sync_news_title = news_list[0]['title']
+        
+    top_news_title = sync_news_title if sync_news_title else "글로벌 매크로 지표 혼조세"
     
     us_driver = f"필라델피아 반도체 및 나스닥 선물({nasdaq_fut['rate']}) 연동 장세 (최신 이슈: {top_news_title[:30]}...)"
     core_stocks = "NVIDIA, 마이크론 테크놀로지, 인텔" if is_up else "테슬라, 애플, 마이크로소프트"
