@@ -139,10 +139,9 @@
         <div class="group-container">
             <div class="group-title">🛢️ 원자재 및 환율</div>
             <div class="market-unified-box">
-                {% for code in ['wti', 'gold', 'usdkrw'] %}
-                {% set stock = {'wti': {'name': 'WTI원유'}, 'gold': {'name': '금현물'}, 'usdkrw': {'name': '원/달러 환율'}}[code] %}
-                {% set q = quotes[code] %}
-                <div class="stock-row" data-code="{{ code }}">
+                {% for stock in categories[2].stocks %}
+                {% set q = quotes[stock.code] %}
+                <div class="stock-row" data-code="{{ stock.code }}">
                     <div class="stock-name">{{ stock.name }}</div>
                     <div class="stock-info">
                         <div class="stock-price">{{ q.price }}</div>
