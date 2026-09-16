@@ -189,9 +189,11 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:1d")
+    # 💡 when:12h 파라미터 적용으로 최근 12시간 이내 최신 뉴스 타겟팅
+    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
+    seen_titles = set() # 💡 중복 타이틀 체크용 집합
     
     try:
         req = urllib.request.Request(
@@ -211,18 +213,23 @@ def fetch_naver_finance_news():
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
+                
+                # 💡 이미 수집된 동일한 제목의 뉴스가 있다면 건너뜀 (중복 제거)
+                if title_clean in seen_titles:
+                    continue
+                seen_titles.add(title_clean)
+                
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 related_stock = "코스피 시가총액 상위 종목"
                 news_type = "중립"
                 comment = "실시간 매크로 지표 연동 및 시장 수급 변동성 모니터링 필요"
 
-                # 💡 시장 관심도(조회수/클릭 유도) 가중치 점수 계산
                 interest_score = 0
                 high_interest_keywords = ["특징주", "급등", "서프라이즈", "최대", "돌파", "폭등", "상승", "수주", "공시", "실적", "신고가"]
                 for kw in high_interest_keywords:
                     if kw in title_clean:
-                        interest_score += 2 # 키워드 매칭당 가중치 부여
+                        interest_score += 2
 
                 if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
                     related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
@@ -254,7 +261,6 @@ def fetch_naver_finance_news():
                     'score': interest_score
                 })
                 
-        # 💡 관심도 점수(score) 기준 내림차순 정렬 (인기/이목 집중 뉴스가 상위로 배치됨)
         news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
         
     except Exception:
@@ -275,7 +281,9 @@ def fetch_naver_finance_news():
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp = dynamic_fallbacks.pop(0)
-            news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp, 'score': 0})
+            if t not in seen_titles:
+                seen_titles.add(t)
+                news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp, 'score': 0})
             
     return news_list[:10]
 
