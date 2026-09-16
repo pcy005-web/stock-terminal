@@ -42,7 +42,20 @@
         .stock-row:last-child { border-bottom: none; }
         .stock-name { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
         .stock-info { display: flex; gap: 20px; text-align: right; align-items: center; }
-        .stock-price { font-size: 0.95rem; font-weight: 700; color: var(--text-main); min-width: 90px; }
+        
+        /* 가격 갱신 시 부드러운 배경색 전환 효과 */
+        .stock-price { 
+            font-size: 0.95rem; 
+            font-weight: 700; 
+            color: var(--text-main); 
+            min-width: 90px; 
+            transition: background-color 0.4s ease;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .highlight-up { background-color: rgba(239, 68, 68, 0.25); }   /* 상승 시 연한 레드빛 */
+        .highlight-down { background-color: rgba(59, 130, 246, 0.25); } /* 하락 시 연한 블루빛 */
+
         .stock-rate { font-size: 0.85rem; font-weight: 700; min-width: 75px; }
 
         .up { color: var(--accent-red); }
@@ -276,7 +289,7 @@
             }
         }
 
-        // 네이버 증권처럼 새로고침 없이 팩트체크 지표만 5초마다 실시간 자동 갱신
+        // 지표만 3초마다 실시간 자동 갱신 및 값 변경 시 하이라이트 효과 부여
         function updateMarketQuotes() {
             fetch('/api/quotes')
                 .then(response => response.json())
@@ -288,8 +301,18 @@
                             const rateElem = row.querySelector('.stock-rate');
                             
                             if (priceElem && rateElem) {
-                                priceElem.textContent = q.price;
-                                rateElem.textContent = q.rate;
+                                // 이전 가격과 다를 때만 깜빡이 효과 작동
+                                if (priceElem.textContent !== q.price) {
+                                    priceElem.textContent = q.price;
+                                    rateElem.textContent = q.rate;
+                                    
+                                    const highlightClass = q.is_up ? 'highlight-up' : 'highlight-down';
+                                    priceElem.classList.add(highlightClass);
+                                    
+                                    setTimeout(() => {
+                                        priceElem.classList.remove('highlight-up', 'highlight-down');
+                                    }, 500);
+                                }
                                 
                                 if (q.is_up) {
                                     rateElem.classList.remove('down');
