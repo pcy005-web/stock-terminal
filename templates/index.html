@@ -45,7 +45,6 @@
         
         .stock-price { font-size: 0.95rem; font-weight: 700; color: var(--text-main); min-width: 90px; }
 
-        /* 등락률(%) 갱신 시 부드러운 배경색 전환 효과 */
         .stock-rate { 
             font-size: 0.85rem; 
             font-weight: 700; 
@@ -54,8 +53,8 @@
             padding: 2px 4px;
             border-radius: 4px;
         }
-        .highlight-up { background-color: rgba(239, 68, 68, 0.25); }   /* 상승 시 연한 레드빛 */
-        .highlight-down { background-color: rgba(59, 130, 246, 0.25); } /* 하락 시 연한 블루빛 */
+        .highlight-up { background-color: rgba(239, 68, 68, 0.25); }
+        .highlight-down { background-color: rgba(59, 130, 246, 0.25); }
 
         .up { color: var(--accent-red); }
         .down { color: var(--accent-blue); }
@@ -267,7 +266,7 @@
         <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
-            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 심층 리포트를 작성합니다.</p>
+            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 시황 총평, 핵심 체크포인트, 실전 대응 가이드를 작성합니다.</p>
             
             <button class="btn" onclick="toggleAiBriefing()">✨ 실시간 AI 브리핑 리포트 생성</button>
             
@@ -280,9 +279,22 @@
     <script>
         function toggleAiBriefing() {
             const reportBox = document.getElementById('ai-report-box');
+            
             if (reportBox.style.display === 'none') {
                 reportBox.style.display = 'block';
+                reportBox.textContent = '⏳ 실시간 데이터를 기반으로 새로운 AI 브리핑을 생성하는 중입니다...';
                 reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // 버튼 클릭 시 백엔드 API를 호출하여 최신 지표/뉴스가 반영된 동적 브리핑 수신
+                fetch('/api/ai-briefing')
+                    .then(response => response.json())
+                    .then(data => {
+                        reportBox.textContent = data.ai_briefing;
+                    })
+                    .catch(err => {
+                        console.error('AI 브리핑 생성 실패:', err);
+                        reportBox.textContent = '❌ AI 브리핑 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+                    });
             } else {
                 reportBox.style.display = 'none';
             }
@@ -302,7 +314,6 @@
                             if (priceElem && rateElem) {
                                 priceElem.textContent = q.price;
                                 
-                                // 이전 등락률과 다를 때만 % 영역에 깜빡이 효과 작동
                                 if (rateElem.textContent !== q.rate) {
                                     rateElem.textContent = q.rate;
                                     
