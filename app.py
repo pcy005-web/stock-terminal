@@ -186,11 +186,19 @@ def fetch_realtime_data(ticker):
 
 def fetch_naver_finance_news():
     kst = datetime.timezone(datetime.timedelta(hours=9))
-    rss_url = "https://news.google.com/rss/search?q=코스피+증권+주식+경제&hl=ko&gl=KR&ceid=KR:ko&tbs=qdr:d"
+    # 대안1: 표준화된 검색 쿼리 및 파라미터 적용 (URL 인코딩 명확화)
+    query_str = urllib.parse.quote("코스피 주식 증권 경제")
+    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     
     try:
-        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(
+            rss_url, 
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+            }
+        )
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
@@ -234,7 +242,6 @@ def fetch_naver_finance_news():
     except Exception:
         pass
         
-    # 현재 한국 시간(KST)을 정확히 가져와서 적용
     current_hour = datetime.datetime.now(kst).strftime('%H시')
     if len(news_list) < 10:
         dynamic_fallbacks = [
@@ -298,8 +305,6 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    sox = quotes.get('phlx', {'rate': '+0.00%', 'is_up': True})
-    
     n1 = news_list[0]['title'] if len(news_list) > 0 else "반도체 업황 개선"
     n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표"
     n3 = news_list[2]['title'] if len(news_list) > 2 else "밸류업 및 정책 모멘텀"
@@ -326,7 +331,7 @@ def generate_strategies(quotes, news_list):
         {
             "title": "K-방산 수출 실적주 눌림목 매수", 
             "desc": "견고한 수주 잔고를 바탕으로 한 중장기 성장 모멘텀", 
-            "stock": "한화에어로ส페이스, 현대로템, LIG넥스원", 
+            "stock": "한화에어로스페이스, 현대로템, LIG넥스원", 
             "rank": "TOP 4"
         },
         {
