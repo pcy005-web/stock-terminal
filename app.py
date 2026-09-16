@@ -4,7 +4,6 @@ import datetime
 
 app = Flask(__name__)
 
-# 임시 초기 데이터 및 헬퍼 함수 (실제 크롤링/API 데이터로 대체 가능)
 def get_mock_quotes():
     return {
         'kospi': {'price': f"{random.uniform(2500, 2700):.2f}", 'rate': f"+{random.uniform(0.1, 1.5):.2f}%", 'is_up': True},
@@ -26,7 +25,6 @@ def get_mock_quotes():
 @app.route('/')
 def index():
     quotes = get_mock_quotes()
-    # 화면 초기 렌더링에 필요한 더미 데이터들
     theme_summary = {
         'us_driver': 'AI 반도체 및 빅테크 중심 상승세 지속',
         'core_stocks': 'NVIDIA, AMD, 마이크로소프트',
@@ -56,7 +54,19 @@ def index():
         {'title': '연준, 금리 인하 기대감 속 물가 지표 주시', 'link': '#', 'type': '중립', 'comment': '발표될 지표에 따라 변동성 확대 가능성', 'stock': '전체 시장'},
         {'title': '반도체 수출 호조세 지속… 메모리 가격 반등', 'link': '#', 'type': '호재', 'comment': '실적 개선 기대감 선반영 구간', 'stock': '삼성전자, SK하이닉스'}
     ]
-    ai_briefing = "✨ [초기 생성된 AI 브리핑]\n현재 시각 기준 미국 증시와 국내 선물 지수를 종합한 결과, 반도체 섹터의 우위가 예상됩니다."
+    
+    # 7번 섹션 초기 기본 브리핑 텍스트
+    ai_briefing = (
+        "📊 [시황 총평]\n"
+        "미국 증시 혼조세 및 국내 반도체 중심의 수급 유입으로 양시장 완만한 반등 흐름이 전개되고 있습니다.\n\n"
+        "🔍 [핵심 체크포인트]\n"
+        "• 외국인 및 기관의 코스피 대형주 순매수 지속 여부\n"
+        "• 원달러 환율의 1,350원선 안착 및 변동성 추이\n"
+        "• 주요 빅테크 실적 및 글로벌 반도체 수출 지표\n\n"
+        "💡 [실전 대응 가이드]\n"
+        "• 추격 매수보다는 주도주 조정 시 분할 매수 관점 접근\n"
+        "• 환율 및 대외 변수에 따른 리스크 관리 병행"
+    )
 
     return render_template('index.html', 
                            quotes=quotes, 
@@ -70,18 +80,21 @@ def index():
 
 @app.route('/api/quotes', methods=['GET'])
 def api_quotes():
-    # 3초마다 호출되어 갱신된 시세 및 등락률 데이터를 반환
     return jsonify(get_mock_quotes())
 
 @app.route('/api/ai-briefing', methods=['GET'])
 def api_ai_briefing():
-    # 버튼을 누를 때마다 새롭게 생성된 AI 브리핑 텍스트를 반환
     now = datetime.datetime.now().strftime('%H:%M:%S')
+    # 버튼 클릭 시 갱신되는 브리핑 텍스트
     new_briefing = (
-        f"✨ [실시간 업데이트된 AI 종합 분석 리포트 - {now}]\n\n"
-        f"1. **시장 동향**: 실시간 수급 데이터 분석 결과 외국인 매수세가 반도체 및 자동차 업종으로 유입되고 있습니다.\n"
-        f"2. **리스크 요인**: 환율 변동성이 상존하므로 과격한 추격 매수보다는 분할 관점의 접근이 유효합니다.\n"
-        f"3. **주도주 전망**: 핵심 기술주 중심의 순환매 장세가 이어질 가능성이 높습니다."
+        f"📊 [시황 총평 - {now} 갱신]\n"
+        f"실시간 수급 데이터 분석 결과, 외국인 매수세가 반도체 소부장 및 자동차 섹터로 집중되며 지수 하방을 견조하게 지지하고 있습니다.\n\n"
+        f"🔍 [핵심 체크포인트]\n"
+        f"• 양시장 거래대금 증가 여부 및 코스닥 주도 테마 순환매 속도\n"
+        f"• 환율 안정화 흐름에 따른 외국인 선물 수급 동향\n\n"
+        f"💡 [실전 대응 가이드]\n"
+        f"• 지수 반등 시 단기 과열권 종목은 차익실현 우선\n"
+        f"• 실적 모멘텀이 확실한 핵심 주도주 위주로 압축 대응"
     )
     return jsonify({"ai_briefing": new_briefing})
 
