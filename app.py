@@ -5,6 +5,7 @@ import json
 import ssl
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
@@ -39,6 +40,13 @@ MARKET_CATEGORIES = [
         ]
     }
 ]
+
+# 전역 캐시 저장소 (장전 분석 내용 보관)
+daily_market_cache = {
+    'market_summary_bullets': [],
+    'ai_briefing': "",
+    'updated_at': "대기 중"
+}
 
 def get_ssl_context():
     ctx = ssl.create_default_context()
@@ -160,7 +168,6 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
-    # 구글 뉴스 RSS를 통한 실시간 경제/증권 최신 속보 수집
     rss_url = "https://news.google.com/rss/search?q=코스피+증권+주식+경제&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     
@@ -175,34 +182,25 @@ def fetch_naver_finance_news():
                 link_elem = item.find('link')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
-                if " - " in title:
-                    title_clean = title.rsplit(" - ", 1)[0]
-                else:
-                    title_clean = title
-                    
+                title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 핵심 대장주, 주도주 및 거래대금 상위 종목 매칭 로직
-                related_stock = "삼성전자 (005930), SK하이닉스 (000660)"
+                related_stock = "삼성전자, SK하이닉스"
                 news_type = "중립"
-                comment = "실시간 지수 연동성 및 거래대금 상위 주도주 수급 모니터링"
+                comment = "실시간 증시 영향력 분석 및 주도주 수급 주시"
 
                 if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "급등", "상승", "엔비디아"]):
-                    related_stock = "삼성전자, SK하이닉스, 한미반도체, 주성엔지니어링"
+                    related_stock = "삼성전자, SK하이닉스, 한미반도체"
                     news_type = "호재"
-                    comment = "반도체 대장주 및 소부장 핵심 주도주로 외국인·기관 수급 유입 집중"
-                elif any(k in title_clean for k in ["환율", "달러", "하락", "금리", "연준", "인플레", "위기", "폭락", "우려"]):
-                    related_stock = "원/달러 환율, KB금융, 신한지주, NAVER"
+                    comment = "반도체 대장주 수급 유입 및 AI 모멘텀 지속"
+                elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "우려"]):
+                    related_stock = "원/달러 환율, KB금융, 신한지주"
                     news_type = "리스크"
-                    comment = "매크로 변동성 확대 및 외국인 수급 이탈 우려에 따른 방어적 대응"
-                elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
-                    related_stock = "한화에어로스페이스, 현대로템, HD현대일렉트릭, 두산에너빌리티"
+                    comment = "매크로 변동성 및 금리 인상 경계감 반영"
+                elif any(k in title_clean for k in ["방산", "수출", "조선", "전력", "수주"]):
+                    related_stock = "한화에어로스페이스, 현대로템, HD현대일렉트릭"
                     news_type = "호재"
-                    comment = "대규모 수주 잔고와 막대한 거래대금이 유입되는 시장 주도 섹터"
-                elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
-                    related_stock = "삼성바이오로직스, 셀트리온, 알테오젠, HLB"
-                    news_type = "호재"
-                    comment = "기관 순매수세가 유입되는 바이오 대장주 중심 순환매 포착"
+                    comment = "대규모 수주 잔고 기반 실적 모멘텀 부각"
 
                 news_list.append({
                     'title': title_clean,
@@ -216,19 +214,14 @@ def fetch_naver_finance_news():
         
     if len(news_list) < 10:
         fallback_live = [
-            ("글로벌 AI 인프라 투자 확대에 따른 반도체 소부장 수급 점검", "https://news.google.com", "삼성전자, SK하이닉스, 한미반도체", "AI 투자 가속화가 국내 반도체 주도주 수급에 직접적 영향", "호재"),
-            ("원/달러 환율 변동성 지속 속 외국인 수급 방향성 주목", "https://news.google.com", "원/달러 환율, KB금융, 현대차", "환율 변동성 확대로 외국인 순매수 강도 조절 국면", "중립"),
-            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀", "https://news.google.com", "KB금융, 신한지주, 현대차, 기아", "저PBR 및 고배당 우량주 중심 하방 지지력 강화", "호재"),
-            ("K-방산 빅수출 프로젝트 본계약 및 추가 협상 기대", "https://news.google.com", "한화에어로스페이스, 현대로템, LIG넥스원", "해외 수주 모멘텀 지속으로 방산 섹터 트레이딩 유효", "호재"),
-            ("미국 국채 금리 변동성에 따른 성장주 밸류에이션 점검", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 우려에 따른 지수 단기 변동성 확대 리스크", "리스크"),
-            ("조선업 슈퍼사이클 친환경 선박 수주 릴레이 지속", "https://news.google.com", "HD한국조선해양, HD현대중공업, 삼성중공업", "탄탄한 수주 잔고 기반 실적 턴어라운드 가시화", "호재"),
-            ("바이오 CDMO 글로벌 빅파마 대규모 계약 체결", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "실적 안정성과 성장성을 동시에 갖춘 주도주 부각", "호재"),
-            ("전력기기 및 변압기 북미 수출 사상 최대 기록 경신", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 제룡전기", "전력망 교체 슈퍼사이클 수혜 집중 및 주도주 급등", "호재"),
-            ("국내 증시 대형주 거래대금 점진적 회복세 진입", "https://news.google.com", "코스피, 코스닥 시가총액 상위주", "시장 전체 유동성 유입 여부에 따른 순환매 대응 필요", "중립"),
-            ("글로벌 원자재 공급망 차질 및 국제유가 변동성 주시", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재발 인플레이션 압력 재부각 가능성 대비", "리스크")
+            ("미 10년물 금리 5.0% 돌파 및 반도체주 약세 영향 점검", "https://news.google.com", "삼성전자, SK하이닉스", "금리 5% 돌파 부담 속 FOMC 대기", "리스크"),
+            ("원/달러 환율 변동성 속 외국인 수급 방향성 주목", "https://news.google.com", "원/달러 환율, 코스피 대형주", "외국인 순매수 강도 조절 국면", "중립"),
+            ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀", "https://news.google.com", "KB금융, 현대차, 기아", "저PBR 우량주 중심 방어력 부각", "호재"),
+            ("K-방산 빅수출 프로젝트 본계약 및 추가 협상 기대", "https://news.google.com", "한화에어로스페이스, 현대로템", "해외 수주 모멘텀 지속", "호재"),
+            ("AI 속도조절 논란 속 반도체 하방 경직성 확보 여부", "https://news.google.com", "삼성전자, SK하이닉스, 한미반도체", "단기 변동성 확대 대응", "리스크")
         ]
         while len(news_list) < 10:
-            idx = len(news_list)
+            idx = len(news_list) % len(fallback_live)
             t, l, s, c, tp = fallback_live[idx]
             news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp})
             
@@ -258,21 +251,15 @@ def generate_smart_money_analysis(quotes):
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
-    
     badge_text = "외인/기관 순매수 유입" if kospi_up else "외인/기관 매도 우위"
     badge_class = "up" if kospi_up else "down"
     
-    domestic_text = f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 중심 대형주 현·선물 동반 수급 포착."
-    us_up = nasdaq_fut.get('is_up', True)
-    decoupling_text = f"나스닥선물({nasdaq_fut.get('rate')}) 연동 흐름을 보이며 아시아 증시 대비 {'우수' if us_up else '약세'}."
-    fx_oil_text = f"환율({usdkrw.get('price')}원) 및 유가 변동성 안정화로 수급 환경 모니터링 중."
-
     return {
         'badge_text': badge_text,
         'badge_class': badge_class,
-        'domestic': domestic_text,
-        'decoupling': decoupling_text,
-        'fx_oil': fx_oil_text
+        'domestic': f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 대형주 현·선물 수급 포착.",
+        'decoupling': f"나스닥선물({nasdaq_fut.get('rate')}) 연동 흐름 및 아시아 증시 비교.",
+        'fx_oil': f"환율({usdkrw.get('price')}원) 변동성 안정화 모니터링."
     }
 
 def generate_strategies(quotes):
@@ -284,23 +271,41 @@ def generate_strategies(quotes):
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
-def generate_premarket_summary_bullets(quotes):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+def job_update_premarket_summary():
+    """매일 아침 장 시작 전(08:30) 자동으로 최신 지표와 리포트 분석 내용을 기반으로 장전 요약을 생성하는 함수"""
+    print(">>> [자동 스케줄러] 장전 5분 마켓 핵심 요약 및 AI 브리핑 갱신 시작")
     
-    return [
-        f"미국 10년물 금리 장중 변동성 속 증시 멀티플 디레이팅 압력 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동).",
-        f"AI 성장성 관련 노이즈 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 흐름 추적.",
-        "추격 매도 자제 및 연준의 통화정책 스탠스 확인 대기, 반도체 하방 경직성 확보 주시.",
-        "코스피 대형주 및 최근 강세를 보이는 주주환원 업종, 전력/방산 섹터로의 분산 대안 유효."
-    ]
+    # 임시로 실시간 시세 수집
+    quotes = {}
+    tasks = [('nasdaq_fut', 'NAVER_WORLD_NQ'), ('usdkrw', 'NAVER_EXCHANGE_USD'), ('phlx', 'NAVER_WORLD_SOX')]
+    for code, ticker in tasks:
+        res = fetch_realtime_data(ticker)
+        quotes[code] = res if res else {'price': '-', 'rate': '+0.00%', 'is_up': True}
 
-def generate_ai_comprehensive_briefing(quotes, news_list):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
-    top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 글로벌 매크로 변동성 속 주도주 및 방어주 분산 대응 권장"
+    nasdaq_rate = quotes.get('nasdaq_fut', {}).get('rate', '+0.00%')
+    usdkrw_price = quotes.get('usdkrw', {}).get('price', '-')
+    sox_rate = quotes.get('phlx', {}).get('rate', '+0.00%')
+
+    # 키움증권 리포트 철학 및 분석 내용을 반영한 장전 5분 핵심 요약 불렛 구성
+    daily_market_cache['market_summary_bullets'] = [
+        f"미국 10년물 금리 장중 5.0% 돌파 및 9월 FOMC 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_rate}, 환율 {usdkrw_price}원 연동 점검).",
+        f"AI 성장성 내러티브 노이즈 부각되며 필라델피아 반도체 지수({sox_rate}) 및 핵심 반도체주 단기 충격 발생.",
+        "추격 매도 자제 및 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
+        "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
+    ]
+    
+    daily_market_cache['ai_briefing'] = f"[실시간 AI 장전 마켓 종합 브리핑]\n- 나스닥 선물 변동률: {nasdaq_rate}\n- 원/달러 환율: {usdkrw_price}원\n- 핵심 제언: 금리 5% 돌파 노이즈 속 9월 FOMC 대기하며 반도체 하방 경직성 확인 및 주주환원주 분산 대응 권장"
+    daily_market_cache['updated_at'] = "오늘 아침 08:30 장전 생성 완료"
+    print(">>> [자동 스케줄러] 장전 요약 갱신 완료")
+
+# 백그라운드 스케줄러 설정 (매일 월~금 오전 8시 30분 실행)
+scheduler = BackgroundScheduler()
+scheduler.add_job(job_update_premarket_summary, 'cron', day_of_week='mon-fri', hour=8, minute=30)
+scheduler.start()
+
+# 서버 구동 직후 캐시가 비어있다면 즉시 한 번 생성
+if not daily_market_cache['market_summary_bullets']:
+    job_update_premarket_summary()
 
 @app.route('/')
 def index():
@@ -317,10 +322,7 @@ def index():
             code = future_to_code[future]
             try:
                 data = future.result()
-                if data:
-                    price_map[code] = data
-                else:
-                    price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
             except Exception:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
@@ -328,8 +330,10 @@ def index():
     theme_text = generate_theme_sync_analysis(price_map)
     smart_money_data = generate_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map)
-    market_summary_bullets = generate_premarket_summary_bullets(price_map)
-    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+    
+    # 미리 캐싱된 장전 요약 데이터 사용 (매일 아침 8시 30분에 고정 갱신됨)
+    market_summary_bullets = daily_market_cache['market_summary_bullets']
+    ai_briefing_text = daily_market_cache['ai_briefing']
                 
     return render_template(
         'index.html', 
