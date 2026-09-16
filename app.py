@@ -185,9 +185,8 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
-    # 6번 섹션: 실제 실시간 뉴스 파싱 강화 (타임스탬프 파라미터 추가로 캐시 우회)
-    timestamp = int(datetime.datetime.now().timestamp())
-    rss_url = f"https://news.google.com/rss/search?q=코스피+증권+주식+경제&hl=ko&gl=KR&ceid=KR:ko&tbs=qdr:d"
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    rss_url = "https://news.google.com/rss/search?q=코스피+증권+주식+경제&hl=ko&gl=KR&ceid=KR:ko&tbs=qdr:d"
     news_list = []
     
     try:
@@ -204,7 +203,6 @@ def fetch_naver_finance_news():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 뉴스 키워드 분석을 통한 동적 태깅
                 related_stock = "코스피 시가총액 상위 종목"
                 news_type = "중립"
                 comment = "실시간 매크로 지표 연동 및 시장 수급 변동성 모니터링 필요"
@@ -218,7 +216,7 @@ def fetch_naver_finance_news():
                     news_type = "리스크"
                     comment = "환율 및 금리 변동성에 따른 외국인 수급 이탈 여부 방어적 점검"
                 elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
-                    related_stock = "한화에어로ส페이스, HD현대일렉트릭, 두산에너빌리티"
+                    related_stock = "한화에어로스페이스, HD현대일렉트릭, 두산에너빌리티"
                     news_type = "호재"
                     comment = "글로벌 대규모 수주 및 실적 턴어라운드 모멘텀 지속"
                 elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
@@ -236,14 +234,14 @@ def fetch_naver_finance_news():
     except Exception:
         pass
         
-    # 만약 뉴스 수집이 실패할 경우를 대비한 동적 시간 반영 Fallback
+    # 현재 한국 시간(KST)을 정확히 가져와서 적용
+    current_hour = datetime.datetime.now(kst).strftime('%H시')
     if len(news_list) < 10:
-        current_hour = datetime.datetime.now().strftime('%H시')
         dynamic_fallbacks = [
             (f"[{current_hour} 이슈] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편", "https://news.google.com", "삼성전자, SK하이닉스", "AI 밸류체인 전반의 실적 가시화", "호재"),
             (f"[{current_hour} 이슈] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 대책", "https://news.google.com", "원/달러 환율, KB금융", "환율 등락에 따른 외국인 자금 유출입 감시", "중립"),
             (f"[{current_hour} 이슈] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 집중", "https://news.google.com", "KB금융, 신한지주, 현대차", "저PBR 종목군의 하방 지지력 강화", "호재"),
-            (f"[{current_hour} 이슈] K-방산 수출 다변화 및 중동·유럽향 추가 수주 기대감", "https://news.google.com", "한화에어로ส페이스, 현대로템", "탄탄한 수주 잔고 기반 트레이딩 유효", "호재"),
+            (f"[{current_hour} 이슈] K-방산 수출 다변화 및 중동·유럽향 추가 수주 기대감", "https://news.google.com", "한화에어로스페이스, 현대로템", "탄탄한 수주 잔고 기반 트레이딩 유효", "호재"),
             (f"[{current_hour} 이슈] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향", "https://news.google.com", "미국 국채금리, NAVER", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크"),
             (f"[{current_hour} 이슈] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이", "https://news.google.com", "HD현대중공업, 삼성중공업", "수주 실적 개선세 지속 부각", "호재"),
             (f"[{current_hour} 이슈] 글로벌 제약·바이오 파트너십 및 기술 수출 성과", "https://news.google.com", "셀트리온, 알테오젠", "실적 성장성과 모멘텀 동시 보유", "호재"),
@@ -258,7 +256,6 @@ def fetch_naver_finance_news():
     return news_list
 
 def generate_theme_sync_analysis(quotes, news_list):
-    # 2번 섹션: 실시간 지수와 뉴스를 결합하여 매번 동적으로 문구 생성
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
@@ -301,11 +298,8 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    # 4번 섹션: 실시간 뉴스 내용과 지수 상황을 동적으로 조합하여 매번 달라지는 전략 생성
     sox = quotes.get('phlx', {'rate': '+0.00%', 'is_up': True})
-    is_tech_up = sox.get('is_up', True)
     
-    # 뉴스 타이틀 일부 활용
     n1 = news_list[0]['title'] if len(news_list) > 0 else "반도체 업황 개선"
     n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표"
     n3 = news_list[2]['title'] if len(news_list) > 2 else "밸류업 및 정책 모멘텀"
@@ -332,7 +326,7 @@ def generate_strategies(quotes, news_list):
         {
             "title": "K-방산 수출 실적주 눌림목 매수", 
             "desc": "견고한 수주 잔고를 바탕으로 한 중장기 성장 모멘텀", 
-            "stock": "한화에어로스페이스, 현대로템, LIG넥스원", 
+            "stock": "한화에어로ส페이스, 현대로템, LIG넥스원", 
             "rank": "TOP 4"
         },
         {
@@ -406,9 +400,9 @@ def index():
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
     live_news = fetch_naver_finance_news()
-    theme_text = generate_theme_sync_analysis(price_map, live_news) # 뉴스 연동 추가
+    theme_text = generate_theme_sync_analysis(price_map, live_news)
     smart_money_data = generate_smart_money_analysis(price_map)
-    strategies_data = generate_strategies(price_map, live_news) # 뉴스 연동 추가
+    strategies_data = generate_strategies(price_map, live_news)
     market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
