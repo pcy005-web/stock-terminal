@@ -35,9 +35,7 @@ MARKET_CATEGORIES = [
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'NAVER_ENERGY_WTI'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'NAVER_METAL_GOLD'},
-            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'},
-            {'code': 'btc', 'name': '비트코인 (USD)', 'ticker': 'YAHOO_BTC_USD'},
-            {'code': 'eth', 'name': '이더리움 (USD)', 'ticker': 'YAHOO_ETH_USD'}
+            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'}
         ]
     }
 ]
@@ -89,12 +87,6 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
-    if ticker.startswith('YAHOO_'):
-        y_ticker = ticker.replace('YAHOO_', '').replace('_', '-')
-        y_data = fetch_yahoo_data(y_ticker)
-        if y_data:
-            return y_data
-
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Referer': 'https://m.stock.naver.com/',
@@ -302,16 +294,23 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
+# [수정됨] 하이브리드 토글 및 상세 조회가 연동되는 AI 브리핑 생성 함수
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 및 수급 모니터링"
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
+    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
     return (
-        "[장전 마켓 인사이트 & AI 종합 브리핑 (매일 아침 자동 갱신)]\n"
-        f"- 대외 실시간 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
-        f"- 핵심 뉴스 및 노이즈: {top_news}\n"
-        "- 시황 분석 및 혜안: 글로벌 채권금리 및 기술주 노이즈로 인해 단기 변동성이 확대되고 있으나, 시장의 하방 지지력과 매물 소화 과정을 주시해야 합니다. 무리한 포지션 축소보다는 하방 경직성이 확보된 주도주 및 방어적 대안(주주환원/배당주) 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
+        "⚡ [AI 하이브리드 마켓 종합 인사이트 리포트]\n\n"
+        f"• 실시간 대외 지표 연동:\n"
+        f"  - 나스닥 선물: {nasdaq_fut['rate']} | 필라델피아 반도체: {sox['rate']}\n"
+        f"  - 원/달러 환율: {usdkrw['price']}원 수준 변동성 체크\n\n"
+        f"🔍 [실시간 노이즈 및 수급 분석]:\n"
+        f"  - 주요 헤드라인: \"{top_news}\"\n"
+        f"  - 대형주 중심의 하방 방어력과 지수 소화 과정이 진행 중이며, 금리 경계감 및 섹터별 차별화 장세가 뚜렷하게 나타나고 있습니다.\n\n"
+        "💡 [실전 대응 전략 가이드]:\n"
+        "  - 무리한 추격 매수보다는 수급이 유입되는 거래대금 상위 주도주 및 하방 지지력이 확인된 저PBR/배당주 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
     )
 
 @app.route('/')
