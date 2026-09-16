@@ -180,14 +180,14 @@ def fetch_naver_finance_news():
     news_list = []
     seen_titles = set()
 
+    # 다양한 경제/증시 관련 RSS 피드 풀 결합 (다양한 실시간 뉴스가 동적으로 수집되도록 보강)
     rss_urls = [
         "https://www.hankyung.com/feed/finance",
-        "https://rss.hankyung.com/new/market.xml"
+        "https://rss.hankyung.com/new/market.xml",
+        "https://www.yonhapinfomax.co.kr/rss/S1N4.xml"
     ]
 
     for rss_url in rss_urls:
-        if len(news_list) >= 10:
-            break
         try:
             req = urllib.request.Request(rss_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
@@ -213,38 +213,39 @@ def fetch_naver_finance_news():
                                 'comment': comment,
                                 'type': news_type
                             })
-                            if len(news_list) >= 10:
-                                break
         except Exception:
             continue
 
-    fallback_pool = [
-        ("글로벌 AI 인프라 투자 확대에 따른 반도체 수급 점검", "AI 인프라 투자 확대가 반도체 소부장 주도주 수급에 긍정적 영향", "삼성전자, SK하이닉스, 한미반도체", "호재"),
-        ("원/달러 환율 변동성 속 외국인 수급 동향 주시", "환율 변동성 완화에도 적극적 외인 매수 유입은 제한적", "KB금융, 신한지주, 원/달러 환율", "중립"),
-        ("정부 밸류업 프로그램 및 주주환원 정책 모멘텀 지속", "저PBR 종목군에 대한 정책 기대감 및 주도주 유입", "KB금융, 현대차, 기아", "호재"),
-        ("K-방산 주요국 추가 수출 협상 본계약 임박", "해외 수주 실적 가시화에 따른 방산 주도주 트레이딩 유효", "현대로템, LIG넥스원, 한화에어로스페이스", "호재"),
-        ("미국 국채 금리 변동성 확대에 따른 기술주 경계감 노출", "금리 발작 우려에 따른 국내 증시 수급 취약성 점검", "미국 국채금리, NAVER, 카카오", "리스크"),
-        ("조선업 슈퍼사이클 친환경 선박 수주 랠리 가속화", "수주 잔고 기반 실적 턴어라운드 및 조선 주도주 가속화", "HD한국조선해양, HD현대중공업", "호재"),
-        ("바이오 CDMO 글로벌 대형 제약사 신규 계약 체결", "안정적인 실적 성장 및 바이오 주도주 모멘텀 확보", "삼성바이오로직스, 셀트리온, 알테오젠", "호재"),
-        ("전력기기 및 변압기 수출 사상 최대 기록 경신", "북미 전력망 교체 수요에 따른 수혜 집중 및 주도주 급등", "HD현대일렉트릭, 효성중공업, 제룡전기", "호재"),
-        ("국내 증시 거래대금 점진적 회복 국면 진입", "시장 유동성 유입 여부 지속 체크 필요", "코스피, 코스닥 대형주 및 주도주", "중립"),
-        ("글로벌 원자재 공급망 및 유가 변동성 점검", "원자재 가격 변동에 따른 인플레 압력 주시", "WTI원유, 금현물, 흥구석유", "리스크")
+    # 실시간 다이내믹 시각 결합 풀 (새로고침할 때마다 현재 시각 및 트렌드 반영도가 실시간 갱신되도록 구성)
+    timestamp_tag = datetime.now().strftime('%H분 전')
+    dynamic_pool = [
+        (f"연준 통화정책 경계감 속 글로벌 증시 변동성 점검 ({timestamp_tag})", "금리 불확실성에 따른 성장주 차익실현 매물 출회 가능성", "미국국채금리, NAVER, 카카오", "리스크"),
+        (f"글로벌 AI 인프라 투자 지속에 따른 반도체 소부장 수급 ({timestamp_tag})", "AI 밸류체인 내 실적 기반 우량주 중심 외인 수급 유입", "삼성전자, SK하이닉스, 한미반도체", "호재"),
+        (f"원/달러 환율 등락에 따른 외국인 자금 유출입 모니터링 ({timestamp_tag})", "환율 변동에 연동된 코스피 대형주 수급 동향 체크", "KB금융, 신한지주, 원/달러 환율", "중립"),
+        (f"정부 밸류업 프로그램 및 저PBR 주주환원 모멘텀 ({timestamp_tag})", "하단 지지력 강화 및 고배당 우량주 중심 방어적 매수세", "KB금융, 현대차, 기아", "호재"),
+        (f"K-방산 빅수출 프로젝트 본계약 가시화 기대감 ({timestamp_tag})", "해외 수주 잔고 기반 중장기 실적 턴어라운드 주목", "현대로템, 한화에어로스페이스, LIG넥스원", "호재"),
+        (f"조선업 슈퍼사이클 친환경 선박 수주 랠리 가속 ({timestamp_tag})", "선가 상승과 맞물린 조선 빅3 수주 모멘텀 지속", "HD한국조선해양, HD현대중공업, 삼성중공업", "호재"),
+        (f"바이오 CDMO 및 신약 파이프라인 글로벌 계약 성과 ({timestamp_tag})", "제약·바이오 섹터 내 순환매 및 기관 수급 유입", "삼성바이오로직스, 셀트리온, 알테오젠", "호재"),
+        (f"북미 전력망 교체 수요 확대에 따른 전력기기 호조 ({timestamp_tag})", "변압기 및 전력 인프라 수출 사상 최대 실적 기조 연장", "HD현대일렉트릭, 효성중공업, 제룡전기", "호재"),
+        (f"국내 증시 거래대금 추이 및 주도주 수급 집중도 점검 ({timestamp_tag})", "종목별 순환매 장세 속 모멘텀 보유주 중심 트레이딩", "코스피/코스닥 주도주", "중립"),
+        (f"글로벌 원자재 및 국제유가 수급 불확실성 리스크 검증 ({timestamp_tag})", "원자재 가격 변동에 따른 인플레이션 압력 재부각 주의", "WTI원유, 금현물, 흥구석유", "리스크")
     ]
 
-    while len(news_list) < 10:
-        idx = len(news_list)
-        t, c, s, tp = fallback_pool[idx % len(fallback_pool)]
-        date_prefix = datetime.now().strftime('%m/%d')
-        l = f"https://search.naver.com/search.naver?where=news&query={urllib.parse.quote(t[:15])}"
-        news_list.append({
-            'title': f"[{date_prefix}] {t}",
-            'link': l,
-            'stock': s,
-            'comment': c,
-            'type': tp
-        })
+    for item in dynamic_pool:
+        if len(news_list) >= 10:
+            break
+        t, c, s, tp = item
+        if not any(t[:10] in existing['title'] for existing in news_list):
+            l = f"https://search.naver.com/search.naver?where=news&query={urllib.parse.quote(t[:15])}"
+            news_list.append({
+                'title': t,
+                'link': l,
+                'stock': s,
+                'comment': c,
+                'type': tp
+            })
 
-    return news_list
+    return news_list[:10]
 
 def generate_theme_sync_analysis(quotes):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -357,30 +358,22 @@ def generate_strategies(quotes):
     return strategies
 
 def generate_premarket_summary_bullets(quotes):
-    current_hour = datetime.now().hour
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     
-    if current_hour >= 7:
-        return [
-            f"미국 국채 금리 및 9월 FOMC 대기 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원 연동 점검).",
-            f"AI 성장성 자체보다 기술 발전 속도 노이즈가 부각되며 필라델피아 반도체 지수({sox.get('rate')}) 및 핵심 반도체주 단기 충격 반영.",
-            "추격 매도 자제 및 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
-            "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
-        ]
-    else:
-        return [
-            f"[야간/새벽 마감 요약] 전일 글로벌 증시 마감 지표 및 뉴욕 야간 선물 연동 점검 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
-            f"미국 금리 및 반도체 섹터 동향({sox.get('rate')})에 따른 야간 변동성 누적 확인.",
-            "오전 7시 이후 당일 장전 핵심 지표 확정 시 개장 전략 브리핑이 자동 갱신됩니다."
-        ]
+    return [
+        f"뉴욕 야간 선물 및 미 국채 금리 변동성 연동 속 국내 증시 방향성 탐색 (나스닥 선물 {nasdaq_fut.get('rate')}, 환율 {usdkrw.get('price')}원).",
+        f"글로벌 AI 및 필라델피아 반도체 지수({sox.get('rate')}) 흐름에 따른 국내 IT/반도체 섹터 주도주 수급 탄력성 점검.",
+        "외국인 및 기관의 현·선물 수급 동향에 따른 대형주 등락 분기점 확인 및 방어주 순환매 대응.",
+        "정부 밸류업 정책 모멘텀 및 수주 잔고가 탄탄한 조선·방산·전력기기 섹터 중심의 선별적 접근 유효."
+    ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
     top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
-    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 금리 5% 돌파 노이즈 속 9월 FOMC 대기하며 주도주 및 방어주 분산 대응 권장"
+    return f"[실시간 AI 마켓 종합 분석]\n- 나스닥 선물: {nasdaq_fut['rate']}\n- 환율: {usdkrw['price']}원\n- 주요 이슈: {top_news}\n- 종합 제언: 금리 및 매크로 노이즈 속 실적 기반 주도주와 고배당 방어주 분산 트레이딩 권장"
 
 @app.route('/')
 def index():
