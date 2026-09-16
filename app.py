@@ -4,7 +4,7 @@ import urllib.parse
 import json
 import ssl
 import re
-from bs4 import BeautifulSoup # HTML 파싱을 위해 추가 (없을 경우 pip install beautifulsoup4 필요)
+from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -161,7 +161,7 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_naver_finance_news():
-    """네이버 뉴스 검색(증시/경제 키워드)을 통해 실시간 최신 헤드라인을 동적으로 긁어옵니다."""
+    """네이버 뉴스 검색을 통해 실시간 최신 헤드라인을 동적으로 수집합니다."""
     news_list = []
     queries = ["증시", "코스피", "반도체", "뉴욕증시", "미국증시"]
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
@@ -169,14 +169,13 @@ def fetch_naver_finance_news():
     for q in queries:
         try:
             encoded_q = urllib.parse.quote(q)
-            url = f"https://search.naver.com/search.naver?where=news&query={encoded_q}&sort=1" # sort=1: 최신순 정렬
+            url = f"https://search.naver.com/search.naver?where=news&query={encoded_q}&sort=1"
             req = urllib.request.Request(url, headers=headers)
             
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
                 html_data = response.read().decode('utf-8')
                 soup = BeautifulSoup(html_data, 'html.parser')
                 
-                # 네이버 뉴스 검색 결과 리스트 아이템 추출
                 articles = soup.select('.news_area')
                 for article in articles:
                     title_tag = article.select_one('.news_tit')
@@ -184,7 +183,6 @@ def fetch_naver_finance_news():
                         title = title_tag.get_text().strip()
                         link = title_tag.get('href', '#')
                         
-                        # 중복 방지
                         if any(n['title'] == title for n in news_list):
                             continue
                         
