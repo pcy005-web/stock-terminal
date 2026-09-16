@@ -278,11 +278,24 @@
     </div>
 
     <script>
+        // 버튼 클릭 시 서버에 최신 AI 브리핑을 새로 요청하도록 수정
         function toggleAiBriefing() {
             const reportBox = document.getElementById('ai-report-box');
+            
             if (reportBox.style.display === 'none') {
                 reportBox.style.display = 'block';
+                reportBox.textContent = '⏳ 실시간 데이터를 기반으로 AI 브리핑을 새로 생성하는 중입니다...';
                 reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                fetch('/api/ai-briefing')
+                    .then(response => response.json())
+                    .then(data => {
+                        reportBox.textContent = data.ai_briefing;
+                    })
+                    .catch(err => {
+                        console.error('AI 브리핑 생성 실패:', err);
+                        reportBox.textContent = '❌ AI 브리핑 생성에 실패했습니다.';
+                    });
             } else {
                 reportBox.style.display = 'none';
             }
@@ -302,7 +315,6 @@
                             if (priceElem && rateElem) {
                                 priceElem.textContent = q.price;
                                 
-                                // 이전 등락률과 다를 때만 % 영역에 깜빡이 효과 작동
                                 if (rateElem.textContent !== q.rate) {
                                     rateElem.textContent = q.rate;
                                     
