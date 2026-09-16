@@ -35,7 +35,9 @@ MARKET_CATEGORIES = [
         'stocks': [
             {'code': 'wti', 'name': 'WTI원유', 'ticker': 'NAVER_ENERGY_WTI'},
             {'code': 'gold', 'name': '금현물', 'ticker': 'NAVER_METAL_GOLD'},
-            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'}
+            {'code': 'usdkrw', 'name': '원/달러 환율', 'ticker': 'NAVER_EXCHANGE_USD'},
+            {'code': 'btc', 'name': '비트코인', 'ticker': 'NAVER_COIN_BTC'},
+            {'code': 'eth', 'name': '이더리움', 'ticker': 'NAVER_COIN_ETH'}
         ]
     }
 ]
@@ -116,6 +118,10 @@ def fetch_realtime_data(ticker):
             api_url = "https://api.stock.naver.com/marketindex/metals/GCcv1"
         elif ticker == 'NAVER_EXCHANGE_USD':
             api_url = "https://api.stock.naver.com/marketindex/exchange/FX_USDKRW"
+        elif ticker == 'NAVER_COIN_BTC':
+            api_url = "https://api.coinone.co.kr/public/v2/ticker_new/krw/BTC"
+        elif ticker == 'NAVER_COIN_ETH':
+            api_url = "https://api.coinone.co.kr/public/v2/ticker_new/krw/ETH"
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
@@ -123,20 +129,26 @@ def fetch_realtime_data(ticker):
                 res_json = json.loads(response.read().decode('utf-8'))
                 
                 item = None
-                if isinstance(res_json, dict):
-                    if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
-                        item = res_json
-                    elif 'result' in res_json and isinstance(res_json['result'], dict):
-                        item = res_json['result']
-                    elif 'datas' in res_json and len(res_json['datas']) > 0:
-                        item = res_json['datas'][0]
-                
-                if not item and isinstance(res_json, list) and len(res_json) > 0:
-                    item = res_json[0]
+                if 'coinone' in api_url:
+                    # 코인원 API 응답 포맷 대응
+                    ticker_data = res_json.get('ticker', [{}])
+                    if ticker_data:
+                        item = ticker_data[0] if isinstance(ticker_data, list) else ticker_data
+                else:
+                    if isinstance(res_json, dict):
+                        if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
+                            item = res_json
+                        elif 'result' in res_json and isinstance(res_json['result'], dict):
+                            item = res_json['result']
+                        elif 'datas' in res_json and len(res_json['datas']) > 0:
+                            item = res_json['datas'][0]
+                    
+                    if not item and isinstance(res_json, list) and len(res_json) > 0:
+                        item = res_json[0]
 
                 if item:
-                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
-                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or 0
+                    cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate') or item.get('targetPrice') or item.get('last')
+                    fluc_rate = item.get('fluctuationsRatio') or item.get('rate') or item.get('fluctuationRate') or item.get('yesterday_rate') or 0
                     sign = str(item.get('sign', ''))
                     
                     if cur_price is not None:
@@ -154,6 +166,14 @@ def fetch_realtime_data(ticker):
         
     if ticker == 'NAVER_EXCHANGE_USD':
         yahoo_data = fetch_yahoo_data('USDKRW=X')
+        if yahoo_data:
+            return yahoo_data
+    elif ticker == 'NAVER_COIN_BTC':
+        yahoo_data = fetch_yahoo_data('BTC-USD')
+        if yahoo_data:
+            return yahoo_data
+    elif ticker == 'NAVER_COIN_ETH':
+        yahoo_data = fetch_yahoo_data('ETH-USD')
         if yahoo_data:
             return yahoo_data
 
@@ -294,7 +314,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
-# [수정됨] 하이브리드 토글 및 상세 조회가 연동되는 AI 브리핑 생성 함수
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
