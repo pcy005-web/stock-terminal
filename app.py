@@ -5,7 +5,6 @@ import json
 import ssl
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
@@ -40,13 +39,6 @@ MARKET_CATEGORIES = [
         ]
     }
 ]
-
-# 전역 캐시 저장소 (장전 분석 내용 보관)
-daily_market_cache = {
-    'market_summary_bullets': [],
-    'ai_briefing': "",
-    'updated_at': "대기 중"
-}
 
 def get_ssl_context():
     ctx = ssl.create_default_context()
@@ -271,41 +263,23 @@ def generate_strategies(quotes):
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
-def job_update_premarket_summary():
-    """매일 아침 장 시작 전(08:30) 자동으로 최신 지표와 리포트 분석 내용을 기반으로 장전 요약을 생성하는 함수"""
-    print(">>> [자동 스케줄러] 장전 5분 마켓 핵심 요약 및 AI 브리핑 갱신 시작")
-    
-    # 임시로 실시간 시세 수집
-    quotes = {}
-    tasks = [('nasdaq_fut', 'NAVER_WORLD_NQ'), ('usdkrw', 'NAVER_EXCHANGE_USD'), ('phlx', 'NAVER_WORLD_SOX')]
-    for code, ticker in tasks:
-        res = fetch_realtime_data(ticker)
-        quotes[code] = res if res else {'price': '-', 'rate': '+0.00%', 'is_up': True}
-
+def generate_premarket_summary_bullets(quotes):
     nasdaq_rate = quotes.get('nasdaq_fut', {}).get('rate', '+0.00%')
     usdkrw_price = quotes.get('usdkrw', {}).get('price', '-')
     sox_rate = quotes.get('phlx', {}).get('rate', '+0.00%')
-
-    # 키움증권 리포트 철학 및 분석 내용을 반영한 장전 5분 핵심 요약 불렛 구성
-    daily_market_cache['market_summary_bullets'] = [
+    
+    return [
         f"미국 10년물 금리 장중 5.0% 돌파 및 9월 FOMC 경계감 속 증시 멀티플 디레이팅 압력 (나스닥 선물 {nasdaq_rate}, 환율 {usdkrw_price}원 연동 점검).",
         f"AI 성장성 내러티브 노이즈 부각되며 필라델피아 반도체 지수({sox_rate}) 및 핵심 반도체주 단기 충격 발생.",
         "추격 매도 자제 및 연준의 추가 인상 신중론 확인 대기, 반도체 하방 경직성 확보 주시.",
         "코스피 반도체 의존도가 낮아진 가운데, 최근 강세를 보이는 은행·보험·지주 등 주주환원 업종으로의 일부 비중 분산 대안 유효."
     ]
-    
-    daily_market_cache['ai_briefing'] = f"[실시간 AI 장전 마켓 종합 브리핑]\n- 나스닥 선물 변동률: {nasdaq_rate}\n- 원/달러 환율: {usdkrw_price}원\n- 핵심 제언: 금리 5% 돌파 노이즈 속 9월 FOMC 대기하며 반도체 하방 경직성 확인 및 주주환원주 분산 대응 권장"
-    daily_market_cache['updated_at'] = "오늘 아침 08:30 장전 생성 완료"
-    print(">>> [자동 스케줄러] 장전 요약 갱신 완료")
 
-# 백그라운드 스케줄러 설정 (매일 월~금 오전 8시 30분 실행)
-scheduler = BackgroundScheduler()
-scheduler.add_job(job_update_premarket_summary, 'cron', day_of_week='mon-fri', hour=8, minute=30)
-scheduler.start()
-
-# 서버 구동 직후 캐시가 비어있다면 즉시 한 번 생성
-if not daily_market_cache['market_summary_bullets']:
-    job_update_premarket_summary()
+def generate_ai_comprehensive_briefing(quotes, news_list):
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%'})
+    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '+0.00%'})
+    top_news = news_list[0]['title'] if news_list else "경제 속보 모니터링 중"
+    return f"[실시간 AI 장전 마켓 종합 브리핑]\n- 나스닥 선물 변동률: {nasdaq_fut['rate']}\n- 원/달러 환율: {usdkrw['price']}원\n- 핵심 제언: 금리 5% 돌파 노이즈 속 9월 FOMC 대기하며 반도체 하방 경직성 확인 및 주주환원주 분산 대응 권장"
 
 @app.route('/')
 def index():
@@ -331,9 +305,8 @@ def index():
     smart_money_data = generate_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map)
     
-    # 미리 캐싱된 장전 요약 데이터 사용 (매일 아침 8시 30분에 고정 갱신됨)
-    market_summary_bullets = daily_market_cache['market_summary_bullets']
-    ai_briefing_text = daily_market_cache['ai_briefing']
+    market_summary_bullets = generate_premarket_summary_bullets(price_map)
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
     return render_template(
         'index.html', 
