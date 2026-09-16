@@ -256,11 +256,14 @@ def fetch_naver_finance_news():
                         related_stock = "큐라티스, 엠에프씨, 기가레인"
                     elif is_negative:
                         related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
+                    # 💡 [추가 반영] 연료전지 및 AI 전력난 관련 핵심 종목 매핑
+                    elif any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
+                        related_stock = "한선엔지니어링, 아모센스, LS일렉트릭, 산일전기, 효성중공업"
                     elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
                         related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
                     elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
                         related_stock = "원/달러 환율, KB금융, 현대차"
-                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
+                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "수주"]):
                         related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기"
                     elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
                         related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
@@ -272,7 +275,12 @@ def fetch_naver_finance_news():
                     comment = "매크로 악재 및 거래 대금 위축에 따른 방어적 포트폴리오 점검 필요"
                     interest_score += 1
                 else:
-                    if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
+                    # 💡 [추가 반영] 연료전지/전력난 뉴스 호재 코멘트 지정
+                    if any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
+                        news_type = "호재"
+                        comment = "글로벌 AI 데이터센터 전력 수요 급증에 따른 신재생·연료전지 수급 집중"
+                        interest_score += 2
+                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
                         news_type = "호재"
                         comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
                         interest_score += 1
@@ -360,7 +368,6 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    # 💡 [보완] AI/반도체와 관련된 뉴스를 우선적으로 탐색하여 TOP 1 전략 설명에 매칭
     ai_news_title = ""
     for n in news_list:
         if any(k in n['title'] for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아", "칩", "인프라"]):
