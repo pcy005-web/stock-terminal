@@ -5,6 +5,7 @@ import json
 import ssl
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import datetime
 
 app = Flask(__name__)
 
@@ -319,8 +320,10 @@ def generate_premarket_summary_bullets(quotes, news_list):
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    import datetime
-    now_time = datetime.datetime.now().strftime('%H시 %M분')
+    # 한국 시간(KST, UTC+9) 적용
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
+    
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
