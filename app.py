@@ -294,16 +294,20 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
+# [수정됨] 스타일 2(체크포인트)와 스타일 3(심플 총평 + 가이드)을 섞은 하이브리드 브리핑 함수
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
-    usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 및 수급 모니터링"
+    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%'})
+    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
+    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
     return (
-        "[장전 마켓 인사이트 & AI 종합 브리핑 (매일 아침 자동 갱신)]\n"
-        f"- 대외 실시간 지표: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
-        f"- 핵심 뉴스 및 노이즈: {top_news}\n"
-        "- 시황 분석 및 혜안: 글로벌 채권금리 및 기술주 노이즈로 인해 단기 변동성이 확대되고 있으나, 시장의 하방 지지력과 매물 소화 과정을 주시해야 합니다. 무리한 포지션 축소보다는 하방 경직성이 확보된 주도주 및 방어적 대안(주주환원/배당주) 중심의 유연한 포트폴리오 분산 전략을 권장합니다."
+        "⚡ [AI 하이브리드 마켓 브리핑]\n\n"
+        f"• 시황 총평: 코스피({kospi['rate']}) 중심의 변동성 장세 및 매물 소화 진행 중\n\n"
+        f"🔍 [핵심 체크포인트]\n"
+        f"  - 글로벌 동향: 필라델피아 반도체 지수({sox['rate']}) 연동 기술주 흐름 주목\n"
+        f"  - 주요 노이즈: \"{top_news}\" 관련 투심 영향 모니터링\n\n"
+        "💡 [실전 대응 가이드]\n"
+        "  - \"공포에 따른 무리한 투매를 자제하고, 수급이 살아있는 주도주의 눌림목 기회와 방어적 대안을 함께 검토하세요.\""
     )
 
 @app.route('/')
@@ -347,7 +351,6 @@ def index():
         ai_briefing=ai_briefing_text
     )
 
-# 새로고침 없이 5초마다 실시간 지표를 갱신하기 위해 추가된 API 엔드포인트
 @app.route('/api/quotes')
 def api_quotes():
     price_map = {}
