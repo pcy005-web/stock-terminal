@@ -27,7 +27,9 @@ MARKET_CATEGORIES = [
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'NAVER_WORLD_YM'},
             {'code': 'nasdaq_fut', 'name': '나스닥 선물', 'ticker': 'NAVER_WORLD_NQ'},
             {'code': 'phlx', 'name': '필라델피아 반도체', 'ticker': 'NAVER_WORLD_SOX'},
-            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': 'NAVER_WORLD_VIX'}
+            {'code': 'vix', 'name': 'S&P 500 VIX', 'ticker': 'NAVER_WORLD_VIX'},
+            {'code': 'btc', 'name': '비트코인 (USD)', 'ticker': 'YAHOO_BTC_USD'},
+            {'code': 'eth', 'name': '이더리움 (USD)', 'ticker': 'YAHOO_ETH_USD'}
         ]
     },
     {
@@ -87,6 +89,13 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
+    # 야후 파이낸스 심볼 처리 (비트코인, 이더리움 등)
+    if ticker.startswith('YAHOO_'):
+        y_ticker = ticker.replace('YAHOO_', '').replace('_', '-')
+        y_data = fetch_yahoo_data(y_ticker)
+        if y_data:
+            return y_data
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Referer': 'https://m.stock.naver.com/',
@@ -294,7 +303,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
-# [수정됨] 사용자 수급 맥락(대형주 방어 vs 코스닥 이탈)이 자연스럽게 녹아든 하이브리드 AI 브리핑 함수
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.76%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
