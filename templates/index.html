@@ -81,16 +81,16 @@
         <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
     </div>
 
-    <!-- 1. 실제 증시 지표 팩트체크 -->
+    <!-- 1. 실제 증시 지표 팩트체크 (동적 렌더링) -->
     <div class="dashboard-section" id="sec-1">
         <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
         
+        {% for cat in categories %}
         <div class="group-container">
-            <div class="group-title">🇰🇷 국내 증시</div>
+            <div class="group-title">{{ cat.title }}</div>
             <div class="market-unified-box">
-                {% for code in ['kospi', 'kosdaq', 'kospi200'] %}
-                {% set stock = {'kospi': {'name': '코스피'}, 'kosdaq': {'name': '코스닥'}, 'kospi200': {'name': '코스피 200 선물'}}[code] %}
-                {% set q = quotes[code] %}
+                {% for stock in cat.stocks %}
+                {% set q = quotes.get(stock.code, {'price': '0.00', 'rate': '+0.00%', 'is_up': True}) %}
                 <div class="stock-row">
                     <div class="stock-name">{{ stock.name }}</div>
                     <div class="stock-info">
@@ -101,57 +101,7 @@
                 {% endfor %}
             </div>
         </div>
-
-        <div class="group-container">
-            <div class="group-title">🌍 해외 증시 (현물)</div>
-            <div class="market-unified-box">
-                {% for code in ['sp500', 'dow', 'nasdaq', 'phlx'] %}
-                {% set stock = {'sp500': {'name': 'S&P 500'}, 'dow': {'name': '다우존스'}, 'nasdaq': {'name': '나스닥'}, 'phlx': {'name': '필라델피아 반도체'}}[code] %}
-                {% set q = quotes[code] %}
-                <div class="stock-row">
-                    <div class="stock-name">{{ stock.name }}</div>
-                    <div class="stock-info">
-                        <div class="stock-price">{{ q.price }}</div>
-                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="group-container">
-            <div class="group-title">📊 해외 선물 및 변동성</div>
-            <div class="market-unified-box">
-                {% for code in ['sp500_fut', 'dow_fut', 'nasdaq_fut', 'vix'] %}
-                {% set stock = {'sp500_fut': {'name': 'S&P 500 선물'}, 'dow_fut': {'name': '다우존스 선물'}, 'nasdaq_fut': {'name': '나스닥 선물'}, 'vix': {'name': 'S&P 500 VIX'}}[code] %}
-                {% set q = quotes[code] %}
-                <div class="stock-row">
-                    <div class="stock-name">{{ stock.name }}</div>
-                    <div class="stock-info">
-                        <div class="stock-price">{{ q.price }}</div>
-                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="group-container">
-            <div class="group-title">🛢️ 원자재 및 환율</div>
-            <div class="market-unified-box">
-                {% for code in ['wti', 'gold', 'usdkrw'] %}
-                {% set stock = {'wti': {'name': 'WTI원유'}, 'gold': {'name': '금현물'}, 'usdkrw': {'name': '원/달러 환율'}}[code] %}
-                {% set q = quotes[code] %}
-                <div class="stock-row">
-                    <div class="stock-name">{{ stock.name }}</div>
-                    <div class="stock-info">
-                        <div class="stock-price">{{ q.price }}</div>
-                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+        {% endfor %}
     </div>
 
     <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
