@@ -263,7 +263,7 @@ def fetch_naver_finance_news():
                     elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
                         related_stock = "원/달러 환율, KB금융, 현대차"
                     elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "수주"]):
-                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기"
+                        related_stock = "한화에어로ส페이스, HD현대일렉트릭, 제룡전기"
                     elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
                         related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
                     else:
@@ -328,22 +328,20 @@ def generate_theme_sync_analysis(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
     
-    # 💡 [보완 반영] 미국/반도체/증시 관련 글로벌 뉴스를 우선 탐색
-    sync_news_title = ""
-    for n in news_list:
-        if any(k in n['title'] for k in ["미국", "나스닥", "증시", "반도체", "연준", "금리", "뉴욕", "증권"]):
-            sync_news_title = n['title']
-            break
-            
-    if not sync_news_title and news_list:
-        sync_news_title = news_list[0]['title']
-        
-    top_news_title = sync_news_title if sync_news_title else "글로벌 매크로 지표 혼조세"
+    # 💡 뉴스 헤드라인에 의존하지 않고 실제 지수 등락에 기반한 전문 시황 총평 생성
+    sox_rate = sox.get('rate', '+0.00%')
+    nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
-    us_driver = f"필라델피아 반도체 및 나스닥 선물({nasdaq_fut['rate']}) 연동 장세 (최신 이슈: {top_news_title[:30]}...)"
-    core_stocks = "NVIDIA, 마이크론 테크놀로지, 인텔" if is_up else "테슬라, 애플, 마이크로소프트"
-    domestic_stocks = "삼성전자, SK하이닉스 + 제주반도체, 오픈엣지테크놀로지 (중소형 반도체)" if is_up else "KB금융, 현대차 + 변동성 장세 개별 품절·테마주"
-    risk_strategy = "상승 추세 속 주도주 및 거래량 상위 중소형 테마 중심 공격적 트레이딩" if is_up else "변동성 장세에 대비한 현금 비중 확보 및 실적 우량주 분할 매수"
+    if is_up:
+        us_driver = f"미국 기술주 강세 연동: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate}) 상승 흐름 반영"
+        core_stocks = "NVIDIA, 마이크론 테크놀로지, 인텔, 브로드컴"
+        domestic_stocks = "삼성전자, SK하이닉스 + 제주반도체, 퀄리타스반도체 (AI·반도체 소부장)"
+        risk_strategy = "글로벌 AI 인프라 투자 모멘텀 속 주도주 중심의 공격적 트레이딩 및 수급 집중"
+    else:
+        us_driver = f"미국 기술주 변동성 확대: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate}) 경계감 소화"
+        core_stocks = "테슬라, 애플, 마이크로소프트, 알파벳"
+        domestic_stocks = "KB금융, 현대차, 삼성바이오로직스 (대형 방어주 및 실적 우량주)"
+        risk_strategy = "미국 증시 기술주 조정 국면에 연동된 지수 하방 경직성 확인 및 보수적 분할 매수"
     
     return {
         'us_driver': us_driver,
