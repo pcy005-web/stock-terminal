@@ -282,7 +282,7 @@ def generate_strategies(quotes):
         {"title": "저PBR 밸류업 종목 방어력 활용", "desc": "배당 및 정책 모멘텀 수급 체크", "stock": "KB금융, 현대차, 기아", "rank": "TOP 5"}
     ]
 
-def generate_premarket_summary_bullets(quotes):
+def generate_premarket_summary_bullets(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
@@ -292,27 +292,30 @@ def generate_premarket_summary_bullets(quotes):
     s_rate = sox.get('rate', '-3.4%')
     
     is_nasdaq_up = nasdaq_fut.get('is_up', False)
-    market_tone = "강세 흐름 및 위험선호 심리 회복" if is_nasdaq_up else "장중 변동성 확대 및 멀티플 디레이팅 압력"
+    market_tone = "위험선호 심리 회복 및 낙폭 만회 시도" if is_nasdaq_up else "장중 변동성 확대 및 디레이팅 압력"
+    
+    # 실시간 수집된 첫 번째 주요 뉴스를 장전 핵심 이슈로 반영
+    top_news_title = news_list[0]['title'] if news_list else "글로벌 매크로 변동성 모니터링"
     
     return [
-        f"미국 증시 및 글로벌 채권금리 변동성에 따른 국내 증시 연동성 점검 (나스닥 선물 {n_rate}, 원/달러 환율 {w_price}원).",
-        f"반도체 및 주요 기술주 섹터의 실시간 수급 동향과 필라델피아 반도체 지수({s_rate}) 흐름 추적.",
-        f"현재 글로벌 매크로 환경은 {market_tone} 국면으로 진입 중이며, 추격 매도 자제 및 하방 경직성 확보 주시 필요.",
-        "코스피 대형주 중심의 분산 대응과 함께 실적 및 수급 모멘텀이 양호한 주도주/방어주 선별 트레이딩 유효."
+        f"실시간 주요 이슈 연동: '{top_news_title}' 흐름 속 국내 증시 반응 주목.",
+        f"미국 증시 및 글로벌 채권금리 변동성에 따른 국내 연동성 점검 (나스닥 선물 {n_rate}, 원/달러 환율 {w_price}원).",
+        f"주요 기술주 및 필라델피아 반도체 지수({s_rate}) 동향에 따른 섹터별 수급 변화 추적.",
+        f"현재 글로벌 매크로 환경은 {market_tone} 국면이며, 추격 매도 자제 및 하방 경직성 확보 중심 대응 유효."
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '-', 'rate': '1,300'})
     
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 변동성 및 증시 수급 모니터링 중"
+    top_news = news_list[0]['title'] if news_list else "실시간 경제 및 증시 이슈 모니터링 중"
     news_type = news_list[0].get('type', '중립') if news_list else "중립"
     
     return (
-        "[실시간 AI 자동 마켓 종합 분석 (장전 갱신)]\n"
-        f"- 해외 연동: 나스닥 선물 {nasdaq_fut['rate']} | 환율 {usdkrw['price']}원\n"
-        f"- 오늘의 주요 실시간 이슈: {top_news} ({news_type})\n"
-        "- AI 종합 제언: 지수 단기 변동성에 일희일비하기보다는 핵심 주도주의 하방 지지력을 확인하며 분할 매수 및 방어적 포트폴리오 병행 권장"
+        "[실시간 AI 자동 마켓 종합 분석 (매일 장전 갱신)]\n"
+        f"- 대외 변수: 나스닥 선물 {nasdaq_fut['rate']} | 원/달러 환율 {usdkrw['price']}원\n"
+        f"- 오늘의 실시간 핫 이슈: {top_news} ({news_type})\n"
+        "- AI 종합 제언: 지수 단기 변동성에 일희일비하기보다는 실시간 수급이 유입되는 핵심 주도주와 하방 방어력이 검증된 업종 중심으로 유연한 포트폴리오 대응 권장"
     )
 
 @app.route('/')
@@ -341,7 +344,7 @@ def index():
     theme_text = generate_theme_sync_analysis(price_map)
     smart_money_data = generate_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map)
-    market_summary_bullets = generate_premarket_summary_bullets(price_map)
+    market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
     return render_template(
