@@ -186,7 +186,11 @@ def fetch_realtime_data(ticker):
 
 def fetch_naver_finance_news():
     kst = datetime.timezone(datetime.timedelta(hours=9))
-    query_str = urllib.parse.quote("코스피 주식 증권 경제")
+    now_dt = datetime.datetime.now(kst)
+    current_hour_str = now_dt.strftime('%H시 %M분')
+    
+    # 💡 when:1d 파라미터 적용으로 최근 24시간 이내 최신 뉴스 집중 타겟팅
+    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:1d")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     
@@ -241,19 +245,18 @@ def fetch_naver_finance_news():
     except Exception:
         pass
         
-    current_hour = datetime.datetime.now(kst).strftime('%H시')
     if len(news_list) < 10:
         dynamic_fallbacks = [
-            (f"[{current_hour} 이슈] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체, 오픈엣지테크놀로지", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재"),
-            (f"[{current_hour} 이슈] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 대책", "https://news.google.com", "원/달러 환율, KB금융, 환율 민감주", "환율 등락에 따른 외국인 자금 유출입 감시", "중립"),
-            (f"[{current_hour} 이슈] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재"),
-            (f"[{current_hour} 이슈] K-방산 수출 다변화 및 중동·유럽향 추가 수주 기대감", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍, 스페코", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재"),
-            (f"[{current_hour} 이슈] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크"),
-            (f"[{current_hour} 이슈] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이", "https://news.google.com", "HD현대중공업, 삼성중공업, 동성화인텍", "조선 기자재 중소형 테마 순환매 포착", "호재"),
-            (f"[{current_hour} 이슈] 글로벌 제약·바이오 파트너십 및 기술 수출 성과", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재"),
-            (f"[{current_hour} 이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 산일전기", "전력기기 및 변압기 중소형주 거래대금 집중", "호재"),
-            (f"[{current_hour} 이슈] 국내 증시 시가총액 상위 종목 거래대금 회복 국면", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립"),
-            (f"[{current_hour} 이슈] 국제유가 및 원자재 시장 수급 불안정성 점검", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크")
+            (f"[{current_hour_str} 실시간] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체, 오픈엣지테크놀로지", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재"),
+            (f"[{current_hour_str} 실시간] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융, 환율 민감주", "환율 등락에 따른 외국인 자금 유출입 감시", "중립"),
+            (f"[{current_hour_str} 실시간] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 수급 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재"),
+            (f"[{current_hour_str} 실시간] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍, 스페코", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재"),
+            (f"[{current_hour_str} 실시간] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크"),
+            (f"[{current_hour_str} 실시간] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업, 동성화인텍", "조선 기자재 중소형 테마 순환매 포착", "호재"),
+            (f"[{current_hour_str} 실시간] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재"),
+            (f"[{current_hour_str} 실시간] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 산일전기", "전력기기 및 변압기 중소형주 거래대금 집중", "호재"),
+            (f"[{current_hour_str} 실시간] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립"),
+            (f"[{current_hour_str} 실시간] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크")
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp = dynamic_fallbacks.pop(0)
@@ -342,7 +345,6 @@ def generate_strategies(quotes, news_list):
     ]
     return strategies
 
-# 🚀 새로 추가된 6번 세션 데이터 생성 함수 (실시간 테마별 거래대금 순환매 진단)
 def generate_sector_momentum_analysis(quotes, news_list):
     return [
         {
@@ -433,7 +435,7 @@ def index():
     theme_text = generate_theme_sync_analysis(price_map, live_news)
     smart_money_data = generate_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map, live_news)
-    sector_momentum_data = generate_sector_momentum_analysis(price_map, live_news) # 6번 세션 데이터 추가
+    sector_momentum_data = generate_sector_momentum_analysis(price_map, live_news)
     market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
                 
@@ -445,7 +447,7 @@ def index():
         theme_summary=theme_text,
         smart_money_summary=smart_money_data,
         strategies=strategies_data,
-        sector_momentum=sector_momentum_data, # 템플릿 전달용 변수 추가
+        sector_momentum=sector_momentum_data,
         market_summary_bullets=market_summary_bullets,
         ai_briefing=ai_briefing_text
     )
