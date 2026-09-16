@@ -6,6 +6,7 @@ import ssl
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
+import re # 정규식 활용을 위한 모듈 추가
 
 app = Flask(__name__)
 
@@ -219,12 +220,16 @@ def fetch_naver_finance_news():
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                related_stock = "코스피 시가총액 상위 종목"
+                # 💡 [업그레이드] 뉴스 제목 내부에서 작은따옴표('...')로 강조된 종목명 추출 시도
+                quoted_matches = re.findall(r"'([^']+)'", title_clean)
+                extracted_stocks_from_quotes = ", ".join([m for m in quoted_matches if len(m) <= 10 and not any(w in m for w in ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥"])])
+
+                related_stock = ""
                 news_type = "중립"
                 comment = "실시간 매크로 지표 연동 및 시장 수급 변동성 모니터링 필요"
 
                 interest_score = 0
-                high_interest_keywords = ["특징주", "급등", "서프라이즈", "최대", "돌파", "폭등", "상승", "수주", "공시", "실적", "신고가"]
+                high_interest_keywords = ["특징주", "급등", "서프라이즈", "최대", "돌파", "폭등", "상승", "수주", "공시", "실적", "신고가", "상한가"]
                 for kw in high_interest_keywords:
                     if kw in title_clean:
                         interest_score += 2
@@ -232,31 +237,39 @@ def fetch_naver_finance_news():
                 negative_keywords = ["악재", "실종", "급락", "하락", "폭락", "위기", "침체", "이탈", "우려", "경고", "부진", "하회", "적자"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
+                # 💡 [업그레이드] 제목에 추출된 종목이 있으면 우선 반영, 없으면 키워드 기반 세부 종목 매칭
+                if extracted_stocks_from_quotes:
+                    related_stock = f"{extracted_stocks_from_quotes} (관련주)"
+                else:
+                    if "미투온" in title_clean or "카카오게임즈" in title_clean:
+                        related_stock = "미투온, 카카오게임즈, 큐라티스, 엠에프씨"
+                    elif "큐라티스" in title_clean or "엠에프씨" in title_clean or "기가레인" in title_clean:
+                        related_stock = "큐라티스, 엠에프씨, 기가레인"
+                    elif is_negative:
+                        related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
+                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
+                        related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
+                    elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
+                        related_stock = "원/달러 환율, KB금융, 현대차"
+                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
+                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기"
+                    elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
+                        related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
+                    else:
+                        related_stock = "코스피/코스닥 주요 거래대금 상위 종목"
+
                 if is_negative:
                     news_type = "리스크"
-                    related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
                     comment = "매크로 악재 및 거래 대금 위축에 따른 방어적 포트폴리오 점검 필요"
                     interest_score += 1
                 else:
                     if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
-                        related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
                         news_type = "호재"
                         comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
                         interest_score += 1
-                    elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
-                        related_stock = "원/달러 환율, KB금융, 현대차, 대형 방어주"
-                        news_type = "리스크"
-                        comment = "환율 및 금리 변동성에 따른 외국인 수급 이탈 여부 방어적 점검"
-                        interest_score += 1
-                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주"]):
-                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기, 스페코"
+                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주", "상한가", "급등"]):
                         news_type = "호재"
-                        comment = "글로벌 대규모 수주 및 실적 턴어라운드 테마 순환매"
-                        interest_score += 1
-                    elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
-                        related_stock = "삼성바이오로직스, 셀트리온, 알테오젠, 레고켐바이오"
-                        news_type = "호재"
-                        comment = "글로벌 임상 진척 및 바이오 섹터 고거래량 단기 테마 포착"
+                        comment = "개별 종목 모멘텀 및 테마성 거래대금 집중 현상 포착"
                         interest_score += 1
 
                 news_list.append({
@@ -266,7 +279,7 @@ def fetch_naver_finance_news():
                     'comment': comment,
                     'type': news_type,
                     'score': interest_score,
-                    'is_negative': is_negative # 부정 뉴스 여부 플래그 추가
+                    'is_negative': is_negative
                 })
                 
         news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
@@ -276,14 +289,14 @@ def fetch_naver_finance_news():
         
     if len(news_list) < 10:
         dynamic_fallbacks = [
-            (f"[{current_hour_str} 실시간 특징주] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체, 오픈엣지테크놀로지", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재", False),
-            (f"[{current_hour_str} 실시간 시황] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융, 환율 민감주", "환율 등락에 따른 외국인 자금 유출입 감시", "중립", False),
+            (f"[{current_hour_str} 실시간 특징주] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재", False),
+            (f"[{current_hour_str} 실시간 시황] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융", "환율 등락에 따른 외국인 자금 유출입 감시", "중립", False),
             (f"[{current_hour_str} 실시간 핫이슈] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 수급 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재", False),
-            (f"[{current_hour_str} 실시간 특징주] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍, 스페코", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재", False),
+            (f"[{current_hour_str} 실시간 특징주] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재", False),
             (f"[{current_hour_str} 실시간 리포트] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크", True),
-            (f"[{current_hour_str} 실시간 수급] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업, 동성화인텍", "조선 기자재 중소형 테마 순환매 포착", "호재", False),
+            (f"[{current_hour_str} 실시간 수급] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "조선 기자재 중소형 테마 순환매 포착", "호재", False),
             (f"[{current_hour_str} 실시간 특징주] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "셀트리온, 알테오젠, 에이비엘바이오", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재", False),
-            (f"[{current_hour_str} 실시간 핫이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업, 산일전기", "전력기기 및 변압기 중소형주 거래대금 집중", "호재", False),
+            (f"[{current_hour_str} 실시간 핫이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "전력기기 및 변압기 중소형주 거래대금 집중", "호재", False),
             (f"[{current_hour_str} 실시간 시황] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립", False),
             (f"[{current_hour_str} 실시간 리포트] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크", True)
         ]
@@ -338,7 +351,6 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    # 💡 첫 번째 뉴스가 부정적(리스크)일 경우 어색한 조합을 막기 위해 안전한 기본 호재 문구로 대체
     if news_list and not news_list[0].get('is_negative', False):
         n1 = news_list[0]['title']
         desc_1 = f"실시간 지수 연동 및 이슈('{n1[:25]}...') 기반 수급 유입"
@@ -532,8 +544,8 @@ def api_ai_briefing():
             except Exception:
                 pass
 
-    live_news = fetch_naver_finance_news()
-    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+    news_list = fetch_naver_finance_news()
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
     return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
 
 if __name__ == '__main__':
