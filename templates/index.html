@@ -184,9 +184,10 @@
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main);">📡 실시간 수급 동향</span>
-                <span style="padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff;">{{ smart_money_summary.badge_text }}</span>
+            <!-- 모바일에서 두 줄로 꺾이는 현상 방지를 위해 폰트 크기 미세 조정 및 white-space: nowrap 적용 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+                <span style="font-weight: 700; font-size: 0.9rem; color: var(--accent-main); white-space: nowrap;">📡 실시간 수급 동향</span>
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff; white-space: nowrap;">{{ smart_money_summary.badge_text }}</span>
             </div>
             <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
