@@ -56,7 +56,7 @@
         .highlight-up { background-color: rgba(239, 68, 68, 0.25); }
         .highlight-down { background-color: rgba(59, 130, 246, 0.25); }
 
-        /* 특징주 갱신 시 깜빡이는 효과를 위한 클래스 */
+        /* 특징주 갱신 시 깜빡이는 하이라이트 효과 */
         .highlight-update { background-color: rgba(56, 189, 248, 0.3) !important; transition: background-color 0.5s ease; }
 
         .up { color: var(--accent-red); }
@@ -266,11 +266,10 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (실시간 최신순 정렬, 깜빡이 효과, [증시요약] 문구 삭제) -->
+    <!-- 7. 장중 특징주 핫이슈 (실시간 최신순 정렬 및 깜빡이 효과 적용) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 컴팩트한 리스트 레이아웃 (최신순 5개) -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <div class="feature-card-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-card); border-radius: 6px; gap: 10px;">
@@ -405,7 +404,7 @@
         // 3초마다 지표 갱신
         setInterval(updateMarketQuotes, 3000);
         
-        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신
+        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신 (최신순 역순 정렬 반영)
         setInterval(updateFeatureStocks, 30000);
     </script>
 </body>
