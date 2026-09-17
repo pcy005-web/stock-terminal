@@ -188,7 +188,7 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """실시간 특징주 뉴스를 수집하고, 앞쪽에 [시분] 표기를 포함하여 최신순으로 정렬"""
+    """실시간 특징주 뉴스 수집, 최신순 정렬, 링크 포함"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
@@ -217,10 +217,12 @@ def fetch_feature_stocks():
             
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
+                link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
+                link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 if title_clean in seen_titles:
                     continue
@@ -262,28 +264,28 @@ def fetch_feature_stocks():
                     else:
                         stock_name = "시장 주도 특징주"
                 
-                # ⭐ HTS 스타일로 [시간]과 제목을 조합
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
                     "stock": stock_name,
                     "title": formatted_title,
+                    "link": link,
                     "timestamp": pub_dt
                 })
     except Exception:
         pass
         
-    # 가장 최신 뉴스가 맨 위로 오도록 내림차순 정렬
+    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 내림차순 정렬
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     
     feature_items = parsed_items[:5]
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] [특징주] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "timestamp": now_dt},
-        {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] [특징주] 북미 전력망 교체 모멘텀 지속에 따른 강세", "timestamp": now_dt},
-        {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] [특징주] 글로벌 바이오 파이프라인 가치 재평가 국면", "timestamp": now_dt},
-        {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] [특징주] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "timestamp": now_dt},
-        {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] [특징주] K-방산 수출 다변화 및 수주 모멘텀 확장", "timestamp": now_dt}
+        {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] [특징주] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] [특징주] 북미 전력망 교체 모멘텀 지속에 따른 강세", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] [특징주] 글로벌 바이오 파이프라인 가치 재평가 국면", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] [특징주] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] [특징주] K-방산 수출 다변화 및 수주 모멘텀 확장", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
@@ -605,7 +607,6 @@ def api_feature_stocks():
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
-    kst = pytz.timezone('Asia/Seoul')
     price_map = {}
     tasks = []
     for cat in MARKET_CATEGORIES:
