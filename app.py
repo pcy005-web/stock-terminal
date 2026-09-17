@@ -449,7 +449,7 @@ def generate_sector_momentum_analysis(quotes, news_list):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    """[5. 장전 5분 마켓 핵심 요약] 세션 고도화 로직 (키움 한지영 리포트 스타일 이식)"""
+    """[5. 장전 5분 마켓 핵심 요약] FOMC·CPI·PPI 등 매크로 주요 일정 분석이 반영된 고도화 로직"""
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
@@ -458,13 +458,10 @@ def generate_premarket_summary_bullets(quotes, news_list):
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
     
-    is_nasdaq_up = nasdaq_fut.get('is_up', True)
-    macro_context = "기술주 중심의 투자 심리 개선과 유동성 유입" if is_nasdaq_up else "통화정책 경계감 및 기술주 중심의 변동성 확대"
-    
-    bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 원/달러 환율({w_price}원) 흐름 속에서 {macro_context}의 영향을 복합적으로 소화하는 모습입니다."
-    bullet_2 = f"핵심 노이즈 및 시장 심리: 매크로 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 핵심 섹터의 단기 등락 요인이 국내 증시에 차별적인 수급을 형성하고 있습니다."
-    bullet_3 = "지수 하단 지지력 점검: 역사적으로 정책 사이클 및 금리 인상 국면이 곧바로 증시의 추세 하락으로 이어지지 않았듯, 시장은 예상 범주 내의 충돌로 받아들이며 하방 경직성을 시도하고 있습니다."
-    bullet_4 = "오늘의 대응 전략: 변동성 확대 국면을 비중 축소보다는 매수 기회로 활용하되, 10년물 금리의 상승 속도와 3분기 기업 실적/이익 모멘텀을 주도주 선별의 핵심 잣대로 삼는 대응이 유효합니다."
+    bullet_1 = f"매크로 주요 일정(FOMC·CPI·PPI) 경계감: 9월 FOMC의 매파적 여진과 더불어 최근 발표되는 미국 CPI 및 PPI 등 주요 물가 지표의 추이가 연준의 추가 금리 경로와 시장의 통화정책 기대감에 지대한 영향을 미치고 있습니다."
+    bullet_2 = f"금리 및 인플레이션 경로 해석: 물가 지표(CPI·PPI) 발표 전후로 2년물 등 단기물 금리와 달리 10년물 등 장기물 금리의 상승폭이 제한되는지 여부가 연준 긴축 및 인플레이션 우려의 선반영 여부를 가늠하는 핵심 잣대가 됩니다."
+    bullet_3 = f"해외 지표 및 환율 연동: 나스닥 선물({n_rate})과 필라델피아 반도체 지수({s_rate})의 등락 속에서, 원/달러 환율({w_price}원)의 변동성이 수출주 이익 전망과 3분기 실적 컨센서스에 미치는 영향을 점검해야 합니다."
+    bullet_4 = f"실전 대응 전략: 매크로 빅 이벤트 직후 시장의 해석이 충돌하며 나타나는 변동성은 비중 축소보다 매수 기회로 활용하되, 금리 상승 속도와 AI 반도체·주주환원 업종 중심의 이익 모멘텀을 선별 기준으로 삼는 것이 적절합니다."
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
