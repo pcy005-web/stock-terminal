@@ -185,6 +185,16 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
+def fetch_feature_stocks():
+    """[장중 특징주 핫이슈] 증권사 HTS 요약 스타일의 특징주 분석 데이터"""
+    return [
+        {"stock": "삼성전자 / SK하이닉스", "title": "AI 반도체 밸류체인 실적 개선 가시화 속 외국인·기관 순매수 집중", "reason": "글로벌 빅테크 인프라 투자 지속 및 HBM 공급 체인 경쟁력 부각에 따른 수급 유입"},
+        {"stock": "HD현대일렉트릭 / 효성중공업", "title": "북미 및 유럽 전력망 교체 수요에 따른 실적 서프라이즈 전망", "reason": "구조적 수주 잔고 증가 및 고마진 변압기 중심의 수출 호조세 지속"},
+        {"stock": "알테오젠 / 셀트리온", "title": "바이오 섹터 글로벌 임상 및 파이프라인 가치 재평가 국면", "reason": "기술 이전 모멘텀 및 실적 턴어라운드 기대감에 따른 스마트머니 결집"},
+        {"stock": "KB금융 / 신한지주", "title": "정부 밸류업 프로그램 및 적극적 주주환원 정책 모멘텀", "reason": "ROE 개선세와 저PBR 매력에 기반한 하방 경직성 및 기관 방어 매수"},
+        {"stock": "한화에어로스페이스 / 현대로템", "title": "K-방산 수출 다변화에 따른 중장기 실적 성장의 가시성 입증", "reason": "해외 대규모 무기 체계 공급 계약 확정에 따른 수급형 성장주 트레이딩"}
+    ]
+
 def fetch_naver_finance_news():
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_dt = datetime.datetime.now(kst)
@@ -340,7 +350,6 @@ def generate_theme_sync_analysis(quotes, news_list):
     }
 
 def generate_smart_money_analysis(quotes):
-    """[3번 세션] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 현재 쏠림 테마/업종 분석"""
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
@@ -350,19 +359,15 @@ def generate_smart_money_analysis(quotes):
     badge_class = "up" if kospi_up else "down"
     
     domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
-    
-    # 보완된 시장 디커플링 및 순환매 텍스트
     decoupling_text = (
         "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, "
         "지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 순환 수급 포착"
     )
-    
     concentrated_themes = (
         "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
         "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
         "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
     )
-    
     fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검"
 
     return {
@@ -453,6 +458,7 @@ def index():
     sector_momentum_data = generate_sector_momentum_analysis(price_map, live_news)
     market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+    feature_stocks_data = fetch_feature_stocks()
                 
     return render_template(
         'index.html', 
@@ -464,7 +470,8 @@ def index():
         strategies=strategies_data,
         sector_momentum=sector_momentum_data,
         market_summary_bullets=market_summary_bullets,
-        ai_briefing=ai_briefing_text
+        ai_briefing=ai_briefing_text,
+        feature_stocks=feature_stocks_data
     )
 
 def generate_sector_momentum_analysis(quotes, news_list):
