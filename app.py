@@ -224,8 +224,8 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 💡 띄어쓰기 변형(장전특징주, 개장전특징주 등)을 모두 수집할 수 있도록 쿼리 확장
-    query = "특징주 OR 장전특징주 OR 개장전특징주 OR 급등 OR 상한가 when:6h"
+    # 💡 intitle 연산자를 사용하여 뉴스 제목 내 키워드 매칭만 엄격하게 검색
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
     
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
@@ -256,8 +256,8 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 💡 파이썬 레벨에서 LIKE 검증 필터 적용 (SQL의 LIKE '%특징주%' 역할 수행)
-                like_keywords = ["특징주", "장전특징주", "개장전특징주", "급등", "상한가", "폭등", "강세"]
+                # 💡 파이썬 레벨 검증 필터
+                like_keywords = ["특징주", "장전특징주", "개장전특징주", "상한가"]
                 if not any(kw in title_clean for kw in like_keywords):
                     continue
                 
@@ -284,18 +284,17 @@ def fetch_feature_stocks():
                 item_time_str = pub_dt.strftime('%H:%M')
                 
                 raw_stock_name = ""
-                if any(kw in title_clean for kw in ["[ETF 시황]", "[시황]", "ETF 강세", "코스피 약보합", "코스닥"]):
-                    if "조선" in title_clean or "우주" in title_clean:
-                        raw_stock_name = "조선·우주 ETF"
-                    elif "방산" in title_clean:
-                        raw_stock_name = "방산 ETF"
-                    else:
-                        raw_stock_name = "국내 증시 시황"
+                for comp in known_companies:
+                    if comp in title_clean:
+                        raw_stock_name = comp
+                        break
                 
                 if not raw_stock_name:
-                    for comp in known_companies:
-                        if comp in title_clean:
-                            raw_stock_name = comp
+                    quoted_matches = re.findall(r"'([^']+)'", title_clean)
+                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                    for qm in quoted_matches:
+                        if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
+                            raw_stock_name = qm
                             break
                 
                 if not raw_stock_name:
@@ -305,14 +304,6 @@ def fetch_feature_stocks():
                         exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                         if len(candidate) <= 12 and not any(ew in candidate for ew in exclude_words) and not any(char.isdigit() for char in candidate):
                             raw_stock_name = candidate
-                
-                if not raw_stock_name:
-                    quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
-                    for qm in quoted_matches:
-                        if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
-                            raw_stock_name = qm
-                            break
                 
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
@@ -330,7 +321,6 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # 최신 뉴스 순서대로 정렬 후 상위 5개 추출
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = parsed_items[:5]
         
@@ -371,7 +361,12 @@ def fetch_feature_stocks():
         })
                 
     if is_market_closed:
-        market_summary_keyword = "📊 [코스피·코스닥 장마감 카테고리별 요약]"
+        market_summary_keyword = (
+            "📊 [장마감 시장 종합 분석 요약]\n\n"
+            "• [마감 동향]: 국내 증시 마감에 따른 주요 업종별 수급 마감 결과 반영\n"
+            "• [주요 특징]: 주도 섹터별 마감 가격 제안 및 시간외 단일가 동향 모니터링 체제 전환\n"
+            "• [향후 전망]: 글로벌 매크로 지표 및 야간 선물 시장 연동성 검토"
+        )
     else:
         market_summary_keyword = (
             "📊 [장중 실시간 수급 카테고리별 분석]\n\n"
@@ -419,7 +414,7 @@ def fetch_naver_finance_news():
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
-                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
+                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", 
                     "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
                 ]
                 
