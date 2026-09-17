@@ -188,7 +188,7 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """실시간 특징주 뉴스 수집, 최신순 정렬, 링크 포함"""
+    """실시간 특징주 뉴스 수집 후 timestamp 기준 엄격한 내림차순(최신순) 정렬"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
@@ -274,7 +274,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 내림차순 정렬
+    # ⭐ 핵심: 발행 시각(timestamp)을 기준으로 가장 최신 시간이 맨 위로 오도록 내림차순(reverse=True) 정렬 강제 적용
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     
     feature_items = parsed_items[:5]
@@ -291,6 +291,9 @@ def fetch_feature_stocks():
     for fb in fallbacks:
         if len(feature_items) < 5:
             feature_items.append(fb)
+            
+    # 최종 결과물 리스트 역시 timestamp 기준으로 한 번 더 확실하게 정렬
+    feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
     if is_market_closed:
         market_summary_keyword = "국내 증시 마감 결과, 대형 반도체 및 주요 주도 섹터 중심의 수급 공방 속 외국인·기관 순매수 마감 및 업종별 차별화 장세 연출"
