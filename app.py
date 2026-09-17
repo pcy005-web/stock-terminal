@@ -187,8 +187,13 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 종목별 자동 업종/테마 매핑 사전
+# 주요 종목별 테마 매핑 사전 (확장)
 STOCK_THEME_MAP = {
+    "한화생명": "금융/보험",
+    "파루": "IT/부품",
+    "신풍제약": "제약/바이오",
+    "대우건설": "건설/토목",
+    "현대글로비스": "물류/운송",
     "한화시스템": "방산",
     "현대로템": "방산",
     "한화에어로스페이스": "방산",
@@ -204,12 +209,6 @@ STOCK_THEME_MAP = {
     "알테오젠": "바이오",
     "HD현대중공업": "조선",
     "삼성중공업": "조선",
-    "MOL": "해운/조선",
-    "버크셔 해서웨이": "종합지주",
-    "앤씨앤": "반도체/IT",
-    "미투온": "게임/콘텐츠",
-    "카카오게임즈": "게임",
-    "비투엔": "AI/소프트웨어",
     "현대차": "자동차",
     "기아": "자동차",
     "KB금융": "금융",
@@ -220,6 +219,7 @@ def get_stock_with_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
+    # 매핑에 없어도 동적으로 깔끔하게 표시
     return f"{clean_name} - 시장주도주"
 
 def fetch_feature_stocks():
@@ -229,7 +229,6 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 실시간 특징주 수집 쿼리
     query = "코스피 특징주 급등" if is_market_closed else "주식 특징주 급등 상승"
     cache_buster = int(datetime.datetime.now().timestamp() / 10)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
@@ -278,13 +277,19 @@ def fetch_feature_stocks():
                 
                 raw_stock_name = ""
                 
-                # 1단계: 등록된 기업명 매칭
+                # 1단계: 사전 등록된 기업명 매칭
                 for comp in known_companies:
                     if comp in title_clean:
                         raw_stock_name = comp
                         break
                 
-                # 2단계: 따옴표 안의 단어 탐색
+                # 2단계: 스마트 패턴 매칭 ([특징주] 다음에 나오는 기업명 추출)
+                if not raw_stock_name:
+                    match = re.search(r'\[(?:특징주|.*특징주)\]\s*([가-힣A-Za-z0-9]+),', title_clean)
+                    if match:
+                        raw_stock_name = match.group(1).strip()
+                
+                # 3단계: 따옴표 안의 단어 탐색
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
                     exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
@@ -308,24 +313,24 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # 최신 뉴스 기준 상단 정렬 (timestamp 내림차순)
+    # [핵심 수정] 가장 최신 뉴스(시간 내림차순)가 맨 위로 오도록 강력하게 정렬
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = parsed_items[:5]
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "MOL - 해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock": "한화생명 - 금융/보험", "title": f"[{current_time_str}] [특징주] 한화생명, 장중 8%대 급등...수급 개선 및 업종 관심에 상승세", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "대우건설 - 건설/토목", "title": f"[{current_time_str}] [특징주] 대우건설, 기관 매수세 힘입어 장중 5%대 급등...상승 지속될까", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "현대글로비스 - 물류/운송", "title": f"[{current_time_str}] [특징주] 현대글로비스, IR 기대감에 급등...상승세 이어갈까", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "파루 - IT/부품", "title": f"[{current_time_str}] [특징주] 파루, 주식병합·거래재개 후 2거래일 연속 강세...14% 급등", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "신풍제약 - 제약/바이오", "title": f"[{current_time_str}] [특징주] 신풍제약, 호재 없는 급등세에 '단기 과열' 경고등", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
         if len(feature_items) < 5:
             feature_items.append(fb)
             
-    # 최종적으로 최신 시간순 재정렬 보장
+    # 최종 결과물도 최신순(timestamp 내림차순)으로 정확히 재정렬
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
     if is_market_closed:
