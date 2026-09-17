@@ -198,19 +198,25 @@ def get_stock_with_theme(stock_name, title_clean=""):
     
     keyword_theme_rules = {
         "바이오/제약": ["바이오", "제약", "임상", "신약", "유전체", "바이오시밀러", "FDA"],
-        "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리"],
+        "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리", "인텔", "마이크론"],
         "방산": ["방산", "수출", "무기", "방위", "K9"],
         "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주", "우주"],
         "전력기기": ["변압기", "전력", "송배전", "그리드", "배터리"],
         "자동차": ["자동차", "차량", "전기차", "완성차", "부품"],
         "게임/콘텐츠": ["게임", "콘텐츠", "웹툰", "엔터", "피인수", "상한가"],
-        "금융": ["금융", "은행", "증권", "보험", "주주환원"]
+        "금융": ["금융", "은행", "증권", "보험", "주주환원"],
+        "글로벌증시": ["뉴욕증시", "증시", "개장", "미국", "나스닥", "다우"]
     }
     
     for theme, keywords in keyword_theme_rules.items():
         if any(kw in title_clean for kw in keywords):
+            if clean_name == "시장주도주":
+                return f"글로벌 이슈 - {theme}"
             return f"{clean_name} - {theme}"
             
+    if clean_name == "시장주도주":
+        return "시장 동향 - 증시시황"
+        
     return f"{clean_name} - 시장주도주"
 
 _cached_feature_items = []
@@ -224,7 +230,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 💡 intitle 연산자를 사용하여 뉴스 제목 내 키워드 매칭만 엄격하게 검색
+    # 💡 intitle 연산자로 뉴스 제목 내 키워드 매칭만 정확하게 검색
     query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
     
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
@@ -256,7 +262,6 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 💡 파이썬 레벨 검증 필터
                 like_keywords = ["특징주", "장전특징주", "개장전특징주", "상한가"]
                 if not any(kw in title_clean for kw in like_keywords):
                     continue
@@ -291,7 +296,7 @@ def fetch_feature_stocks():
                 
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                     for qm in quoted_matches:
                         if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
                             raw_stock_name = qm
@@ -301,7 +306,7 @@ def fetch_feature_stocks():
                     clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
                     if ',' in clean_for_parse:
                         candidate = clean_for_parse.split(',')[0].strip()
-                        exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                        exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                         if len(candidate) <= 12 and not any(ew in candidate for ew in exclude_words) and not any(char.isdigit() for char in candidate):
                             raw_stock_name = candidate
                 
@@ -328,7 +333,7 @@ def fetch_feature_stocks():
     fallbacks = [
         {"stock_full": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "버크셔 해서웨이 포트폴리오 조정"},
         {"stock_full": "MOL - 조선/해운", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "MOL 노후 유조선 매각 검토"},
-        {"stock_full": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "앤씨앤 피인수"},
+        {"stock_full": "앤씨앤 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "앤씨앤 피인수"},
         {"stock_full": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "미투온 상한가"},
         {"stock_full": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "한화시스템 방산 수출"}
     ]
@@ -362,14 +367,12 @@ def fetch_feature_stocks():
                 
     if is_market_closed:
         market_summary_keyword = (
-            "📊 [장마감 시장 종합 분석 요약]\n\n"
             "• [마감 동향]: 국내 증시 마감에 따른 주요 업종별 수급 마감 결과 반영\n"
             "• [주요 특징]: 주도 섹터별 마감 가격 제안 및 시간외 단일가 동향 모니터링 체제 전환\n"
             "• [향후 전망]: 글로벌 매크로 지표 및 야간 선물 시장 연동성 검토"
         )
     else:
         market_summary_keyword = (
-            "📊 [장중 실시간 수급 카테고리별 분석]\n\n"
             "• [수급 동향]: AI 반도체 및 핵심 소부장 중심의 선별적 매수세 유입\n"
             "• [순환매 전개]: 전력기기·바이오·방산 섹터 간 빠른 순환매 장세 포착\n"
             "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
