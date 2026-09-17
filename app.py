@@ -7,6 +7,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
+from functools import lru_cache
 from flask import Flask, render_template
 import pytz
 
@@ -59,7 +60,7 @@ def fetch_yahoo_data(ticker):
     
     try:
         req = urllib.request.Request(url, headers=yahoo_headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             result_arr = res_json.get('chart', {}).get('result')
             
@@ -99,7 +100,7 @@ def fetch_realtime_data(ticker):
             api_url = f"https://api.upbit.com/v1/ticker?markets={market_code}"
             
             req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 if res_json and isinstance(res_json, list):
                     item = res_json[0]
@@ -146,7 +147,7 @@ def fetch_realtime_data(ticker):
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 item = None
                 if isinstance(res_json, dict):
@@ -184,15 +185,13 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# ==========================================
-# 네이버 금융 API 연동 및 정밀 파싱 함수
-# ==========================================
+@lru_cache(maxsize=128)
 def fetch_naver_stock_theme_api(stock_name):
     try:
         encoded_name = urllib.parse.quote(stock_name.strip())
         search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
         req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
             data = json.loads(response.read().decode('utf-8'))
             stocks_result = data.get('stocks', [])
             if not stocks_result and 'result' in data:
@@ -208,7 +207,6 @@ def fetch_naver_stock_theme_api(stock_name):
     return None
 
 def extract_and_verify_stocks_from_title(title_clean):
-    # 뉴욕증시 관련 개장 전 특징주 예외처리
     if "뉴욕증시" in title_clean and ("개장" in title_clean or "특징주" in title_clean):
         return "뉴욕증시 개장 전 특징주", "해외증시"
 
@@ -281,7 +279,7 @@ def fetch_feature_stocks():
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
     query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
-    cache_buster = int(datetime.datetime.now().timestamp() / 60)
+    cache_buster = int(datetime.datetime.now().timestamp() / 120)  # 캐시 갱신 주기 최적화 (2분 단위)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
@@ -296,7 +294,7 @@ def fetch_feature_stocks():
                 'Pragma': 'no-cache'
             }
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.5) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -416,7 +414,7 @@ def fetch_naver_finance_news():
                 'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
             }
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.5) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -509,7 +507,12 @@ def fetch_naver_finance_news():
             (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차 - 자동차", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
             (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융 - 금융", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
             (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
-            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True)
+            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
+            (f"[{current_hour_str} 섹터 진단] 2차전지 밸류체인 수급 개선 여부 및 캐즘 구간 실적 바닥론 점검", "https://news.google.com", "LG에너지솔루션 - 2차전지", "단기 실적 모멘텀 둔화 속 저가 매수세 유입 가능성 타진", "중립", False),
+            (f"[{current_hour_str} 바이오 포커스] 글로벌 제약사 파이프라인 기술이전 및 임상 결과 모멘텀", "https://news.google.com", "삼성바이오로직스 - 바이오", "대형 라이선스 아웃 계약에 따른 실적 도약 기대감 반영", "호재", False),
+            (f"[{current_hour_str} 인프라 분석] 친환경 에너지 전환 가속화에 따른 전력기기 수주 호조 지속", "https://news.google.com", "HD현대일렉트릭 - 전력기기", "북미 및 중동 지역 중심의 전력망 교체 수요 확대 혜택", "호재", False),
+            (f"[{current_hour_str} 유통/소비재] 중국 내수 부양책 발표에 따른 국내 화장품 및 면세 업종 수혜 검증", "https://news.google.com", "아모레퍼시픽 - 소비재", "수출 다변화 성과에 따른 실적 턴어라운드 속도 확인 필요", "중립", False),
+            (f"[{current_hour_str} 매크로 리스크] 지정학적 리스크 확대에 따른 원자재 가격 변동성 주의", "https://news.google.com", "WTI원유 - 원자재", "공급망 불안정에 따른 수급 단기 충격 여부 모니터링", "리스크", True)
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp, neg = dynamic_fallbacks.pop(0)
