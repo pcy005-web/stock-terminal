@@ -200,6 +200,13 @@ def fetch_feature_stocks():
     parsed_items = []
     seen_titles = set()
     
+    # ⭐ 주요 국내외 기업 및 종목 사전 매핑 정의 (제목 불일치 해결용)
+    known_companies = [
+        "버크셔 해서웨이", "테슬라", "엔비디아", "애플", "마이크로소프트", "알파벳", "구글", "메타", "아마존", "AMD", "넷플릭스", "인텔", "TSMC", "마이크론",
+        "삼성전자", "SK하이닉스", "한미반도체", "LG에너지솔루션", "현대차", "기아", "셀트리온", "삼성바이오로직스", "알테오젠", 
+        "HD현대일렉트릭", "효성중공업", "KB금융", "신한지주", "한화에어로스페이스", "현대로템", "LS일렉트릭"
+    ]
+    
     try:
         req = urllib.request.Request(
             rss_url, 
@@ -241,32 +248,34 @@ def fetch_feature_stocks():
                 
                 item_time_str = pub_dt.strftime('%H:%M')
                 
-                quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                bracket_matches = re.findall(r"\[([^\]]+)\]", title_clean)
-                
                 stock_name = ""
-                exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합"]
                 
-                candidates = quoted_matches + bracket_matches
-                for cand in candidates:
-                    if len(cand) <= 10 and not any(ew in cand for ew in exclude_words) and not any(char.isdigit() for char in cand):
-                        stock_name = cand
+                # 1단계: 제목 내에 알려진 기업명이 포함되어 있는지 직접 검사 (예: 버크셔 해서웨이, 테슬라 등)
+                for comp in known_companies:
+                    if comp in title_clean:
+                        stock_name = comp
                         break
                 
-                # ⭐ 일반적인 문구 대신 구체적인 종목명 및 테마로 완전 대체
+                # 2단계: 사전에 없으면 따옴표나 대괄호 패턴 탐색
                 if not stock_name:
-                    if any(k in title_clean for k in ["삼성전자", "하이닉스", "반도체"]):
-                        stock_name = "삼성전자 / SK하이닉스"
-                    elif any(k in title_clean for k in ["현대차", "기아", "자동차"]):
-                        stock_name = "현대차 / 기아"
-                    elif any(k in title_clean for k in ["바이오", "셀트리온", "알테오젠"]):
-                        stock_name = "알테오젠 / 셀트리온"
-                    elif any(k in title_clean for k in ["전력", "변압기", "효성", "HD현대"]):
-                        stock_name = "HD현대일렉트릭"
-                    elif any(k in title_clean for k in ["방산", "한화", "로템"]):
-                        stock_name = "한화에어로스페이스"
+                    quoted_matches = re.findall(r"'([^']+)'", title_clean)
+                    bracket_matches = re.findall(r"\[([^\]]+)\]", title_clean)
+                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "특징주"]
+                    
+                    candidates = quoted_matches + bracket_matches
+                    for cand in candidates:
+                        if len(cand) <= 12 and not any(ew in cand for ew in exclude_words) and not any(char.isdigit() for char in cand):
+                            stock_name = cand
+                            break
+                
+                # 3단계: 그래도 찾지 못하면 제목의 핵심 단어나 키워드 추출 (엉뚱한 기본값 대치 방지)
+                if not stock_name:
+                    if "미국" in title_clean or "뉴욕" in title_clean or "월스트리트" in title_clean:
+                        stock_name = "미국 증시 특징주"
+                    elif "코스피" in title_clean or "코스닥" in title_clean:
+                        stock_name = "국내 증시 특징주"
                     else:
-                        stock_name = "AI 반도체 및 핵심 소부장"
+                        stock_name = "실시간 마감 특징주"
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
@@ -283,11 +292,11 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
+        {"stock": "버크셔 해서웨이", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "테슬라", "title": f"[{current_time_str}] [미국 특징주] 테슬라 자율주행 및 신규 라인업 모멘텀", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] [특징주] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] [특징주] 북미 전력망 교체 모멘텀 지속에 따른 강세", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] [특징주] 글로벌 바이오 파이프라인 가치 재평가 국면", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] [특징주] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "한화에어로ส페이스 / 현대로템", "title": f"[{current_time_str}] [특징주] K-방산 수출 다변화 및 수주 모멘텀 확장", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock": "HD현대일렉트릭", "title": f"[{current_time_str}] [특징주] 북미 전력망 교체 모멘텀 지속에 따른 강세", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "알테오젠", "title": f"[{current_time_str}] [특징주] 글로벌 바이오 파이프라인 가치 재평가 국면", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
