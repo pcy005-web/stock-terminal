@@ -283,18 +283,18 @@
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 개별 특징주 뉴스 리스트 -->
+            <!-- 개별 특징주 뉴스 리스트 (최대 5개, 최신순) -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-                {% for item in feature_stocks %}
+                {% for item in feature_stocks[:5] %}
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-                        <!-- 왼쪽: 종목명 (item.stock이 있으면 사용, 없으면 타이틀 분석) -->
+                        <!-- 좌측: 이슈 종목명 -->
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
-                            📌 {{ item.stock if item.stock else ('삼성전자·SK하이닉스' if '삼성전자' in item.title and 'SK하이닉스' in item.title else ('삼성전자' if '삼성전자' in item.title else ('SK하이닉스' if 'SK하이닉스' in item.title else '실시간 특징주'))) }}
+                            📌 {{ item.stock if item.stock else '특징주' }}
                         </span>
-                        <!-- 오른쪽: 테마 및 업종 (item.theme 우선 사용) -->
+                        <!-- 우측: 종목 테마 또는 업종 -->
                         <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">
-                            {{ item.theme if item.theme else '실시간테마' }}
+                            {{ item.theme if item.theme else '시장주도주' }}
                         </span>
                     </div>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">
@@ -304,10 +304,10 @@
                 {% endfor %}
             </div>
 
-            <!-- 하단 장중 실시간 수급 분석 요약 -->
+            <!-- 하단 장중 수급 분석 (마감시황 종합) -->
             <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 6px; padding: 14px;">
                 <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-                    📡 장중 실시간 수급 분석 (마감시황 종합)
+                    📡 장중 수급 분석 (마감시황 종합)
                 </div>
                 <div id="feature-market-summary-box" style="display: flex; flex-direction: column; gap: 8px;">
                     <div class="summary-raw-text" style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">
@@ -341,7 +341,7 @@
         function cleanSummaryText(str) {
             if (!str) return '';
             let cleaned = str
-                .replace(/장중 실시간 수급 카테고리별 분석/g, '장중 실시간 수급 분석')
+                .replace(/장중 실시간 수급 카테고리별 분석/g, '장중 수급 분석')
                 .replace(/[·]/g, '')
                 .replace(/^[📌\s]+/, '')
                 .replace(/[\s.]+$/, '')
@@ -444,9 +444,10 @@
                     
                     if (container && data.feature_stocks) {
                         let html = '';
-                        data.feature_stocks.forEach(item => {
-                            let stockLabel = item.stock || '실시간 특징주';
-                            let themeLabel = item.theme || '실시간테마';
+                        // 최대 5개 제한 반영
+                        data.feature_stocks.slice(0, 5).forEach(item => {
+                            let stockLabel = item.stock || '특징주';
+                            let themeLabel = item.theme || '시장주도주';
                             let titleText = item.title || '';
 
                             html += `
