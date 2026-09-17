@@ -253,17 +253,18 @@ def fetch_feature_stocks():
                         stock_name = cand
                         break
                 
+                # '시장 주도 특징주' 대신 명확한 종목명 유도
                 if not stock_name:
                     if any(k in title_clean for k in ["삼성전자", "하이닉스", "반도체"]):
                         stock_name = "삼성전자 / SK하이닉스"
                     elif any(k in title_clean for k in ["현대차", "기아", "자동차"]):
                         stock_name = "현대차 / 기아"
                     elif any(k in title_clean for k in ["바이오", "셀트리온", "알테오젠"]):
-                        stock_name = "바이오 핵심주"
+                        stock_name = "알테오젠 / 셀트리온"
                     elif any(k in title_clean for k in ["전력", "변압기", "효성", "HD현대"]):
-                        stock_name = "전력기기 인프라"
+                        stock_name = "HD현대일렉트릭"
                     else:
-                        stock_name = "시장 주도 특징주"
+                        stock_name = "코스피·코스닥 핵심 주도종목"
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
@@ -293,10 +294,21 @@ def fetch_feature_stocks():
             
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
+    # ⭐ 장마감 후 키움증권 종합뉴스 및 연동 매체 기반 카테고리별 증시마감 요약 구성
     if is_market_closed:
-        market_summary_keyword = "국내 증시 마감 결과, 대형 반도체 및 주요 주도 섹터 중심의 수급 공방 속 외국인·기관 순매수 마감 및 업종별 차별화 장세 연출"
+        market_summary_keyword = (
+            "📌 [코스피·코스닥 장마감 카테고리별 요약]\n"
+            "• [외인·기관 수급]: 기관 및 기타법인의 순매수 유입 속 외인 매도세 방어\n"
+            "• [주도 업종 섹터]: 반도체 대형주(삼성전자, SK하이닉스 등) 반등 주도\n"
+            "• [지수 마감 결과]: 양대 지수 하방 경직성 확보하며 투자심리 회복세 마감"
+        )
     else:
-        market_summary_keyword = "실시간 특징주 수급 분석 결과, AI 반도체 및 전력기기·바이오 섹터 중심의 선별적 매수세 유입과 순환매 장세 전개 중"
+        market_summary_keyword = (
+            "📌 [장중 실시간 수급 카테고리별 분석]\n"
+            "• [수급 동향]: AI 반도체 및 핵심 소부장 중심의 선별적 매수세 유입\n"
+            "• [순환매 전개]: 전력기기·바이오·방산 섹터 간 빠른 순환매 장세 포착\n"
+            "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
+        )
         
     return feature_items[:5], market_summary_keyword
 
@@ -416,7 +428,7 @@ def fetch_naver_finance_news():
             (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 10년물, NAVER, 카카오", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
             (f"[{current_hour_str} 산업 리포트] 조선업 슈퍼사이클 고부가가치선 건조 마진율 확대 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "선가 상승 사이클 속 실적 턴어라운드 공식 입증", "호재", False),
             (f"[{current_hour_str} 바이오 섹터] 글로벌 임상 데이터 발표에 따른 펀더멘털 재평가 국면", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "파이프라인 가치 반영 및 기관 수급 유입 강도 체크", "호재", False),
-            (f"[{current_hour_str} 인프라 동향] 북미 전력망 교체 수요에 따른 전력기기 실적 서프라이즈 전망", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "구조적 수급 우위에 있는 북미 수출주 비중 유지", "호재", False),
+            (f"[{current_hour_str} 인프라 동향] 북미 전력망 교체 수요에 따른 전력기기 실적 서프라이즈 전망", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "구조적 수익 우위에 있는 북미 수출주 비중 유지", "호재", False),
             (f"[{current_hour_str} 시장 심리] 코스피/코스닥 거래대금 회복 국면에서의 섹터별 순환매 대응", "https://news.google.com", "코스피 대형주, 코스닥 우량주", "주도주 수급 쏠림 현상 해소 여부 확인", "중립", False),
             (f"[{current_hour_str} 원자재 리스크] 에너지 가격 및 원자재 수급 불안정에 따른 원가 부담 점검", "https://news.google.com", "WTI원유, 금현물, 화학·정유 섹터", "원가 상승 압박이 마진에 미치는 부정적 영향 필터링", "리스크", True)
         ]
