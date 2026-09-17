@@ -1,11 +1,10 @@
 from flask import Flask, render_template, jsonify
 import random
 import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-# 전역 변수로 장전 마켓 요약 데이터 관리 (매일 아침 8시 자동 갱신)
+# 장전 마켓 요약 데이터 관리 (요청하신 한지영 연구원 리포트 양식 적용)
 morning_briefing_data = {
     "date_title": "9/17, 장 시작 전 생각: 9월 FOMC와 증시 추세, 키움 한지영",
     "market_indices": "- 다우 -1.21%, S&P500 -0.45%, 나스닥 -0.01%\n- 엔비디아 +0.8%, 마이크론 -0.1%, 샌디스크 -0.7%\n- 미 10년물 금리 5.02%, 미 30년물 금리 5.36%, WTI 101.9달러",
@@ -19,19 +18,6 @@ morning_briefing_data = {
     "closing": "오늘도 날씨가 무척이나 좋다고 합니다.\n공기도 맑고 낮에도 그리 덥지 않다고 하니,\n바쁘고 분주한 하루를 보내시겠지만, 중간중간 바깥 공기 쐬시면서 리프레쉬도 잘하셨으면 좋겠습니다.\n\n늘 건강도 잘 챙기시고요.\n오늘 하루도 화이팅 하시길 바랍니다.\n\n키움 한지영\n\nhttps://www.kiwoom.com/h/invest/research/VMarketSDDetailView?sqno=7198",
     "stocks": ["삼성전자", "SK하이닉스", "한미반도체", "KB금융", "신한지주", "현대차"]
 }
-
-def update_morning_briefing():
-    """매일 오전 8시에 실행되어 글로벌 시장 데이터를 기반으로 요약을 갱신하는 함수"""
-    global morning_briefing_data
-    now_str = datetime.datetime.now().strftime('%m/%d')
-    # 실제 운영 시 이 부분에 크롤링 또는 LLM API 연동 코드를 넣어 갱신할 수 있습니다.
-    morning_briefing_data["date_title"] = f"{now_str}, 장 시작 전 생각: 글로벌 증시 동향 및 주요 매크로 점검, 키움 한지영 스타일"
-    print(f"[{datetime.datetime.now()}] 장전 5분 마켓 핵심 요약 데이터가 아침 8시 기준으로 자동 갱신되었습니다.")
-
-# APScheduler 백그라운드 스케줄러 설정 (매일 오전 8시 0분 실행)
-scheduler = BackgroundScheduler()
-scheduler.add_job(update_morning_briefing, 'cron', hour=8, minute=0)
-scheduler.start()
 
 def get_mock_quotes():
     return {
@@ -79,7 +65,7 @@ def index():
     ]
     
     news_list = [
-        {'title': '연준, 금리 인하 기대감 속 물가 지표 주시', 'link': '#', 'type': '중립', 'comment': '발표될 지표에 따라 변동성 확대 가능성', 'stock': '전체 시장'},
+        {'title': '연준, 금리 인 하 기대감 속 물가 지표 주시', 'link': '#', 'type': '중립', 'comment': '발표될 지표에 따라 변동성 확대 가능성', 'stock': '전체 시장'},
         {'title': '반도체 수출 호조세 지속… 메모리 가격 반등', 'link': '#', 'type': '호재', 'comment': '실적 개선 기대감 선반영 구간', 'stock': '삼성전자, SK하이닉스'},
         {'title': '정부, 밸류업 프로그램 세제 혜택 가시화', 'link': '#', 'type': '호재', 'comment': '저PBR 종목군 저가 매수세 지속 유입', 'stock': 'KB금융, 신한지주'},
         {'title': '중국 경기 회복 지연 우려에 원자재 가격 조정', 'link': '#', 'type': '악재', 'comment': '철강 및 화학 섹터 단기 수급 부담', 'stock': 'POSCO홀딩스, LG화학'},
