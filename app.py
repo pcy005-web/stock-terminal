@@ -188,23 +188,18 @@ def fetch_realtime_data(ticker):
 # 네이버 금융 API 연동 및 정밀 파싱 함수
 # ==========================================
 def fetch_naver_stock_theme_api(stock_name):
-    """
-    네이버 금융 API 및 검색 구조를 활용하여 종목명의 테마/업종 정보를 동적으로 조회합니다.
-    """
     try:
         encoded_name = urllib.parse.quote(stock_name.strip())
         search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
         req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
             data = json.loads(response.read().decode('utf-8'))
-            # 네이버 검색 결과 내 국내 주식 항목 탐색
             stocks_result = data.get('stocks', [])
             if not stocks_result and 'result' in data:
                 stocks_result = data.get('result', {}).get('stocks', [])
             
             if stocks_result:
                 item = stocks_result[0]
-                # 업종 또는 테마 필드가 있는 경우 반환
                 item_theme = item.get('themeName') or item.get('industryName') or item.get('sectorName')
                 if item_theme:
                     return item_theme
@@ -213,10 +208,10 @@ def fetch_naver_stock_theme_api(stock_name):
     return None
 
 def extract_and_verify_stocks_from_title(title_clean):
-    """
-    뉴스 타이틀에서 종목들을 완벽하게 추출하고 네이버 API를 통해 테마를 매핑합니다.
-    """
-    # 대괄호 내용 분리 및 정제 ([개장전특징주], [상한가 종목] 등 제거)
+    # 뉴욕증시 관련 개장 전 특징주 예외처리
+    if "뉴욕증시" in title_clean and ("개장" in title_clean or "특징주" in title_clean):
+        return "뉴욕증시 개장 전 특징주", "해외증시"
+
     text_no_bracket = re.sub(r'\[.*?\]', '', title_clean).strip()
     
     exclude_words = [
@@ -226,12 +221,10 @@ def extract_and_verify_stocks_from_title(title_clean):
     ]
 
     core_text = text_no_bracket
-    # 문장 뒤쪽 불필요한 서술어 제거 (말줄임 현상 방지용 기준 완화)
-    for sep_end in [" 이어 ", " 등 ", " 상장", " 주식", " 마감"]:
+    for sep_end in [" 이어 ", " 등 ", " 상장", " 주식", " 마감", " 상장폐지"]:
         if sep_end in core_text:
             core_text = core_text.split(sep_end)[0]
 
-    # 구분자(·, ,, -, 공백 등)를 기준으로 종목명 분리
     parts = re.split(r'[·,\-\s/]+', core_text)
     valid_stocks = []
     
@@ -253,17 +246,17 @@ def extract_and_verify_stocks_from_title(title_clean):
     if valid_stocks:
         stock_result = "·".join(valid_stocks[:4])
         
-        # 네이버 API를 활용한 동적 테마 매핑 시도
         detected_theme = None
         for stock in valid_stocks:
             detected_theme = fetch_naver_stock_theme_api(stock)
             if detected_theme:
                 break
         
-        # API 조회 실패 시 키워드 기반 폴백 매핑
         if not detected_theme:
             joined_str = "".join(valid_stocks)
-            if any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM", "마이크"]):
+            if any(k in joined_str for k in ["제일엠앤에스"]):
+                detected_theme = "이차전지/장비"
+            elif any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM", "마이크"]):
                 detected_theme = "AI 반도체"
             elif any(k in joined_str for k in ["현대차", "자동차", "레나"]):
                 detected_theme = "자동차"
@@ -316,7 +309,7 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                like_keywords = ["특징주", "장전특징주", "개장전특징주", "상한가"]
+                like_keywords = ["특징주", "장전특징주", "개장전특징주", "상한가", "뉴욕증시"]
                 if not any(kw in title_clean for kw in like_keywords):
                     continue
                 
@@ -361,11 +354,10 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "현대차·데이원컴퍼니·엠오티", "theme": "자동차", "title": f"[{current_time_str}] [특징주] 현대차·데이원컴퍼니·엠오티, 주식소각…22일 변경상장", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "현대차 주식소각"},
-        {"stock": "인텔·네비우스·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [개장전특징주]인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"},
-        {"stock": "진양화학·비츠로테크·나라스페이스테크놀로지·앤씨앤", "theme": "우주항공/소부장", "title": f"[{current_time_str}] [상한가 종목] 진양화학-비츠로테크 이어 나라스페이스테크놀로지-앤씨앤 등 마감", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "나라스페이스 상한가"},
-        {"stock": "미투온", "theme": "게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "미투온 상한가"},
-        {"stock": "한화시스템", "theme": "방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "한화시스템 방산 수출"}
+        {"stock": "뉴욕증시 개장 전 특징주", "theme": "해외증시", "title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "뉴욕증시 개장 전 특징주"},
+        {"stock": "제일엠앤에스", "theme": "이차전지/장비", "title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "제일엠앤에스 상장폐지"},
+        {"stock": "인텔·네비우스·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [21:33] [개장전특징주]인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"},
+        {"stock": "진양화학·비츠로테크·나라스페이스테크놀로지·앤씨앤", "theme": "우주항공/소부장", "title": f"[{current_time_str}] [21:30] [상한가 종목] 진양화학-비츠로테크 이어 나라스페이스테크놀로지-앤씨앤 등 마감", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "나라스페이스 상한가"}
     ]
     
     for fb in fallbacks:
