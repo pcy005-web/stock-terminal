@@ -57,8 +57,7 @@
         .highlight-up { background-color: rgba(239, 68, 68, 0.25); }
         .highlight-down { background-color: rgba(59, 130, 246, 0.25); }
         
-        /* 실시간 갱신 시 확실하게 눈에 띄는 주황빛 깜빡이 효과 */
-        .highlight-update { background-color: rgba(245, 158, 11, 0.4) !important; transition: background-color 0.5s ease; }
+        .highlight-update { background-color: rgba(245, 158, 11, 0.4) !important; border-color: #f59e0b !important; transition: background-color 0.5s ease; }
 
         .up { color: var(--accent-red); }
         .down { color: var(--accent-blue); }
@@ -284,7 +283,7 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (실시간 최신순 및 갱신 효과 적용) -->
+    <!-- 7. 장중 특징주 핫이슈 (실시간 종목 표시 및 카테고리별 마감요약 반영) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
@@ -298,8 +297,8 @@
             </div>
 
             <div style="background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 12px 14px;">
-                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 4px;">📈 증시마감 키워드 요약</div>
-                <div id="feature-market-summary-box" style="font-size: 0.82rem; color: var(--text-main); line-height: 1.5;">{{ feature_market_summary }}</div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 6px;">📈 증시마감 키워드 요약</div>
+                <div id="feature-market-summary-box" style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6; white-space: pre-line;">{{ feature_market_summary }}</div>
             </div>
         </div>
     </div>
@@ -398,7 +397,6 @@
                         });
                         container.innerHTML = html;
 
-                        // 갱신 시 주황빛 깜빡이 효과 유지 후 부드럽게 제거
                         setTimeout(() => {
                             const items = container.querySelectorAll('.feature-card-link');
                             items.forEach(el => el.classList.remove('highlight-update'));
@@ -412,10 +410,7 @@
                 .catch(err => console.error('특징주 실시간 갱신 실패:', err));
         }
 
-        // 3초마다 지표 갱신
         setInterval(updateMarketQuotes, 3000);
-        
-        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신
         setInterval(updateFeatureStocks, 30000);
     </script>
 </body>
