@@ -187,7 +187,6 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 종목별 자동 업종/테마 매핑 사전
 STOCK_THEME_MAP = {
     "한화시스템": "방산",
     "현대로템": "방산",
@@ -218,7 +217,6 @@ STOCK_THEME_MAP = {
 
 def get_stock_with_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
-    # 사전에 등록된 종목이면 "종목명 - 테마" 형식으로 반환
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
     return clean_name
@@ -235,7 +233,6 @@ def fetch_feature_stocks():
     
     parsed_items = []
     seen_titles = set()
-    
     known_companies = list(STOCK_THEME_MAP.keys())
     
     try:
@@ -278,16 +275,13 @@ def fetch_feature_stocks():
                         pass
                 
                 item_time_str = pub_dt.strftime('%H:%M')
-                
                 raw_stock_name = ""
                 
-                # 1단계: 알려진 기업명 매칭
                 for comp in known_companies:
                     if comp in title_clean:
                         raw_stock_name = comp
                         break
                 
-                # 2단계: 따옴표 안의 기업명 탐색
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
                     exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
@@ -296,15 +290,11 @@ def fetch_feature_stocks():
                             raw_stock_name = qm
                             break
                 
-                # 3단계: 대괄호 분석 (시장분석/테마형 리포트인 경우 키워드 추출)
                 if not raw_stock_name:
                     bracket_match = re.search(r"\[([^\]]+)\]", title_clean)
                     if bracket_match:
                         bracket_content = bracket_match.group(1)
-                        # "테오도르의 시장분석" 같은 분석글 형태라면 제목 내부의 핵심 업종 키워드 조합 활용
                         if "시장분석" in bracket_content or "분석" in bracket_content:
-                            # 따옴표나 특정 명칭 추출 시도, 또는 제목 뒷부분의 키워드 활용
-                            # 예: "광통신·첨단소재·로봇·에너지" 같은 단어 캐치
                             for kw in ["광통신", "첨단소재", "로봇", "에너지", "반도체", "이차전지", "바이오", "방산", "조선"]:
                                 if kw in title_clean and kw not in raw_stock_name:
                                     raw_stock_name = f"{raw_stock_name} {kw}".strip()
@@ -320,10 +310,9 @@ def fetch_feature_stocks():
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                # 요구하신 "종목 - 테마" 포맷 적용
                 stock_name = get_stock_with_theme(raw_stock_name)
-                
                 formatted_title = f"[{item_time_str}] {title_clean}"
+                
                 parsed_items.append({
                     "stock": stock_name,
                     "title": formatted_title,
@@ -416,7 +405,6 @@ def fetch_naver_finance_news():
                     valid_stocks.append(m)
                 
                 extracted_stocks_from_quotes = ", ".join(valid_stocks)
-
                 related_stock = ""
                 news_type = "중립"
                 comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
@@ -436,7 +424,7 @@ def fetch_naver_finance_news():
                     if is_negative:
                         related_stock = "원/달러 환율, 지수 방어주"
                     elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아"]):
-                        related_stock = "삼성전자, SK하이닉스"
+                        related_stock = "삼성전자"
                     elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
                         related_stock = "HD현대일렉트릭"
                     elif any(k in title_clean for k in ["방산", "조선", "수주"]):
@@ -471,7 +459,6 @@ def fetch_naver_finance_news():
                 })
                 
         news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
-        
     except Exception:
         pass
         
