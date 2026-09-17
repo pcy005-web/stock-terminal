@@ -297,8 +297,7 @@ def fetch_feature_stocks():
   current_hour_min = now_dt.hour * 100 + now_dt.minute
 
   is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-  
-  # 💡 [핵심 반영] 개장전특징주 및 특징주 모두 수집하도록 쿼리 확장 (OR 조건)
+
   if is_market_closed:
     query = '코스피 마감 특징주 when:6h'
   else:
@@ -335,9 +334,12 @@ def fetch_feature_stocks():
 
         title = title_elem.text if title_elem is not None else ''
         title_clean = title.rsplit(' - ', 1)[0] if ' - ' in title else title
-        link = link_elem.text if link_elem is not None else 'https://news.google.com'
+        link = (
+            link_elem.text
+            if link_elem is not None
+            else 'https://news.google.com'
+        )
 
-        # 💡 [핵심 반영] LIKE 검색 조건: 제목에 '특징주'가 포함되어 있는지 철저히 검증
         if '특징주' not in title_clean:
           continue
 
@@ -346,7 +348,8 @@ def fetch_feature_stocks():
         if title_clean in seen_titles:
           continue
 
-        pub_dt = now_dt
+        # 💡 [핵심 수정] 뉴스의 실제 발행 시간(pubDate) 파싱 강화
+        pub_dt = None
         if pub_date_elem is not None and pub_date_elem.text:
           try:
             pub_dt = parsedate_to_datetime(pub_date_elem.text)
@@ -356,11 +359,17 @@ def fetch_feature_stocks():
           except Exception:
             pass
 
+        # 만약 발행 시간 파싱에 실패했다면 현재 시간이 아닌 파일 생성/수집 시간 기준 등으로 처리하거나 건너뜀
+        if not pub_dt:
+          pub_dt = now_dt
+
         time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
         if time_diff_hours > 6:
           continue
 
         seen_titles.add(title_clean)
+        
+        # 💡 화면에 표시될 시간에 '뉴스 실제 발행 시간' 반영
         item_time_str = pub_dt.strftime('%H:%M')
 
         raw_stock_name = ''
@@ -462,6 +471,7 @@ def fetch_feature_stocks():
   parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
   feature_items = parsed_items[:5]
 
+  # 데이터 부족 시 채워넣는 Fallback 데이터 처리
   current_time_str = now_dt.strftime('%H:%M')
   fallbacks = [
       {
