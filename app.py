@@ -187,8 +187,11 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 주요 종목별 테마 매핑 사전 (확장)
+# 종목별 테마 매핑 사전 (왼쪽: 종목, 오른쪽: 테마)
 STOCK_THEME_MAP = {
+    "스냅": "플랫폼/SNS",
+    "스펙스": "플랫폼/SNS",
+    "버크셔 해서웨이": "종합지주",
     "한화생명": "금융/보험",
     "파루": "IT/부품",
     "신풍제약": "제약/바이오",
@@ -200,26 +203,18 @@ STOCK_THEME_MAP = {
     "삼성전자": "AI 반도체",
     "SK하이닉스": "AI 반도체",
     "한미반도체": "AI 반도체",
-    "리노공업": "AI 반도체",
     "HD현대일렉트릭": "전력기기",
     "효성중공업": "전력기기",
-    "LS일렉트릭": "전력기기",
     "삼성바이오로직스": "바이오",
     "셀트리온": "바이오",
-    "알테오젠": "바이오",
-    "HD현대중공업": "조선",
-    "삼성중공업": "조선",
-    "현대차": "자동차",
-    "기아": "자동차",
     "KB금융": "금융",
-    "신한지주": "금융"
+    "현대차": "자동차"
 }
 
 def get_stock_with_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
-    # 매핑에 없어도 동적으로 깔끔하게 표시
     return f"{clean_name} - 시장주도주"
 
 def fetch_feature_stocks():
@@ -229,7 +224,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "코스피 특징주 급등" if is_market_closed else "주식 특징주 급등 상승"
+    query = "코스피 특징주 급등" if is_market_closed else "주식 특징주 급등 상승 미국 특징주"
     cache_buster = int(datetime.datetime.now().timestamp() / 10)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -283,9 +278,9 @@ def fetch_feature_stocks():
                         raw_stock_name = comp
                         break
                 
-                # 2단계: 스마트 패턴 매칭 ([특징주] 다음에 나오는 기업명 추출)
+                # 2단계: 스마트 패턴 매칭 ([특징주] 또는 [미국 특징주] 다음에 나오는 기업명 추출)
                 if not raw_stock_name:
-                    match = re.search(r'\[(?:특징주|.*특징주)\]\s*([가-힣A-Za-z0-9]+),', title_clean)
+                    match = re.search(r'\[(?:.*특징주)\]\s*([가-힣A-Za-z0-9\s]+),', title_clean)
                     if match:
                         raw_stock_name = match.group(1).strip()
                 
@@ -313,24 +308,26 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # [핵심 수정] 가장 최신 뉴스(시간 내림차순)가 맨 위로 오도록 강력하게 정렬
+    # [핵심] 현재 시각 기준 가장 최신 뉴스(시간 내림차순, 최신순)가 맨 위로 오도록 강제 정렬
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
+    
+    # 실시간으로 수집된 최신 뉴스를 우선 반영하고, 부족할 경우만 현재 시각에 맞춘 폴백 사용
     feature_items = parsed_items[:5]
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
+        {"stock": "스펙스 - 플랫폼/SNS", "title": f"[{current_time_str}] [미국 특징주] 스냅, AR 글래스 '스펙스' 파트너십·S/W 세부 공개", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [미국 특징주] 버크셔 해서웨이, 일본 종합상사 지분 추가 확대 검토", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "한화생명 - 금융/보험", "title": f"[{current_time_str}] [특징주] 한화생명, 장중 8%대 급등...수급 개선 및 업종 관심에 상승세", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "대우건설 - 건설/토목", "title": f"[{current_time_str}] [특징주] 대우건설, 기관 매수세 힘입어 장중 5%대 급등...상승 지속될까", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "현대글로비스 - 물류/운송", "title": f"[{current_time_str}] [특징주] 현대글로비스, IR 기대감에 급등...상승세 이어갈까", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "파루 - IT/부품", "title": f"[{current_time_str}] [특징주] 파루, 주식병합·거래재개 후 2거래일 연속 강세...14% 급등", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "신풍제약 - 제약/바이오", "title": f"[{current_time_str}] [특징주] 신풍제약, 호재 없는 급등세에 '단기 과열' 경고등", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock": "대우건설 - 건설/토목", "title": f"[{current_time_str}] [특징주] 대우건설, 기관 매수세 힘입어 장중 5%대 급등", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "현대글로비스 - 물류/운송", "title": f"[{current_time_str}] [특징주] 현대글로비스, IR 기대감에 급등...상승세 이어갈까", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
         if len(feature_items) < 5:
             feature_items.append(fb)
             
-    # 최종 결과물도 최신순(timestamp 내림차순)으로 정확히 재정렬
+    # 최종 결과물도 최신 시간순(timestamp 내림차순)으로 완벽하게 재정렬하여 반환
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
     if is_market_closed:
