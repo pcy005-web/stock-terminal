@@ -188,14 +188,11 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """실시간 특징주 뉴스 수집 및 엄격한 최신순 정렬 (요약 기사 필터링)"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-    
-    # 순수 실시간 특징주 속보만 정확히 타겟팅
     query = "코스피 마감 특징주" if is_market_closed else "[특징주] 급등 when:3h"
     cache_buster = int(datetime.datetime.now().timestamp() / 15)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
@@ -225,7 +222,6 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 과거 요약 기사나 날짜가 포함된 모음 뉴스 배제
                 if "주요 특징주" in title_clean or "오늘(" in title_clean:
                     continue
                 
@@ -279,9 +275,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # ⭐ 발행 시각(timestamp) 기준 최신순 내림차순 정렬 엄격 적용
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
-    
     feature_items = parsed_items[:5]
         
     current_time_str = now_dt.strftime('%H:%M')
@@ -611,29 +605,6 @@ def api_feature_stocks():
         "feature_stocks": items,
         "feature_market_summary": market_summary
     }, ensure_ascii=False)
-
-@app.route('/api/ai-briefing')
-def api_ai_briefing():
-    price_map = {}
-    tasks = []
-    for cat in MARKET_CATEGORIES:
-        for stock in cat['stocks']:
-            tasks.append((stock['code'], stock['ticker']))
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        for future in as_completed(future_to_code):
-            code = future_to_code[future]
-            try:
-                data = future.result()
-                if data:
-                    price_map[code] = data
-            except Exception:
-                pass
-
-    news_list = fetch_naver_finance_news()
-    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
-    return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
