@@ -291,15 +291,22 @@
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
-                    <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 {{ item.stock }}</span>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                        <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 스냅 (SNAP)</span>
+                        <span style="font-size: 0.72rem; color: var(--text-sub);">특징주 이슈</span>
+                    </div>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">{{ item.title }}</span>
                 </a>
                 {% endfor %}
             </div>
 
-            <div style="background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 12px 14px;">
-                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 4px;">📈 증시마감 키워드 요약</div>
-                <div id="feature-market-summary-box" style="font-size: 0.82rem; color: var(--text-main); line-height: 1.5;">{{ feature_market_summary }}</div>
+            <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 6px; padding: 14px;">
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    📈 증시마감 키워드 요약
+                </div>
+                <div id="feature-market-summary-box" style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">
+                    {{ feature_market_summary }}
+                </div>
             </div>
         </div>
     </div>
@@ -392,7 +399,10 @@
                         data.feature_stocks.forEach(item => {
                             html += `
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
-                                <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${item.stock}</span>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                    <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 스냅 (SNAP)</span>
+                                    <span style="font-size: 0.72rem; color: var(--text-sub);">특징주 이슈</span>
+                                </div>
                                 <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${item.title}</span>
                             </a>`;
                         });
@@ -415,7 +425,7 @@
         // 3초마다 지표 갱신
         setInterval(updateMarketQuotes, 3000);
         
-        // 15초마다 특징주 및 증시요약 키워드 비동기 갱신 (실시간성 강화)
+        // 15초마다 특징주 및 증시요약 키워드 비동기 갱신
         setInterval(updateFeatureStocks, 15000);
     </script>
 </body>
