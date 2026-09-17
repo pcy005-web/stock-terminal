@@ -64,7 +64,7 @@
         .content-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
         .content-card h3 { font-size: 0.95rem; color: var(--accent-main); margin-bottom: 8px; }
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border-color); }
         
         .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .news-box:last-child { border-bottom: none; }
@@ -290,11 +290,15 @@
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
-                    <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
                             {% if '스냅' in item.title %}📌 스냅 (SNAP)
                             {% elif '삼성전자' in item.title %}📌 삼성전자 · SK하이닉스
                             {% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
+                        </span>
+                        <!-- 🏷️ 테마 및 업종 정보 (태그) 복구 -->
+                        <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">
+                            {{ item.sector|default('반도체/IT') }}
                         </span>
                     </div>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">
@@ -338,7 +342,6 @@
             formatSummaryBox();
         });
 
-        // 문장 변환 및 맨 끝 온점(.), 가운데점(·), 공백들을 확실하게 없애는 파서
         function cleanSummaryText(str) {
             if (!str) return '';
             let cleaned = str
@@ -448,6 +451,7 @@
                         data.feature_stocks.forEach(item => {
                             let stockLabel = item.stock || '실시간 특징주';
                             let titleText = item.title || '';
+                            let sectorText = item.sector || '반도체/IT';
 
                             if (titleText.includes('삼성전자') && !titleText.includes('하이닉스')) {
                                 titleText = titleText.replace('삼성전자', '삼성전자·SK하이닉스');
@@ -458,8 +462,9 @@
 
                             html += `
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
-                                <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
                                     <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${stockLabel}</span>
+                                    <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">${sectorText}</span>
                                 </div>
                                 <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${titleText}</span>
                             </a>`;
