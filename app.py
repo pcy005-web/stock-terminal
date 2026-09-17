@@ -123,7 +123,6 @@ def fetch_realtime_data(ticker):
 
     try:
         api_url = None
-
         if ticker.startswith('NAVER_DOMESTIC_'):
             target = ticker.replace('NAVER_DOMESTIC_', '')
             api_url = f"https://polling.finance.naver.com/api/realtime/domestic/index/{target}"
@@ -149,7 +148,6 @@ def fetch_realtime_data(ticker):
             req = urllib.request.Request(api_url, headers=headers)
             with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
-                
                 item = None
                 if isinstance(res_json, dict):
                     if 'closePrice' in res_json or 'price' in res_json or 'nowValue' in res_json or 'dealBasRate' in res_json:
@@ -176,7 +174,6 @@ def fetch_realtime_data(ticker):
                             'rate': f"{rate_val:+.2f}%", 
                             'is_up': is_up
                         }
-
     except Exception:
         pass
         
@@ -196,7 +193,6 @@ STOCK_THEME_MAP = {
 
 def get_stock_with_theme(stock_name, title_clean=""):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
-    
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
     
@@ -222,14 +218,12 @@ _last_raw_titles = set()
 
 def fetch_feature_stocks():
     global _cached_feature_items, _last_raw_titles
-    
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
-    
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -261,7 +255,6 @@ def fetch_feature_stocks():
                 
                 if "주요 특징주" in title_clean or "오늘(" in title_clean:
                     continue
-                
                 if title_clean in seen_titles:
                     continue
                 
@@ -282,7 +275,7 @@ def fetch_feature_stocks():
                 seen_titles.add(title_clean)
                 item_time_str = pub_dt.strftime('%H:%M')
                 
-                # [개선] 시황, ETF, 지수 관련 뉴스 예외 처리 분기
+                # 시황, ETF, 지수 관련 뉴스 예외 처리
                 raw_stock_name = ""
                 if any(kw in title_clean for kw in ["[ETF 시황]", "[시황]", "ETF 강세", "코스피 약보합", "코스닥"]):
                     if "조선" in title_clean or "우주" in title_clean:
@@ -350,7 +343,6 @@ def fetch_feature_stocks():
     feature_items = feature_items[:5]
     
     current_raw_titles = set(item["raw_title"] for item in feature_items)
-    
     if _cached_feature_items and current_raw_titles == _last_raw_titles:
         feature_items = _cached_feature_items
     else:
@@ -372,14 +364,14 @@ def fetch_feature_stocks():
                 
     if is_market_closed:
         market_summary_keyword = (
-            "📌 [코스피·코스닥 장마감 카테고리별 요약]\n"
+            "📊 [코스피·코스닥 장마감 카테고리별 요약]\n\n"
             "• [외인·기관 수급]: 기관 및 기타법인의 순매수 유입 속 외인 매도세 방어\n"
-            "• [주도 업종 섹터]: 반도체 대형주(삼성전자, SK하이닉스 등) 반등 주도\n"
+            "• [주도 업종 섹터]: 반도체 대형주(삼성전자, SK하이닉스 등) 및 핵심 주도주 반등 주도\n"
             "• [지수 마감 결과]: 양대 지수 하방 경직성 확보하며 투자심리 회복세 마감"
         )
     else:
         market_summary_keyword = (
-            "📌 [장중 실시간 수급 카테고리별 분석]\n"
+            "📊 [장중 실시간 수급 카테고리별 분석]\n\n"
             "• [수급 동향]: AI 반도체 및 핵심 소부장 중심의 선별적 매수세 유입\n"
             "• [순환매 전개]: 전력기기·바이오·방산 섹터 간 빠른 순환매 장세 포착\n"
             "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
@@ -435,7 +427,6 @@ def fetch_naver_finance_news():
                     valid_stocks.append(m)
                 
                 extracted_stocks_from_quotes = ", ".join(valid_stocks)
-
                 related_stock = ""
                 news_type = "중립"
                 comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
@@ -490,7 +481,6 @@ def fetch_naver_finance_news():
                 })
                 
         news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
-        
     except Exception:
         pass
         
@@ -514,7 +504,6 @@ def generate_theme_sync_analysis(quotes, news_list):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
-    
     sox_rate = sox.get('rate', '+0.00%')
     nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
@@ -546,10 +535,7 @@ def generate_smart_money_analysis(quotes):
     badge_class = "up" if kospi_up else "down"
     
     domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
-    decoupling_text = (
-        "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, "
-        "지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 순환 수급 포착"
-    )
+    decoupling_text = "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, 지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 수급 포착"
     concentrated_themes = (
         "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
         "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
@@ -664,7 +650,6 @@ def api_quotes():
                 price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
             except Exception:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-                
     return json.dumps(price_map, ensure_ascii=False)
 
 @app.route('/api/feature-stocks')
