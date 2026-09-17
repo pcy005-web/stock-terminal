@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 MARKET_CATEGORIES = [
     {
-        'title': '🇰🇷 국내 증시 ',
+        'title': '🇰🇷 국내 증시',
         'stocks': [
             {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_DOMESTIC_KOSPI'},
             {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_DOMESTIC_KOSDAQ'},
@@ -577,7 +577,6 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    # 4번 섹션 종목 그룹화 표기 ("종목1, 종목2 - 테마명")
     return [
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자, SK하이닉스, 한미반도체 - AI 반도체", "rank": "TOP 1"},
         {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 - 전력기기", "rank": "TOP 2"},
@@ -587,15 +586,20 @@ def generate_strategies(quotes, news_list):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
+    # 5번 섹션: 하드코딩 제거 및 실시간 데이터/뉴스 연동 동적 생성
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
+    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    
+    top_news_title = news_list[0]['title'] if news_list else "글로벌 증시 주요 매크로 및 수급 동향 점검"
+    is_nasdaq_up = nasdaq_fut.get('is_up', True)
+    market_tone = "상승 압력 우위 및 투자심리 개선" if is_nasdaq_up else "변동성 확대 및 경계 매물 출화"
     
     return [
-        f"9월 FOMC 금리 인상 단행 및 매파적 여진: 연준의 스탠스로 인해 단기 변동성 확대 압력이 가중되고 있으나 장기물 금리의 상승 속도를 주시해야 합니다.",
-        f"금리 인상 사이클과 증시 영향: 금리 인상 그 자체를 추세 하락으로 해석하기보다는, 당시의 경기 및 이익 사이클과 맞물린 장기물 금리의 상승 폭이 핵심 관전 포인트입니다.",
-        f"해외 지표 및 환율 동향: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 등락 속 원/달러 환율({usdkrw.get('price')}원)의 변동성을 점검합니다.",
-        f"대응 전략: FOMC 직후 단기 변동성은 매수 기회로 활용하되, AI 반도체 및 주주환원 우수 업종 중심의 실적 모멘텀을 선별 기준으로 삼는 것이 적절합니다."
+        f"• [실시간 이슈 포커스]: {top_news_title}",
+        f"• [해외 증시 및 환율 연동]: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 변동 속 원/달러 환율({usdkrw.get('price')}원) 추이 밀착 모니터링",
+        f"• [장전 시장 분위기]: 현재 글로벌 지표 연동 결과 {market_tone} 국면이 전개되고 있습니다.",
+        f"• [핵심 대응 전략]: 수급이 집중되는 주도 섹터 중심의 선별적 접근과 리스크 관리를 병행하는 전략 유효"
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
@@ -709,6 +713,5 @@ def api_ai_briefing():
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
     return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
 
-# Vercel 등 서버리스 환경 호환 및 로컬 실행 분기 처리
 if __name__ == '__main__':
     app.run(debug=True)
