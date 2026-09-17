@@ -188,27 +188,28 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """실시간 최신 뉴스(pubDate 기준)를 엄격히 추출하여 가장 최신순(내림차순)으로 상단 배치"""
+    """키움증권 [0700] 종합시황뉴스 특징주 검색 결과처럼 최신 속보를 엄선하여 최신순 정렬"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
-    current_time_str = now_dt.strftime('%H:%M')
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 키움 종합시황뉴스 성격에 맞게 최근 1시간~6시간 내의 특징주 속보를 강제로 당겨옴
-    query = "코스피 마감 증시요약 특징주" if is_market_closed else "코스피 코스닥 특징주 급등 상한가 when:1h"
-    rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+    # 키움증권 0700 화면에서 [특징주] 검색어를 넣은 것과 동일한 쿼리 적용 (최근 1시간 내 속보)
+    query = "코스피 마감 특징주" if is_market_closed else "[특징주] 코스피 코스닥 when:1h"
+    cache_buster = int(datetime.datetime.now().timestamp() / 15) # 15초마다 캐시 무력화
+    rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
-    seen_stocks = set()
+    seen_titles = set()
     
     try:
         req = urllib.request.Request(
             rss_url, 
             headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             }
         )
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=4) as response:
@@ -222,7 +223,10 @@ def fetch_feature_stocks():
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 
-                # 실제 뉴스 발행 시각 파싱 (없으면 현재 시각)
+                if title_clean in seen_titles:
+                    continue
+                seen_titles.add(title_clean)
+                
                 pub_dt = now_dt
                 if pub_date_elem is not None and pub_date_elem.text:
                     try:
@@ -259,10 +263,6 @@ def fetch_feature_stocks():
                     else:
                         stock_name = "시장 주도 특징주"
                 
-                if stock_name in seen_stocks:
-                    continue
-                seen_stocks.add(stock_name)
-                
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
                     "stock": stock_name,
@@ -273,18 +273,19 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 발행 시각(timestamp) 기준 내림차순 정렬 엄격 적용!
+    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 발행 시각(timestamp) 기준 내림차순 정렬 엄격 적용
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     
     feature_items = parsed_items[:5]
         
+    current_time_str = now_dt.strftime('%H:%M')
     if len(feature_items) < 5:
         fallbacks = [
-            {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입"},
-            {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] 북미 전력망 교체 모멘텀 지속에 따른 강세"},
-            {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] 글로벌 바이오 파이프라인 가치 재평가 국면"},
-            {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] 밸류업 프로그램 및 적극적 주주환원 정책 부각"},
-            {"stock": "한화에어로ส페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장"}
+            {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "timestamp": now_dt},
+            {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] 북미 전력망 교체 모멘텀 지속에 따른 강세", "timestamp": now_dt},
+            {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] 글로벌 바이오 파이프라인 가치 재평가 국면", "timestamp": now_dt},
+            {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "timestamp": now_dt},
+            {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장", "timestamp": now_dt}
         ]
         for fb in fallbacks:
             if len(feature_items) < 5:
@@ -295,7 +296,7 @@ def fetch_feature_stocks():
     else:
         market_summary_keyword = "실시간 특징주 수급 분석 결과, AI 반도체 및 전력기기·바이오 섹터 중심의 선별적 매수세 유입과 순환매 장세 전개 중"
         
-    return feature_items, market_summary_keyword
+    return feature_items[:5], market_summary_keyword
 
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
@@ -334,7 +335,7 @@ def fetch_naver_finance_news():
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
-                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
+                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", 
                     "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
                 ]
                 
@@ -605,6 +606,7 @@ def api_feature_stocks():
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
+    kst = pytz.timezone('Asia/Seoul')
     price_map = {}
     tasks = []
     for cat in MARKET_CATEGORIES:
