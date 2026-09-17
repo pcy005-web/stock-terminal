@@ -187,6 +187,42 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
+# 종목별 자동 업종/테마 매핑 사전
+STOCK_THEME_MAP = {
+    "한화시스템": "방산",
+    "현대로템": "방산",
+    "한화에어로스페이스": "방산",
+    "삼성전자": "AI 반도체",
+    "SK하이닉스": "AI 반도체",
+    "한미반도체": "AI 반도체",
+    "리노공업": "AI 반도체",
+    "HD현대일렉트릭": "전력기기",
+    "효성중공업": "전력기기",
+    "LS일렉트릭": "전력기기",
+    "삼성바이오로직스": "바이오",
+    "셀트리온": "바이오",
+    "알테오젠": "바이오",
+    "HD현대중공업": "조선",
+    "삼성중공업": "조선",
+    "MOL": "해운/조선",
+    "버크셔 해서웨이": "종합지주",
+    "앤씨앤": "반도체/IT",
+    "미투온": "게임/콘텐츠",
+    "카카오게임즈": "게임",
+    "비투엔": "AI/소프트웨어",
+    "현대차": "자동차",
+    "기아": "자동차",
+    "KB금융": "금융",
+    "신한지주": "금융"
+}
+
+def get_stock_with_theme(stock_name):
+    clean_name = stock_name.replace("(핵심종목)", "").strip()
+    # 사전에 등록된 종목이면 "종목명 - 테마" 형식으로 반환
+    if clean_name in STOCK_THEME_MAP:
+        return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
+    return clean_name
+
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
@@ -200,13 +236,7 @@ def fetch_feature_stocks():
     parsed_items = []
     seen_titles = set()
     
-    # 순수 주요 기업명 사전 (카테고리명 제외)
-    known_companies = [
-        "버크셔 해서웨이", "테슬라", "엔비디아", "애플", "마이크로소프트", "알파벳", "구글", "meta", "아마존", "AMD", "넷플릭스", "인텔", "TSMC", "마이크론",
-        "삼성전자", "SK하이닉스", "한미반도체", "LG에너지솔루션", "현대차", "기아", "셀트리온", "삼성바이오로직스", "알테오젠", 
-        "HD현대일렉트릭", "효성중공업", "KB금융", "신한지주", "한화에어로스페이스", "현대로템", "LS일렉트릭",
-        "앤씨앤", "미투온", "카카오게임즈", "비투엔", "MOL"
-    ]
+    known_companies = list(STOCK_THEME_MAP.keys())
     
     try:
         req = urllib.request.Request(
@@ -249,38 +279,49 @@ def fetch_feature_stocks():
                 
                 item_time_str = pub_dt.strftime('%H:%M')
                 
-                stock_name = ""
+                raw_stock_name = ""
                 
-                # 1단계: 알려진 기업명이 제목에 직접 포함되어 있는지 검사
+                # 1단계: 알려진 기업명 매칭
                 for comp in known_companies:
                     if comp in title_clean:
-                        stock_name = comp
+                        raw_stock_name = comp
                         break
                 
-                # 2단계: 따옴표 안의 핵심 단어 탐색 (예: '미투온')
-                if not stock_name:
+                # 2단계: 따옴표 안의 기업명 탐색
+                if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
                     exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                     for qm in quoted_matches:
                         if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
-                            stock_name = qm
+                            raw_stock_name = qm
                             break
                 
-                # 3단계: 대괄호 뒤의 첫 번째 콤마(,) 앞 단어 추출 (예: [일본 특징주] MOL, ... -> MOL)
-                if not stock_name:
-                    # 대괄호 제거 후 첫 콤마 앞의 텍스트 추출
-                    no_bracket_title = re.sub(r"\[[^\]]+\]", "", title_clean).strip()
-                    if "," in no_bracket_title:
-                        potential_stock = no_bracket_title.split(",")[0].strip()
-                        if len(potential_stock) <= 15 and not any(ew in potential_stock for ew in ["특징주", "급등", "마감"]):
-                            stock_name = potential_stock
+                # 3단계: 대괄호 분석 (시장분석/테마형 리포트인 경우 키워드 추출)
+                if not raw_stock_name:
+                    bracket_match = re.search(r"\[([^\]]+)\]", title_clean)
+                    if bracket_match:
+                        bracket_content = bracket_match.group(1)
+                        # "테오도르의 시장분석" 같은 분석글 형태라면 제목 내부의 핵심 업종 키워드 조합 활용
+                        if "시장분석" in bracket_content or "분석" in bracket_content:
+                            # 따옴표나 특정 명칭 추출 시도, 또는 제목 뒷부분의 키워드 활용
+                            # 예: "광통신·첨단소재·로봇·에너지" 같은 단어 캐치
+                            for kw in ["광통신", "첨단소재", "로봇", "에너지", "반도체", "이차전지", "바이오", "방산", "조선"]:
+                                if kw in title_clean and kw not in raw_stock_name:
+                                    raw_stock_name = f"{raw_stock_name} {kw}".strip()
+                            if not raw_stock_name:
+                                raw_stock_name = "종합시장 테마"
+                        else:
+                            no_bracket_title = re.sub(r"\[[^\]]+\]", "", title_clean).strip()
+                            if "," in no_bracket_title:
+                                potential_stock = no_bracket_title.split(",")[0].strip()
+                                if len(potential_stock) <= 15:
+                                    raw_stock_name = potential_stock
+
+                if not raw_stock_name:
+                    raw_stock_name = "시장주도주"
                 
-                # 4단계: 여전히 못 찾으면 대괄호 안의 내용을 제외한 첫 단어 활용
-                if not stock_name:
-                    clean_text = re.sub(r"\[[^\]]+\]", "", title_clean).strip()
-                    words = clean_text.split()
-                    if words:
-                        stock_name = words[0]
+                # 요구하신 "종목 - 테마" 포맷 적용
+                stock_name = get_stock_with_theme(raw_stock_name)
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
@@ -297,11 +338,11 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "버크셔 해서웨이", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "MOL", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "앤씨앤", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "미투온", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "삼성전자", "title": f"[{current_time_str}] [특징주] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "MOL - 해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
@@ -390,20 +431,20 @@ def fetch_naver_finance_news():
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
                 if extracted_stocks_from_quotes:
-                    related_stock = f"{extracted_stocks_from_quotes} (핵심종목)"
+                    related_stock = f"{extracted_stocks_from_quotes}"
                 else:
                     if is_negative:
-                        related_stock = "원/달러 환율, 지수 방어형 대형주, 고배당 우량주"
+                        related_stock = "원/달러 환율, 지수 방어주"
                     elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아"]):
-                        related_stock = "삼성전자, SK하이닉스, 한미반도체, 리노공업"
+                        related_stock = "삼성전자, SK하이닉스"
                     elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
-                        related_stock = "HD현대일렉트릭, 효성중공업, LS일렉트릭"
+                        related_stock = "HD현대일렉트릭"
                     elif any(k in title_clean for k in ["방산", "조선", "수주"]):
-                        related_stock = "한화에어로스페이스, HD현대중공업, 현대로템"
+                        related_stock = "한화에어로스페이스"
                     elif any(k in title_clean for k in ["바이오", "제약", "임상"]):
-                        related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
+                        related_stock = "삼성바이오로직스"
                     else:
-                        related_stock = "코스피 시가총액 상위 주도주 및 기관 순매수 종목"
+                        related_stock = "코스피 대형주"
 
                 if is_negative:
                     news_type = "리스크"
@@ -436,16 +477,11 @@ def fetch_naver_finance_news():
         
     if len(news_list) < 10:
         dynamic_fallbacks = [
-            (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자, SK하이닉스, 리노공업", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
-            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "원/달러 환율, 현대차, 기아", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
-            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주, 저PBR 지주사", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
-            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스, 현대로템", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
-            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 10년물, NAVER, 카카오", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
-            (f"[{current_hour_str} 산업 리포트] 조선업 슈퍼사이클 고부가가치선 건조 마진율 확대 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "선가 상승 사이클 속 실적 턴어라운드 공식 입증", "호재", False),
-            (f"[{current_hour_str} 바이오 섹터] 글로벌 임상 데이터 발표에 따른 펀더멘털 재평가 국면", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "파이프라인 가치 반영 및 기관 수급 유입 강도 체크", "호재", False),
-            (f"[{current_hour_str} 인프라 동향] 북미 전력망 교체 수요에 따른 전력기기 실적 서프라이즈 전망", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "구조적 수익 우위에 있는 북미 수출주 비중 유지", "호재", False),
-            (f"[{current_hour_str} 시장 심리] 코스피/코스닥 거래대금 회복 국면에서의 섹터별 순환매 대응", "https://news.google.com", "코스피 대형주, 코스닥 우량주", "주도주 수급 쏠림 현상 해소 여부 확인", "중립", False),
-            (f"[{current_hour_str} 원자재 리스크] 에너지 가격 및 원자재 수급 불안정에 따른 원가 부담 점검", "https://news.google.com", "WTI원유, 금현물, 화학·정유 섹터", "원가 상승 압박이 마진에 미치는 부정적 영향 필터링", "리스크", True)
+            (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자 - AI 반도체", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
+            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차 - 자동차", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
+            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융 - 금융", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
+            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
+            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True)
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp, neg = dynamic_fallbacks.pop(0)
@@ -465,13 +501,13 @@ def generate_theme_sync_analysis(quotes, news_list):
     
     if is_up:
         us_driver = f"글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다."
-        core_stocks = "NVIDIA, 마이크론 테크놀로지, ASML, 브로드컴"
-        domestic_stocks = "삼성전자, SK하이닉스 + 한미반도체, 리노공업 (AI 반도체 핵심 소부장)"
+        core_stocks = "NVIDIA, 마이크론 테크놀로지, ASML"
+        domestic_stocks = "삼성전자 - AI 반도체, SK하이닉스 - AI 반도체"
         risk_strategy = "실적 모멘텀이 검증된 펀더멘털 우량주 중심의 공격적 비중 확대 및 눌림목 트레이딩"
     else:
         us_driver = f"글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate})의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다."
-        core_stocks = "테슬라, 애플, 마이크로소프트, 알파벳"
-        domestic_stocks = "KB금융, 현대차, 삼성바이오로직스 (저PBR 및 실적이 방어하는 대형주)"
+        core_stocks = "테슬라, 애플, 마이크로소프트"
+        domestic_stocks = "KB금융 - 금융, 현대차 - 자동차, 삼성바이오로직스 - 바이오"
         risk_strategy = "매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축 및 리스크 관리"
     
     return {
@@ -512,25 +548,12 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    ai_news_title = ""
-    for n in news_list:
-        if any(k in n['title'] for k in ["실적", "반도체", "AI", "삼성", "하이닉스", "서프라이즈"]):
-            ai_news_title = n['title']
-            break
-            
-    if not ai_news_title and news_list:
-        ai_news_title = news_list[0]['title']
-
-    desc_1 = f"실적 컨센서스 상회 및 이슈('{ai_news_title[:22]}...') 기반 기관·외인 순매수 집중" if ai_news_title else "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략"
-    n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표 점검"
-    n3 = news_list[2]['title'] if len(news_list) > 2 else "주주환원 및 정책 모멘텀"
-    
     return [
-        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": desc_1, "stock": "삼성전자, SK하이닉스 + 한미반도체, 리노공업, 이오테크닉스", "rank": "TOP 1"},
-        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 + LS일렉트릭, 산일전기", "rank": "TOP 2"},
-        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": f"어닝 개선 기대감('{n2[:22]}...') 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 에이비엘바이오", "rank": "TOP 3"},
-        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 + HD현대중공업, 삼성중공업", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": f"매크로 변동성 대응 방어력 제고 및 배당 매력 부각('{n3[:22]}...')", "stock": "KB금융, 신한지주 + 현대차, 기아 (저PBR 우량 대형주)", "rank": "TOP 5"}
+        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자 - AI 반도체, SK하이닉스 - AI 반도체, 한미반도체 - AI 반도체", "rank": "TOP 1"},
+        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭 - 전력기기, 효성중공업 - 전력기기", "rank": "TOP 2"},
+        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스 - 바이오, 셀트리온 - 바이오", "rank": "TOP 3"},
+        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스 - 방산, 현대로템 - 방산", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "KB금융 - 금융, 신한지주 - 금융", "rank": "TOP 5"}
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
