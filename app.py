@@ -220,7 +220,7 @@ def get_stock_with_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
-    return clean_name
+    return f"{clean_name} - 시장주도주"
 
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
@@ -229,14 +229,13 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 실시간 특징주 수집 쿼리 확장 및 유연화
+    # 실시간 특징주 수집 쿼리
     query = "코스피 특징주 급등" if is_market_closed else "주식 특징주 급등 상승"
     cache_buster = int(datetime.datetime.now().timestamp() / 10)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
     seen_titles = set()
-    
     known_companies = list(STOCK_THEME_MAP.keys())
     
     try:
@@ -279,11 +278,13 @@ def fetch_feature_stocks():
                 
                 raw_stock_name = ""
                 
+                # 1단계: 등록된 기업명 매칭
                 for comp in known_companies:
                     if comp in title_clean:
                         raw_stock_name = comp
                         break
                 
+                # 2단계: 따옴표 안의 단어 탐색
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
                     exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
@@ -307,6 +308,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
+    # 최신 뉴스 기준 상단 정렬 (timestamp 내림차순)
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = parsed_items[:5]
         
@@ -323,6 +325,7 @@ def fetch_feature_stocks():
         if len(feature_items) < 5:
             feature_items.append(fb)
             
+    # 최종적으로 최신 시간순 재정렬 보장
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
     if is_market_closed:
