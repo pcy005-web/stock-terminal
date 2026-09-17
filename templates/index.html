@@ -229,6 +229,9 @@
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 10px;">
+                📝 {{ market_summary_header }}
+            </div>
             <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 {% for bullet in market_summary_bullets %}
                 <li style="margin-bottom: 8px;">{{ bullet }}</li>
@@ -236,9 +239,9 @@
             </ul>
             <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
             <div class="tag-list" style="margin-top: 6px;">
+                <span class="tag">마이크론·엔비디아·인텔</span>
                 <span class="tag">삼성전자·SK하이닉스</span>
-                <span class="tag">버크셔 해서웨이</span>
-                <span class="tag">아티스트스튜디오</span>
+                <span class="tag">한화에어로스페이스·현대로템</span>
             </div>
         </div>
     </div>
@@ -385,7 +388,6 @@
                     if (!items) return;
                     let currentTitles = items.map(item => item.title).join("||");
                     
-                    // 💡 이전 데이터와 타이틀이 완벽히 동일하면 화면을 다시 그리지 않음 (깜박임 차단)
                     if (currentTitles === lastFeatureTitles) {
                         return; 
                     }
