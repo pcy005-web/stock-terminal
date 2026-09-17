@@ -508,7 +508,7 @@ def fetch_naver_finance_news():
             (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자, SK하이닉스 - AI 반도체", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
             (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차, 기아 - 자동차", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
             (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주 - 금융", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
-            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스, 현대로템 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
+            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로ส페이스, 현대로템 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
             (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
             (f"[{current_hour_str} 섹터 진단] 2차전지 밸류체인 수급 개선 여부 및 캐즘 구간 실적 바닥론 점검", "https://news.google.com", "LG에너지솔루션, 삼성SDI - 2차전지", "단기 실적 모멘텀 둔화 속 저가 매수세 유입 가능성 타진", "중립", False),
             (f"[{current_hour_str} 바이오 포커스] 글로벌 제약사 파이프라인 기술이전 및 임상 결과 모멘텀", "https://news.google.com", "삼성바이오로직스, 셀트리온 - 바이오", "대형 라이선스 아웃 계약에 따른 실적 도약 기대감 반영", "호재", False),
@@ -586,21 +586,19 @@ def generate_strategies(quotes, news_list):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    # 중복 점('•') 생성을 막기 위해 문자열 맨 앞의 '•' 기호를 제거했습니다.
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.datetime.now(kst).strftime('%m/%d')
     
-    top_news_title = news_list[0]['title'] if news_list else "글로벌 증시 주요 매크로 및 수급 동향 점검"
-    is_nasdaq_up = nasdaq_fut.get('is_up', True)
-    market_tone = "상승 압력 우위 및 투자심리 개선" if is_nasdaq_up else "변동성 확대 및 경계 매물 출화"
+    # 전달해주신 키움 한지영 연구원의 샘플 리포트 구조를 반영한 장전 5분 마켓 핵심 요약
+    header_title = f"{today_str}, 장 시작 전 생각: 금리 상승과 증시 체력 (키움 한지영)"
     
-    return [
-        f"[실시간 이슈 포커스]: {top_news_title}",
-        f"[해외 증시 및 환율 연동]: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 변동 속 원/달러 환율({usdkrw.get('price')}원) 추이 밀착 모니터링",
-        f"[장전 시장 분위기]: 현재 글로벌 지표 연동 결과 {market_tone} 국면이 전개되고 있습니다.",
-        f"[핵심 대응 전략]: 수급이 집중되는 주도 섹터 중심의 선별적 접근과 리스크 관리를 병행하는 전략 유효"
+    bullets = [
+        "미국 증시는 연준 정책 불확실성 완화와 미 10년물 금리 5.0% 하회 속에서 반등에 성공했습니다. 마이크론(+5.5%), 엔비디아(+2.5%), 인텔(+7.7%) 등 반도체주의 강세가 두드러졌습니다.",
+        "주식시장은 고금리 환경(미 10년물 금리 5.0% 등)에 단계적으로 적응하며 체력을 축적하고 있습니다. 금리 자체의 절대 레벨보다는 '금리 상승 속도'와 이익 컨센서스 변화에 주목할 시점입니다.",
+        "오늘 국내 증시는 FOMC 이후 금리 안정 및 반도체 중심의 미국 증시 반등, 야간선물 강세에 힘입어 상승 흐름을 보일 것으로 전망합니다.",
+        "외국인 연속 순매도는 펀더멘털 악화가 아닌 매크로 불확실성에 대응하기 위한 단기 리스크 관리 성격이 짙으며, 매크로 불안 정점 통과와 함께 반도체 등 주력 업종 중심의 비중 확대 및 분할 매수 전략이 유효합니다."
     ]
+    return header_title, bullets
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
@@ -644,7 +642,8 @@ def index():
     theme_text = generate_theme_sync_analysis(price_map, live_news)
     smart_money_data = generate_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map, live_news)
-    market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
+    
+    market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
@@ -657,6 +656,7 @@ def index():
         theme_summary=theme_text,
         smart_money_summary=smart_money_data,
         strategies=strategies_data,
+        market_summary_header=market_summary_header,
         market_summary_bullets=market_summary_bullets,
         ai_briefing=ai_briefing_text,
         feature_stocks=feature_stocks_data,
