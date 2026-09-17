@@ -11,6 +11,7 @@ from flask import Flask, render_template
 import pytz
 
 app = Flask(__name__)
+application = app  # WSGI 표준 엔트리포인트 (Gunicorn, uWSGI 등 호환용)
 
 MARKET_CATEGORIES = [{
     'title': '🇰🇷 국내 증시',
