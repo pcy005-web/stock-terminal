@@ -1,3 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 주식 증시 및 시황 대시보드</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --up-red: #ff7b72;
+            --down-blue: #79c0ff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3 {
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #21262d;
+            border: 1px solid var(--border-color);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .badge.up { color: var(--up-red); border-color: rgba(255,123,114,0.4); }
+        .badge.down { color: var(--down-blue); border-color: rgba(121,192,255,0.4); }
+
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .stock-table th, .stock-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .stock-table th { color: var(--text-muted); }
+
+        .price-up { color: var(--up-red); font-weight: bold; }
+        .price-down { color: var(--down-blue); font-weight: bold; }
+
+        .market-summary, .ai-briefing-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            white-space: pre-line;
+            line-height: 1.7;
+        }
+
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .news-item:last-child { border-bottom: none; }
+        .news-link { color: var(--text-main); text-decoration: none; }
+        .news-link:hover { color: var(--accent-blue); text-decoration: underline; }
+
+        .stock-title { font-weight: bold; color: var(--accent-blue); margin-bottom: 5px; }
+        
+        /* 갱신 시 깜박임(Fade) 효과 클래스 */
+        .fade-out { opacity: 0.2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📈 실시간 주식 증시 및 시황 통합 대시보드</h1>
+
+    <!-- 1. AI 종합 브리핑 섹션 -->
+    <h2>🤖 실시간 AI 종합 브리핑</h2>
+    <div class="ai-briefing-box" id="ai-briefing-container">
+        {{ ai_briefing }}
+    </div>
+
+    <!-- 2. 글로벌 증시 및 원자재 시세 섹션 -->
+    <h2>🌍 실시간 증시 및 환율 시세</h2>
+    <div class="grid-container" id="quotes-container">
+        {% for cat in categories %}
+        <div class="card">
+            <h3>{{ cat.title }}</h3>
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>구분</th>
+                        <th>현재가</th>
+                        <th>등락률</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in cat.stocks %}
+                    {% set q = quotes.get(stock.code, {'price': '-', 'rate': '0.00%', 'is_up': True}) %}
+                    <tr>
+                        <td>{{ stock.name }}</td>
+                        <td class="price-val-{{ stock.code }}">{{ q.price }}</td>
+                        <td class="{% if q.is_up %}price-up{% else %}price-down{% endif %} rate-val-{{ stock.code }}">
+                            {{ q.rate }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 3. 스마트머니 수급 분석 -->
+    <h2>💡 스마트머니 수급 및 동향 분석</h2>
+    <div class="card">
+        <div class="badge {{ smart_money_summary.badge_class }}">{{ smart_money_summary.badge_text }}</div>
+        <p><strong>• 국내 수급:</strong> {{ smart_money_summary.domestic }}</p>
+        <p><strong>• 디커플링/순환매:</strong> {{ smart_money_summary.decoupling }}</p>
+        <p>{{ smart_money_summary.concentrated_themes | safe }}</p>
+        <p><strong>• 환율/원자재:</strong> {{ smart_money_summary.fx_oil }}</p>
+    </div>
+
+    <!-- 4. 글로벌 테마 및 증시 연동성 -->
+    <h2>🌐 글로벌 증시 연동 테마 분석</h2>
+    <div class="card">
+        <p><strong>• 미국 증시 드라이버:</strong> {{ theme_summary.us_driver }}</p>
+        <p><strong>• 핵심 글로벌 연동 종목:</strong> {{ theme_summary.core_stocks }}</p>
+        <p><strong>• 국내 수혜 예상 종목:</strong> {{ theme_summary.domestic_stocks }}</p>
+        <p><strong>• 리스크 대응 전략:</strong> {{ theme_summary.risk_strategy }}</p>
+    </div>
+
+    <!-- 5. 실시간 금융 뉴스 및 공시 검증 -->
+    <h2>📰 실시간 금융 뉴스 및 펀더멘털 분석</h2>
+    <div class="card">
+        {% for news in news_list %}
+        <div class="news-item">
+            <span class="badge" style="position:static; margin-right:10px;">{{ news.type }}</span>
+            <a href="{{ news.link }}" target="_blank" class="news-link"><strong>{{ news.title }}</strong></a>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+                관련종목: <span style="color: var(--accent-blue);">{{ news.stock }}</span> | 분석: {{ news.comment }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 6. 핵심 투자 전략 TOP 5 -->
+    <h2>🏆 핵심 투자 전략 TOP 5</h2>
+    <div class="grid-container">
+        {% for strat in strategies %}
+        <div class="card">
+            <div class="badge">{{ strat.rank }}</div>
+            <h3 style="margin-top:0; font-size:16px;">{{ strat.title }}</h3>
+            <p style="font-size:14px; color: var(--text-muted);">{{ strat.desc }}</p>
+            <p style="font-size:13px;"><strong>추천 대상:</strong> <span style="color: var(--accent-blue);">{{ strat.stock }}</span></p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 7. 장중 특징주 핫이슈 (실시간 갱신 적용 영역) -->
+    <h2>🔥 장중 특징주 핫이슈 (실시간)</h2>
+    <div id="feature-stocks-container">
+        {% for item in feature_stocks %}
+        <div class="card">
+            <div class="stock-title">📌 {{ item.stock }}</div>
+            <div class="badge">{{ item.theme }}</div>
+            <a href="{{ item.link }}" target="_blank" class="news-link">{{ item.title }}</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>📊 장중 수급 및 마감시황 종합 분석</h2>
+    <div class="market-summary" id="market-summary-container">
+        {{ feature_market_summary }}
     </div>
 </div>
 
