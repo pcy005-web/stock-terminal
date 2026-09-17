@@ -185,90 +185,55 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 # ==========================================
-# 네이버 API 기반 동적 종목 검증 및 다중 종목 추출 함수
+# 뉴스 타이틀 직접 파싱 기반 다중 종목 추출 함수
 # ==========================================
-def verify_stock_with_naver(name):
-    """
-    네이버 종목 검색 API를 통해 해당 이름이 실제 증권 종목(코스피/코스닥/해외주식)에 존재하는지 검증합니다.
-    존재할 경우 정제된 종목명과 업종(테마)을 반환합니다.
-    """
-    clean = name.strip().replace("'", "").replace('"', "").replace("(핵심종목)", "")
-    if not clean or len(clean) < 2 or clean in ["특징주", "장전특징주", "개장전특징주", "상한가", "종합", "마감", "시황"]:
-        return None, None
-
-    search_url = f"https://api.stock.naver.com/search/stock?query={urllib.parse.quote(clean)}&pageSize=1"
-    try:
-        req = urllib.request.Request(
-            search_url, 
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://m.stock.naver.com/'
-            }
-        )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
-            res_json = json.loads(response.read().decode('utf-8'))
-            stocks = res_json.get('stocks', [])
-            if stocks:
-                item = stocks[0]
-                matched_name = item.get('stockName', clean)
-                sector = item.get('reutersSector') or item.get('stockItemCode') or "시장주도주"
-                return matched_name, sector
-    except Exception:
-        pass
-    return None, None
-
 def extract_and_verify_stocks_from_title(title_clean):
     """
-    뉴스 타이틀에서 구분자(·, ,, -, 공백 등)를 기준으로 여러 후보 단어를 추출하고,
-    네이버 API로 실제 주식 종목인지 검증하여 유효한 종목명들과 대표 업종(테마)을 찾아냅니다.
+    뉴스 타이틀 내 구분자(·, ,, -)를 기반으로 종목 영역을 직접 파싱하여 추출합니다.
+    외부 API 검색 실패로 인한 종목 누락 문제를 원천 차단합니다.
     """
-    # 불필요한 머리말 제거
-    cleaned_text = re.sub(r'\[.*?\]', '', title_clean).strip()
+    text_no_bracket = re.sub(r'\[.*?\]', '', title_clean).strip()
     
-    # 구분자(·, ,, -, 장 등)를 기준으로 분리
-    raw_candidates = re.split(r'[·,\-\s]+', cleaned_text)
-    
+    exclude_words = [
+        "특징주", "장전특징주", "개장전특징주", "상한가", "종합", "마감", "시황", 
+        "코스피", "코스닥", "거래", "장중", "오후", "오전", "미국", "일본", "ETF", 
+        "뉴욕증시", "개장", "장전", "이어", "등", "주식소각", "변경상장", "상장폐지", "정리매매"
+    ]
+
+    core_text = text_no_bracket
+    for sep_end in [", ", "...", " 이어 ", " 등 ", " 상장", " 주식"]:
+        if sep_end in core_text:
+            core_text = core_text.split(sep_end)[0]
+
+    parts = re.split(r'[·,\-]', core_text)
     valid_stocks = []
-    detected_sectors = []
     
-    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF", "뉴욕증시", "개장", "장전", "이어", "등", "주식소각", "변경상장"]
-
-    for cand in raw_candidates:
-        cand_clean = cand.strip().replace("'", "").replace('"', "")
-        if not cand_clean or len(cand_clean) > 12 or any(ew in cand_clean for ew in exclude_words) or any(char.isdigit() for char in cand_clean):
+    for p in parts:
+        p_clean = p.strip().replace("'", "").replace('"', "").replace("↑", "").replace("↓", "")
+        if not p_clean or len(p_clean) > 15 or any(ew in p_clean for ew in exclude_words) or any(char.isdigit() for char in p_clean):
             continue
-            
-        # 네이버 API를 통해 실제 주식 종목인지 검증
-        matched_name, sector = verify_stock_with_naver(cand_clean)
-        if matched_name:
-            if matched_name not in valid_stocks:
-                valid_stocks.append(matched_name)
-            if sector and sector not in detected_sectors and sector != "시장주도주":
-                detected_sectors.append(sector)
-        else:
-            # API 호출에 실패했거나 대형 글로벌 기업(인텔, 나이키, 테슬라 등) 예외 허용 처리
-            global_known = ["인텔", "네비우스", "마이크론", "테슬라", "나이키", "ARM", "레나", "제네락", "플루언스에너지"]
-            if cand_clean in global_known and cand_clean not in valid_stocks:
-                valid_stocks.append(cand_clean)
-                if "반도체" in cand_clean or "인텔" in cand_clean or "마이크론" in cand_clean:
-                    detected_sectors.append("AI 반도체")
-                else:
-                    detected_sectors.append("글로벌증시")
+        if p_clean not in valid_stocks:
+            valid_stocks.append(p_clean)
 
-    # 따옴표 내부 단어 추가 검증
-    quoted_matches = re.findall(r"'([^']+)'", title_clean)
-    for qm in quoted_matches:
-        matched_name, sector = verify_stock_with_naver(qm)
-        if matched_name and matched_name not in valid_stocks:
-            valid_stocks.append(matched_name)
-            if sector and sector not in detected_sectors:
-                detected_sectors.append(sector)
+    if not valid_stocks:
+        words = re.findall(r'[가-힣A-Za-z0-9]+', text_no_bracket)
+        for w in words:
+            if len(w) >= 2 and w not in exclude_words and w not in valid_stocks:
+                valid_stocks.append(w)
+                if len(valid_stocks) >= 3:
+                    break
 
-    # 최종 결과 조합 (여러 종목일 경우 '·'로 결합)
     if valid_stocks:
-        stock_result = "·".join(valid_stocks)
-        theme_result = detected_sectors[0] if detected_sectors else "시장주도주"
-        return stock_result, theme_result
+        stock_result = "·".join(valid_stocks[:4])
+        theme = "시장주도주"
+        joined_str = "".join(valid_stocks)
+        if any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM"]):
+            theme = "AI 반도체"
+        elif any(k in joined_str for k in ["현대차", "자동차", "레나"]):
+            theme = "자동차"
+        elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크", "앤씨앤"]):
+            theme = "우주항공/소부장"
+        return stock_result, theme
 
     return "시장주도주", "증시시황"
 
@@ -338,7 +303,6 @@ def fetch_feature_stocks():
                 seen_titles.add(title_clean)
                 item_time_str = pub_dt.strftime('%H:%M')
                 
-                # 동적 다중 종목 및 테마 추출 함수 호출
                 stock_val, theme_val = extract_and_verify_stocks_from_title(title_clean)
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 
@@ -360,7 +324,7 @@ def fetch_feature_stocks():
     fallbacks = [
         {"stock": "현대차·데이원컴퍼니·엠오티", "theme": "자동차", "title": f"[{current_time_str}] [특징주] 현대차·데이원컴퍼니·엠오티, 주식소각…22일 변경상장", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "현대차 주식소각"},
         {"stock": "인텔·네비우스·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [개장전특징주]인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"},
-        {"stock": "나라스페이스테크놀로지·앤씨앤", "theme": "게임/콘텐츠", "title": f"[{current_time_str}] [상한가 종목] 진양화학-비츠로테크 이어 나라스페이스테크놀로지-앤씨앤 등 마감", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "나라스페이스 상한가"},
+        {"stock": "진양화학·비츠로테크·나라스페이스테크놀로지·앤씨앤", "theme": "우주항공/소부장", "title": f"[{current_time_str}] [상한가 종목] 진양화학-비츠로테크 이어 나라스페이스테크놀로지-앤씨앤 등 마감", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "나라스페이스 상한가"},
         {"stock": "미투온", "theme": "게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "미투온 상한가"},
         {"stock": "한화시스템", "theme": "방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "한화시스템 방산 수출"}
     ]
