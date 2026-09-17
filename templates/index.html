@@ -293,7 +293,7 @@
                     <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
                             {% if '스냅' in item.title %}📌 스냅 (SNAP)
-                            {% elif '삼성전자' in item.title and '하이닉스' not in item.title %}📌 삼성전자 · SK하이닉스
+                            {% elif '삼성전자' in item.title %}📌 삼성전자 · SK하이닉스
                             {% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
                         </span>
                     </div>
