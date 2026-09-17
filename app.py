@@ -223,7 +223,10 @@ def fetch_feature_stocks():
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-    query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
+    
+    # 💡 띄어쓰기 변형(장전특징주, 개장전특징주 등)을 모두 수집할 수 있도록 쿼리 확장
+    query = "특징주 OR 장전특징주 OR 개장전특징주 OR 급등 OR 상한가 when:6h"
+    
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -253,6 +256,11 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
+                # 💡 파이썬 레벨에서 LIKE 검증 필터 적용 (SQL의 LIKE '%특징주%' 역할 수행)
+                like_keywords = ["특징주", "장전특징주", "개장전특징주", "급등", "상한가", "폭등", "강세"]
+                if not any(kw in title_clean for kw in like_keywords):
+                    continue
+                
                 if "주요 특징주" in title_clean or "오늘(" in title_clean:
                     continue
                 if title_clean in seen_titles:
@@ -275,7 +283,6 @@ def fetch_feature_stocks():
                 seen_titles.add(title_clean)
                 item_time_str = pub_dt.strftime('%H:%M')
                 
-                # 시황, ETF, 지수 관련 뉴스 예외 처리
                 raw_stock_name = ""
                 if any(kw in title_clean for kw in ["[ETF 시황]", "[시황]", "ETF 강세", "코스피 약보합", "코스닥"]):
                     if "조선" in title_clean or "우주" in title_clean:
@@ -323,6 +330,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
+    # 최신 뉴스 순서대로 정렬 후 상위 5개 추출
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = parsed_items[:5]
         
@@ -363,12 +371,7 @@ def fetch_feature_stocks():
         })
                 
     if is_market_closed:
-        market_summary_keyword = (
-            "📊 [코스피·코스닥 장마감 카테고리별 요약]\n\n"
-            "• [외인·기관 수급]: 기관 및 기타법인의 순매수 유입 속 외인 매도세 방어\n"
-            "• [주도 업종 섹터]: 반도체 대형주(삼성전자, SK하이닉스 등) 및 핵심 주도주 반등 주도\n"
-            "• [지수 마감 결과]: 양대 지수 하방 경직성 확보하며 투자심리 회복세 마감"
-        )
+        market_summary_keyword = "📊 [코스피·코스닥 장마감 카테고리별 요약]"
     else:
         market_summary_keyword = (
             "📊 [장중 실시간 수급 카테고리별 분석]\n\n"
