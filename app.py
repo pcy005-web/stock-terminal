@@ -190,7 +190,8 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:12h")
+    # [수정 완료] 최근 12시간 -> 최근 6시간 이내 뉴스로 단축 수집
+    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     seen_titles = set()
@@ -350,18 +351,19 @@ def generate_theme_sync_analysis(quotes, news_list):
     }
 
 def generate_smart_money_analysis(quotes):
+    """[3. 스마트머니 수급 레이더] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 환율 연동 분석"""
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
-    badge_text = "외인/기관 순매수 유입" if kospi_up else "외인/기관 매도 우위"
+    badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)" if kospi_up else "외인·기관 주도세력 매도 우위 (방어적 포지션)"
     badge_class = "up" if kospi_up else "down"
     
-    domestic_text = f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 등락률 반영 현·선물 수급 동향."
-    decoupling_text = f"나스닥선물({nasdaq_fut.get('rate')}) 연동 흐름에 따른 글로벌 증시 동조화."
-    fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 체크."
+    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여, 주도세력(외국인·기관)의 누적 순매수 차트와 주가 간 괴리율 축소 여부를 모니터링합니다."
+    decoupling_text = f"글로벌 증시 동조화(디커플링/커플링): 나스닥 선물({nasdaq_fut.get('rate')})의 탄력성에 따른 야간 선물 및 현물 시초가 대응 전략을 수립합니다."
+    fx_oil_text = f"환율 및 매크로 민감도: 원/달러 환율({usdkrw.get('price')}원)의 변동성 확대 구간에서 외국인 현물 수급의 민감한 이탈 여부와 대형 수출주 수급 공백을 점검합니다."
 
     return {
         'badge_text': badge_text,
