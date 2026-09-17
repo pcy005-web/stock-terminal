@@ -314,7 +314,6 @@ def fetch_naver_finance_news():
     return news_list[:10]
 
 def generate_theme_sync_analysis(quotes, news_list):
-    """[2번 세션] 금융전문가 관점의 필라델피아 반도체/나스닥 연동 글로벌 공급망 및 펀더멘털 싱크로율 분석"""
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
@@ -344,7 +343,6 @@ def generate_smart_money_analysis(quotes):
     """[3번 세션] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 현재 쏠림 테마/업종 분석"""
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
@@ -353,11 +351,11 @@ def generate_smart_money_analysis(quotes):
     
     domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여, 주도세력(외국인·기관)의 누적 순매수 및 프로그램 매매 괴리율 축소 여부를 모니터링합니다."
     
-    # [추가됨] 현재 스마트머니가 집중되는 테마 및 업종 쏠림 분석
+    # 3번 세션 테마 및 업종 쏠림 분석 추가
     concentrated_themes = (
         "현재 스마트머니 수급 집중 테마 및 업종 분석: "
-        "1) **AI 반도체 대형주(삼성전자, SK하이닉스)** 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
-        "2) 변동성 장세 속 수익성 방어를 위한 **전력기기·원전·조선** 및 **은행·보험 등 저PBR 주주환원 업종**으로 기관 및 개인 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
+        "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
+        "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 기관 및 개인 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
     )
     
     fx_oil_text = f"환율 및 매크로 민감도: 원/달러 환율({usdkrw.get('price')}원)의 변동성 확대 구간에서 외국인 현물 수급의 민감한 이탈 여부와 대형 수출주 수급 공백을 점검합니다."
@@ -371,7 +369,6 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    """[4번 세션] 금융전문가 관점의 밸류에이션, 실적 모멘텀 및 수급 기반 포트폴리오 전략"""
     ai_news_title = ""
     for n in news_list:
         if any(k in n['title'] for k in ["실적", "반도체", "AI", "삼성", "하이닉스", "서프라이즈"]):
@@ -390,67 +387,22 @@ def generate_strategies(quotes, news_list):
     n3 = news_list[2]['title'] if len(news_list) > 2 else "주주환원 및 정책 모멘텀"
     
     strategies = [
-        {
-            "title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", 
-            "desc": desc_1, 
-            "stock": "삼성전자, SK하이닉스 + 한미반도체, 리노공업, 이오테크닉스", 
-            "rank": "TOP 1"
-        },
-        {
-            "title": "구조적 북미 수출 호조 전력 인프라 기기주", 
-            "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", 
-            "stock": "HD현대일렉트릭, 효성중공업 + LS일렉트릭, 산일전기", 
-            "rank": "TOP 2"
-        },
-        {
-            "title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", 
-            "desc": f"어닝 개선 기대감('{n2[:22]}...') 및 스마트머니 수급 유입 포착", 
-            "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 에이비엘바이오", 
-            "rank": "TOP 3"
-        },
-        {
-            "title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", 
-            "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", 
-            "stock": "한화에어로스페이스, 현대로템 + HD현대중공업, 삼성중공업", 
-            "rank": "TOP 4"
-        },
-        {
-            "title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", 
-            "desc": f"매크로 변동성 대응 방어력 제고 및 배당 매력 부각('{n3[:22]}...')", 
-            "stock": "KB금융, 신한지주 + 현대차, 기아 (저PBR 우량 대형주)", 
-            "rank": "TOP 5"
-        }
+        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": desc_1, "stock": "삼성전자, SK하이닉스 + 한미반도체, 리노공업, 이오테크닉스", "rank": "TOP 1"},
+        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 + LS일렉트릭, 산일전기", "rank": "TOP 2"},
+        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": f"어닝 개선 기대감('{n2[:22]}...') 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 에이비엘바이오", "rank": "TOP 3"},
+        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 + HD현대중공업, 삼성중공업", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": f"매크로 변동성 대응 방어력 제고 및 배당 매력 부각('{n3[:22]}...')", "stock": "KB금융, 신한지주 + 현대차, 기아 (저PBR 우량 대형주)", "rank": "TOP 5"}
     ]
     return strategies
 
 def generate_sector_momentum_analysis(quotes, news_list):
-    """[7번 세션] 금융전문가 관점의 업황 턴어라운드 및 섹터별 거래대금 집중도 분석"""
     return [
-        {
-            "sector": "AI 인프라 및 반도체 소부장",
-            "volume_status": "기관·외인 순매수 및 거래대금 최상위 집중",
-            "leader": "삼성전자, SK하이닉스, 한미반도체",
-            "small_caps": "리노공업, 이오테크닉스, 오픈엣지테크놀로지",
-            "outlook": "실적 컨센서스 상향 조정과 연동된 구조적 주도주 지위 공고화"
-        },
-        {
-            "sector": "전력기기 및 조선·기계",
-            "volume_status": "견고한 수주 잔고 기반 우상향 밸류에이션",
-            "leader": "HD현대일렉트릭, HD현대중공업",
-            "small_caps": "효성중공업, 산일전기, 제룡전기",
-            "outlook": "글로벌 인프라 교체 사이클에 따른 실적 마진율 방어력 우수"
-        },
-        {
-            "sector": "바이오 CDMO 및 혁신신약",
-            "volume_status": "기관 수급 유입 속 저점 매수세 포착",
-            "leader": "삼성바이오로직스, 셀트리온, 알테오젠",
-            "small_caps": "레고켐바이오, 에이비엘바이오",
-            "outlook": "글로벌 파트너십 가시화 및 파이프라인 가치 재평가 구간"
-        }
+        {"sector": "AI 인프라 및 반도체 소부장", "volume_status": "기관·외인 순매수 및 거래대금 최상위 집중", "leader": "삼성전자, SK하이닉스, 한미반도체", "small_caps": "리노공업, 이오테크닉스, 오픈엣지테크놀로지", "outlook": "실적 컨센서스 상향 조정과 연동된 구조적 주도주 지위 공고화"},
+        {"sector": "전력기기 및 조선·기계", "volume_status": "견고한 수주 잔고 기반 우상향 밸류에이션", "leader": "HD현대일렉트릭, HD현대중공업", "small_caps": "효성중공업, 산일전기, 제룡전기", "outlook": "글로벌 인프라 교체 사이클에 따른 실적 마진율 방어력 우수"},
+        {"sector": "바이오 CDMO 및 혁신신약", "volume_status": "기관 수급 유입 속 저점 매수세 포착", "leader": "삼성바이오로직스, 셀트리온, 알테오젠", "small_caps": "레고켐바이오, 에이비엘바이오", "outlook": "글로벌 파트너십 가시화 및 파이프라인 가치 재평가 구간"}
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    """[5번 세션] 9월 FOMC 금리 인상 단행 및 매파적 여진, 연내 추가 인상 경계감을 반영한 장전 마켓 요약"""
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
