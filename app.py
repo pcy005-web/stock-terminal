@@ -188,16 +188,15 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """키움증권 [0700] 종합시황뉴스 특징주 검색 결과처럼 최신 속보를 엄선하여 최신순 정렬"""
+    """실시간 특징주 뉴스를 엄격히 수집하고 최신 발행 시각순으로 정렬"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 키움증권 0700 화면에서 [특징주] 검색어를 넣은 것과 동일한 쿼리 적용 (최근 1시간 내 속보)
-    query = "코스피 마감 특징주" if is_market_closed else "[특징주] 코스피 코스닥 when:1h"
-    cache_buster = int(datetime.datetime.now().timestamp() / 15) # 15초마다 캐시 무력화
+    query = "코스피 마감 특징주" if is_market_closed else "코스피 코스닥 특징주 급등 when:3h"
+    cache_buster = int(datetime.datetime.now().timestamp() / 10)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
@@ -207,7 +206,7 @@ def fetch_feature_stocks():
         req = urllib.request.Request(
             rss_url, 
             headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             }
@@ -267,36 +266,22 @@ def fetch_feature_stocks():
                 parsed_items.append({
                     "stock": stock_name,
                     "title": formatted_title,
-                    "timestamp": pub_dt,
-                    "reason": "마감 시황 요약 및 수급 분석" if is_market_closed else "실시간 수급 집중 및 뉴스 모멘텀 발생"
+                    "timestamp": pub_dt
                 })
     except Exception:
         pass
         
-    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 발행 시각(timestamp) 기준 내림차순 정렬 엄격 적용
+    # ⭐ 발행 시각(timestamp) 기준 가장 최신 뉴스가 맨 위로 오도록 내림차순 정렬 엄격 적용
     parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     
     feature_items = parsed_items[:5]
         
-    current_time_str = now_dt.strftime('%H:%M')
-    if len(feature_items) < 5:
-        fallbacks = [
-            {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "timestamp": now_dt},
-            {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] 북미 전력망 교체 모멘텀 지속에 따른 강세", "timestamp": now_dt},
-            {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] 글로벌 바이오 파이프라인 가치 재평가 국면", "timestamp": now_dt},
-            {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "timestamp": now_dt},
-            {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장", "timestamp": now_dt}
-        ]
-        for fb in fallbacks:
-            if len(feature_items) < 5:
-                feature_items.append(fb)
-                
     if is_market_closed:
         market_summary_keyword = "국내 증시 마감 결과, 대형 반도체 및 주요 주도 섹터 중심의 수급 공방 속 외국인·기관 순매수 마감 및 업종별 차별화 장세 연출"
     else:
         market_summary_keyword = "실시간 특징주 수급 분석 결과, AI 반도체 및 전력기기·바이오 섹터 중심의 선별적 매수세 유입과 순환매 장세 전개 중"
         
-    return feature_items[:5], market_summary_keyword
+    return feature_items, market_summary_keyword
 
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
@@ -312,7 +297,7 @@ def fetch_naver_finance_news():
         req = urllib.request.Request(
             rss_url, 
             headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
             }
         )
@@ -335,7 +320,7 @@ def fetch_naver_finance_news():
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
-                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", 
+                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
                     "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
                 ]
                 
@@ -606,7 +591,6 @@ def api_feature_stocks():
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
-    kst = pytz.timezone('Asia/Seoul')
     price_map = {}
     tasks = []
     for cat in MARKET_CATEGORIES:
