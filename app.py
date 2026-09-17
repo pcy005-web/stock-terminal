@@ -212,7 +212,6 @@ def extract_and_verify_stocks_from_title(title_clean):
 
     text_no_bracket = re.sub(r'\[.*?\]', '', title_clean).strip()
     
-    # 뜬금없는 키워드 유입 방지를 위한 제외 단어 확장
     exclude_words = [
         "특징주", "장전특징주", "개장전특징주", "상한가", "종합", "마감", "시황", 
         "코스피", "코스닥", "거래", "장중", "오후", "오전", "미국", "일본", "ETF", 
@@ -578,7 +577,7 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
-    # 4번 섹션 종목 그룹화 표기 반영 ("종목1, 종목2 - 테마명")
+    # 4번 섹션 종목 그룹화 표기 ("종목1, 종목2 - 테마명")
     return [
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자, SK하이닉스, 한미반도체 - AI 반도체", "rank": "TOP 1"},
         {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 - 전력기기", "rank": "TOP 2"},
@@ -710,5 +709,6 @@ def api_ai_briefing():
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
     return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
 
+# Vercel 등 서버리스 환경 호환 및 로컬 실행 분기 처리
 if __name__ == '__main__':
     app.run(debug=True)
