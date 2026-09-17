@@ -17,18 +17,19 @@ def get_ssl_context():
     return context
 
 # ==========================================
-# 7섹션 전용: 네이버 증권 API를 통한 동적 종목/업종(테마) 조회 함수
+# 7섹션 전용: 안전한 동적 종목/업종(테마) 분류 함수 (서버 에러 방지 처리)
 # ==========================================
 def fetch_stock_theme_from_naver(stock_name):
     """
-    네이버 증권 검색 API를 활용하여 종목명으로 실제 업종/테마 정보를 동적으로 가져옵니다.
+    종목명과 키워드를 기반으로 업종/테마 정보를 안전하게 매핑합니다.
+    외부 API 호출 실패 시 서버 에러 없이 키워드 분석으로 대체합니다.
     """
     clean_name = stock_name.replace("(핵심종목)", "").strip()
     if not clean_name or clean_name in ["시장주도주", "특징주"]:
         return "시장주도주", "증시시황"
 
+    # 외부 API 호출 시 발생할 수 있는 네트워크/서버 에러를 안전하게 방어
     search_url = f"https://api.stock.naver.com/search/stock?query={urllib.parse.quote(clean_name)}&pageSize=1"
-    
     try:
         req = urllib.request.Request(
             search_url, 
@@ -37,7 +38,7 @@ def fetch_stock_theme_from_naver(stock_name):
                 'Referer': 'https://m.stock.naver.com/'
             }
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=3) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             stocks = res_json.get('stocks', [])
             if stocks:
@@ -46,19 +47,20 @@ def fetch_stock_theme_from_naver(stock_name):
                 sector = item.get('reutersSector') or item.get('stockItemCode') or "시장주도주"
                 return matched_name, sector
     except Exception:
+        # API 통신 에러 발생 시 무중단으로 키워드 룰 기반 분류 수행
         pass
 
-    # API 조회 실패 시 기본 키워드 매칭 규칙 적용
+    # 안정적인 키워드-테마 매칭 룰 딕셔너리
     keyword_theme_rules = {
-        "바이오/제약": ["바이오", "제약", "임상", "신약", "유전체", "바이오시밀러", "FDA"],
-        "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리"],
-        "방산": ["방산", "수출", "무기", "방위", "K9"],
-        "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주"],
-        "전력기기": ["변압기", "전력", "송배전", "그리드", "배터리"],
-        "자동차": ["자동차", "차량", "전기차", "완성차", "부품"],
-        "게임/콘텐츠": ["게임", "콘텐츠", "웹툰", "엔터", "피인수"],
-        "금융": ["금융", "은행", "증권", "보험", "주주환원"],
-        "글로벌증시": ["뉴욕증시", "증시", "개장", "미국", "나스닥", "다우"]
+        "바이오/제약": ["바이오", "제약", "임상", "신약", "유전체", "바이오시밀러", "FDA", "치료제"],
+        "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리", "엔비디아", "SK하이닉스", "삼성전자"],
+        "방산": ["방산", "수출", "무기", "방위", "K9", "현대로템", "한화에어로스페이스"],
+        "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주", "HD현대"],
+        "전력기기": ["변압기", "전력", "송배전", "그리드", "배터리", "LS일렉트릭", "효성중공업"],
+        "자동차": ["자동차", "차량", "전기차", "완성차", "부품", "현대차", "기아"],
+        "게임/콘텐츠": ["게임", "콘텐츠", "웹툰", "엔터", "피인수", "크래프톤", "시프트업"],
+        "금융": ["금융", "은행", "증권", "보험", "주주환원", "KB금융", "신한지주"],
+        "글로벌증시": ["뉴욕증시", "증시", "개장", "미국", "나스닥", "다우", "S&P", "테슬라", "나이키"]
     }
     
     for theme, keywords in keyword_theme_rules.items():
@@ -71,7 +73,7 @@ _cached_feature_items = []
 _last_raw_titles = set()
 
 # ==========================================
-# 7섹션 전용 데이터 수집 함수 (동적 종목/테마 적용 완료)
+# 7섹션 전용 데이터 수집 함수
 # ==========================================
 def fetch_feature_stocks():
     global _cached_feature_items, _last_raw_titles
@@ -163,7 +165,7 @@ def fetch_feature_stocks():
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                # 네이버 API를 통해 정확한 종목명 및 테마 동적 획득
+                # 종목명 및 테마 안전하게 도출
                 stock_val, theme_val = fetch_stock_theme_from_naver(raw_stock_name)
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 
@@ -229,11 +231,14 @@ def fetch_feature_stocks():
     return serializable_items, market_summary_keyword
 
 # ==========================================
-# 정상화된 라우트 설정
+# 라우트 설정
 # ==========================================
 @app.route('/')
 def index():
-    feature_stocks, feature_market_summary = fetch_feature_stocks()
+    try:
+        feature_stocks, feature_market_summary = fetch_feature_stocks()
+    except Exception:
+        feature_stocks, feature_market_summary = [], "데이터 로딩 중입니다."
     return render_template(
         'index.html',
         feature_stocks=feature_stocks,
@@ -242,7 +247,10 @@ def index():
 
 @app.route('/api/feature-stocks')
 def api_feature_stocks():
-    feature_stocks, feature_market_summary = fetch_feature_stocks()
+    try:
+        feature_stocks, feature_market_summary = fetch_feature_stocks()
+    except Exception:
+        feature_stocks, feature_market_summary = [], ""
     return jsonify({
         "feature_stocks": feature_stocks,
         "feature_market_summary": feature_market_summary
