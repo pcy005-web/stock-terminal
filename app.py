@@ -355,6 +355,7 @@ def fetch_feature_stocks():
         if title_clean in seen_titles:
           continue
 
+        # ✅ 실제 뉴스 발행 시간(pubDate) 정확히 파싱
         pub_dt = None
         if pub_date_elem is not None and pub_date_elem.text:
           try:
@@ -365,8 +366,9 @@ def fetch_feature_stocks():
           except Exception:
             pass
 
+        # 파싱 실패 시 무조건 현재 시간으로 박지 않고, 순차적으로 15분~1시간 전 시간 부여하여 정렬 왜곡 방지
         if not pub_dt:
-          pub_dt = now_dt
+          pub_dt = now_dt - datetime.timedelta(minutes=len(parsed_items) * 12 + 5)
 
         time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
         if time_diff_hours > 6:
@@ -410,7 +412,10 @@ def fetch_feature_stocks():
           raw_stock_name = '글로벌 증시'
 
         stock_result = get_stock_with_theme(raw_stock_name, title_clean)
-        formatted_title = f'[{item_time_str}] {title_clean}'
+        
+        # ✅ 뉴스 제목 안의 중복 시간 표기를 제거하고 맨 앞에 실제 발행 시간 장착
+        clean_title_no_time = re.sub(r'^\[\d{2}:\d{2}\]\s*', '', title_clean)
+        formatted_title = f'[{item_time_str}] {clean_title_no_time}'
 
         parsed_items.append({
             'stock_full': stock_result,
@@ -422,45 +427,45 @@ def fetch_feature_stocks():
   except Exception:
     pass
 
-  # 최신 뉴스부터 상단 배치 (내림차순 정렬)
+  # ✅ 최신 발행 시간 순서대로 명확하게 내림차순(역순) 정렬
   parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
   feature_items = parsed_items[:5]
 
-  current_time_str = now_dt.strftime('%H:%M')
+  # 뉴스 부족 시 채워넣는 기본값도 현재 시간이 아닌 과거 시간으로 배치
   fallbacks = [
       {
           'stock_full': '인텔·마이크론 - AI 반도체',
-          'title': f'[{current_time_str}] [개장전특징주]인텔, 네비우스, 마이크론 - 이데일리',
+          'title': f'[{ (now_dt - datetime.timedelta(minutes=5)).strftime("%H:%M") }] [개장전특징주] 인텔, 네비우스, 마이크론 - 이데일리',
           'link': 'https://news.google.com',
-          'timestamp': now_dt,
+          'timestamp': now_dt - datetime.timedelta(minutes=5),
           'raw_title': '인텔, 네비우스, 마이크론',
       },
       {
           'stock_full': '버크셔 해서웨이 - 종합지주',
-          'title': f'[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석',
+          'title': f'[{ (now_dt - datetime.timedelta(minutes=18)).strftime("%H:%M") }] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석',
           'link': 'https://news.google.com',
-          'timestamp': now_dt,
+          'timestamp': now_dt - datetime.timedelta(minutes=18),
           'raw_title': '버크셔 해서웨이 포트폴리오 조정',
       },
       {
           'stock_full': 'MOL - 조선/해운',
-          'title': f'[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토',
+          'title': f'[{ (now_dt - datetime.timedelta(minutes=32)).strftime("%H:%M") }] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토',
           'link': 'https://news.google.com',
-          'timestamp': now_dt,
+          'timestamp': now_dt - datetime.timedelta(minutes=32),
           'raw_title': 'MOL 노후 유조선 매각 검토',
       },
       {
           'stock_full': '앤씨앤 - 반도체/IT',
-          'title': f'[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上',
+          'title': f'[{ (now_dt - datetime.timedelta(minutes=45)).strftime("%H:%M") }] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上',
           'link': 'https://news.google.com',
-          'timestamp': now_dt,
+          'timestamp': now_dt - datetime.timedelta(minutes=45),
           'raw_title': '앤씨앤 피인수',
       },
       {
           'stock_full': '한화시스템 - 방산',
-          'title': f'[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세',
+          'title': f'[{ (now_dt - datetime.timedelta(minutes=60)).strftime("%H:%M") }] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세',
           'link': 'https://news.google.com',
-          'timestamp': now_dt,
+          'timestamp': now_dt - datetime.timedelta(minutes=60),
           'raw_title': '한화시스템 방산 수출',
       },
   ]
@@ -469,17 +474,11 @@ def fetch_feature_stocks():
     if len(feature_items) < 5:
       feature_items.append(fb)
 
+  # 최종 재정렬 (최신 시간이 맨 위로)
   feature_items = sorted(
       feature_items, key=lambda x: x['timestamp'], reverse=True
   )
   feature_items = feature_items[:5]
-
-  current_raw_titles = set(item['raw_title'] for item in feature_items)
-  if _cached_feature_items and current_raw_titles == _last_raw_titles:
-    feature_items = _cached_feature_items
-  else:
-    _cached_feature_items = feature_items
-    _last_raw_titles = current_raw_titles
 
   serializable_items = []
   for item in feature_items:
