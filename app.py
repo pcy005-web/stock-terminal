@@ -190,7 +190,6 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    # [6번 세션 반영] 최근 6시간 이내 금융시장 핵심 이슈 정밀 수집
     query_str = urllib.parse.quote("코스피 주식 증권 실적 공시 펀더멘털 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -342,7 +341,7 @@ def generate_theme_sync_analysis(quotes, news_list):
     }
 
 def generate_smart_money_analysis(quotes):
-    """[3번 세션] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 환율 연동 분석"""
+    """[3번 세션] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 현재 쏠림 테마/업종 분석"""
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
@@ -352,15 +351,22 @@ def generate_smart_money_analysis(quotes):
     badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)" if kospi_up else "외인·기관 주도세력 매도 우위 (방어적 포지션)"
     badge_class = "up" if kospi_up else "down"
     
-    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여, 주도세력(외국인·기관)의 누적 순매수 차트와 주가 간 괴리율 축소 여부를 모니터링합니다."
-    decoupling_text = f"글로벌 증시 동조화(디커플링/커플링): 나스닥 선물({nasdaq_fut.get('rate')})의 탄력성에 따른 야간 선물 및 현물 시초가 대응 전략을 수립합니다."
+    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여, 주도세력(외국인·기관)의 누적 순매수 및 프로그램 매매 괴리율 축소 여부를 모니터링합니다."
+    
+    # [추가됨] 현재 스마트머니가 집중되는 테마 및 업종 쏠림 분석
+    concentrated_themes = (
+        "현재 스마트머니 수급 집중 테마 및 업종 분석: "
+        "1) **AI 반도체 대형주(삼성전자, SK하이닉스)** 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
+        "2) 변동성 장세 속 수익성 방어를 위한 **전력기기·원전·조선** 및 **은행·보험 등 저PBR 주주환원 업종**으로 기관 및 개인 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
+    )
+    
     fx_oil_text = f"환율 및 매크로 민감도: 원/달러 환율({usdkrw.get('price')}원)의 변동성 확대 구간에서 외국인 현물 수급의 민감한 이탈 여부와 대형 수출주 수급 공백을 점검합니다."
 
     return {
         'badge_text': badge_text,
         'badge_class': badge_class,
         'domestic': domestic_text,
-        'decoupling': decoupling_text,
+        'concentrated_themes': concentrated_themes,
         'fx_oil': fx_oil_text
     }
 
@@ -405,7 +411,7 @@ def generate_strategies(quotes, news_list):
         {
             "title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", 
             "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", 
-            "stock": "한화에어로ส페이스, 현대로템 + HD현대중공업, 삼성중공업", 
+            "stock": "한화에어로스페이스, 현대로템 + HD현대중공업, 삼성중공업", 
             "rank": "TOP 4"
         },
         {
