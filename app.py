@@ -187,7 +187,7 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 종목별 자동 업종/테마 매핑 사전 (한화생명 금융/보험 포함)
+# 종목별 자동 업종/테마 매핑 사전
 STOCK_THEME_MAP = {
     "한화시스템": "방산",
     "현대로템": "방산",
@@ -217,13 +217,11 @@ STOCK_THEME_MAP = {
     "한화생명": "금융/보험"
 }
 
-def get_stock_with_theme(stock_name):
+def get_stock_and_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
-    if clean_name in STOCK_THEME_MAP:
-        return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
-    return clean_name
+    theme_name = STOCK_THEME_MAP.get(clean_name, "시장테마")
+    return clean_name, theme_name
 
-# [7세션 수정] 최근 6시간 이내 뉴스 수집 및 실시간 테마/업종 정상 반영 로직
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
@@ -231,7 +229,6 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 요구사항 반영: 최근 6시간 이내 뉴스로 조건 설정 (when:6h)
     query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
     cache_buster = int(datetime.datetime.now().timestamp() / 15)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
@@ -284,22 +281,20 @@ def fetch_feature_stocks():
                 
                 raw_stock_name = ""
                 
-                # 1단계: 알려진 기업명 매칭 (STOCK_THEME_MAP 기준)
                 for comp in known_companies:
                     if comp in title_clean:
                         raw_stock_name = comp
                         break
                 
-                # 2단계: 따옴표 안의 기업명 탐색
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                    # '팔자' 같은 수급 표현이나 불필요한 단어 오인식 방지 필터 강화
+                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF", "팔자", "사자", "순매수", "순매도"]
                     for qm in quoted_matches:
                         if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
                             raw_stock_name = qm
                             break
                 
-                # 3단계: 대괄호 분석
                 if not raw_stock_name:
                     bracket_match = re.search(r"\[([^\]]+)\]", title_clean)
                     if bracket_match:
@@ -314,18 +309,18 @@ def fetch_feature_stocks():
                             no_bracket_title = re.sub(r"\[[^\]]+\]", "", title_clean).strip()
                             if "," in no_bracket_title:
                                 potential_stock = no_bracket_title.split(",")[0].strip()
-                                if len(potential_stock) <= 15:
+                                if len(potential_stock) <= 15 and "팔자" not in potential_stock:
                                     raw_stock_name = potential_stock
 
-                if not raw_stock_name:
+                if not raw_stock_name or "팔자" in raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                # 요구하신 "종목명 - 테마/업종" 포맷 적용 (실시간테마 문구 대체)
-                stock_name = get_stock_with_theme(raw_stock_name)
+                stock_name_val, theme_name_val = get_stock_and_theme(raw_stock_name)
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
-                    "stock": stock_name,
+                    "stock_name": stock_name_val,
+                    "theme_name": theme_name_val,
                     "title": formatted_title,
                     "link": link,
                     "timestamp": pub_dt
@@ -338,11 +333,11 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "한화생명 - 금융/보험", "title": f"[{current_time_str}] [특징주] 한화생명, 실적 개선 기대감 및 주주환원 부각에 강세", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "MOL - 해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock_name": "한화생명", "theme_name": "금융/보험", "title": f"[{current_time_str}] [특징주] 한화생명, 실적 개선 기대감 및 주주환원 부각에 강세", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock_name": "버크셔 해서웨이", "theme_name": "종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock_name": "MOL", "theme_name": "해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock_name": "앤씨앤", "theme_name": "반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
+        {"stock_name": "한화시스템", "theme_name": "방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
@@ -406,7 +401,7 @@ def fetch_naver_finance_news():
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
                     "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
-                    "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
+                    "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과", "팔자", "사자"
                 ]
                 
                 valid_stocks = []
@@ -455,7 +450,7 @@ def fetch_naver_finance_news():
                         news_type = "호재"
                         comment = "컨센서스 상회 실적 및 펀더멘털 개선에 기반한 기관·외인 순매수 유입 기대"
                         interest_score += 2
-                    elif any(k in title_clean for k in ["수주", "계약", "수출", "공급"]):
+                    elif any(k in title_clean for k in ["수수", "계약", "수출", "공급"]):
                         news_type = "호재"
                         comment = "멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화"
                         interest_score += 1
