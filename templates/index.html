@@ -263,27 +263,27 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (심플 컴팩트 레이아웃 + [증시요약] 하단 박스 추가) -->
+    <!-- 7. 장중 특징주 핫이슈 (실시간 비동기 갱신 지원) -->
     <div class="dashboard-section" id="sec-7">
-        <div class="section-header-title">7. 장중 특징주 핫이슈</div>
+        <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 컴팩트한 그리드/리스트 레이아웃으로 여러 개를 심플하게 배치 -->
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+            <!-- 컴팩트한 리스트 레이아웃 -->
+            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-card); border-radius: 6px; gap: 10px;">
                     <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
                         <span style="font-weight: 700; font-size: 0.85rem; color: var(--accent-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📌 {{ item.stock }}</span>
                         <span style="font-size: 0.8rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.title }}</span>
                     </div>
-                    <span style="font-size: 0.72rem; color: var(--text-sub); background: var(--bg-secondary); padding: 3px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid var(--border-color);">특징주</span>
+                    <span style="font-size: 0.72rem; color: var(--accent-main); background: var(--bg-secondary); padding: 3px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid var(--border-color);">실시간 특징주</span>
                 </div>
                 {% endfor %}
             </div>
 
-            <!-- 섹션 마지막에 증시마감 타이틀로 [증시요약] 키워드 정리 박스 -->
+            <!-- 섹션 마지막 증시마감 키워드 요약 박스 -->
             <div style="background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 12px 14px;">
-                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 4px;">📈 증시마감 키워드 요약</div>
-                <div style="font-size: 0.82rem; color: var(--text-main); line-height: 1.5;">{{ feature_market_summary }}</div>
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 4px;">📈 [증시요약] 실시간 키워드 브리핑</div>
+                <div id="feature-market-summary-box" style="font-size: 0.82rem; color: var(--text-main); line-height: 1.5;">{{ feature_market_summary }}</div>
             </div>
         </div>
     </div>
@@ -364,7 +364,40 @@
                 .catch(err => console.error('실시간 지표 갱신 실패:', err));
         }
 
+        function updateFeatureStocks() {
+            fetch('/api/feature-stocks')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('feature-stocks-container');
+                    const summaryBox = document.getElementById('feature-market-summary-box');
+                    
+                    if (container && data.feature_stocks) {
+                        let html = '';
+                        data.feature_stocks.forEach(item => {
+                            html += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-card); border-radius: 6px; gap: 10px;">
+                                <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
+                                    <span style="font-weight: 700; font-size: 0.85rem; color: var(--accent-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📌 ${item.stock}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title}</span>
+                                </div>
+                                <span style="font-size: 0.72rem; color: var(--accent-main); background: var(--bg-secondary); padding: 3px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid var(--border-color);">실시간 특징주</span>
+                            </div>`;
+                        });
+                        container.innerHTML = html;
+                    }
+                    
+                    if (summaryBox && data.feature_market_summary) {
+                        summaryBox.textContent = data.feature_market_summary;
+                    }
+                })
+                .catch(err => console.error('특징주 실시간 갱신 실패:', err));
+        }
+
+        // 3초마다 지표 갱신
         setInterval(updateMarketQuotes, 3000);
+        
+        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신
+        setInterval(updateFeatureStocks, 30000);
     </script>
 </body>
 </html>
