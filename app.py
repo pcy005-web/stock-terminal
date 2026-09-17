@@ -302,7 +302,6 @@ def fetch_feature_stocks():
 
   is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
 
-  # 💡 해외 개장전 특징주 및 美특징주 키워드를 포함하여 검색 범위 확장
   if is_market_closed:
     query = '(코스피 마감 특징주 OR 美특징주 OR 개장전특징주) when:6h'
   else:
@@ -353,7 +352,7 @@ def fetch_feature_stocks():
         if title_clean in seen_titles:
           continue
 
-        # 💡 뉴스의 실제 발행 시간(pubDate) 파싱
+        # 뉴스 발행 시간(pubDate) 안전 파싱
         pub_dt = None
         if pub_date_elem is not None and pub_date_elem.text:
           try:
@@ -373,7 +372,6 @@ def fetch_feature_stocks():
 
         seen_titles.add(title_clean)
         
-        # 💡 실제 뉴스 발행 시간 반영 ([HH:MM])
         item_time_str = pub_dt.strftime('%H:%M')
 
         raw_stock_name = ''
@@ -396,24 +394,8 @@ def fetch_feature_stocks():
           if ',' in clean_for_parse:
             candidate = clean_for_parse.split(',')[0].strip()
             exclude_words = [
-                '특징주',
-                '급등',
-                '상한가',
-                '하락',
-                '폭등',
-                '마감',
-                '시황',
-                '코스피',
-                '코스닥',
-                '거래',
-                '장중',
-                '오후',
-                '오전',
-                '종합',
-                '미국',
-                '일본',
-                'ET',
-                'ETF',
+                '특징주', '급등', '상한가', '하락', '폭등', '마감', 
+                '시황', '코스피', '코스닥', '거래', '장중', '오후', '오전', '종합', '미국', '일본', 'ET', 'ETF'
             ]
             if (
                 len(candidate) <= 12
@@ -438,6 +420,7 @@ def fetch_feature_stocks():
   except Exception:
     pass
 
+  # 💡 [최신 뉴스 상단 배치] 명확하게 최신 시간순(내림차순)으로 정렬 수행
   parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
   feature_items = parsed_items[:5]
 
@@ -484,6 +467,7 @@ def fetch_feature_stocks():
     if len(feature_items) < 5:
       feature_items.append(fb)
 
+  # 추가 후에도 최종적으로 최신 순서(내림차순)가 유지되도록 정렬
   feature_items = sorted(
       feature_items, key=lambda x: x['timestamp'], reverse=True
   )
@@ -511,16 +495,16 @@ def fetch_feature_stocks():
 
   if is_market_closed:
     market_summary_keyword = (
-        '📊 [코스피·코스닥 장마감 카테고리별 요약]\n\n'
+        '📊 [장마감 카테고리별 요약]\n\n'
         '• [외인·기관 수급]: 기관 및 기타법인의 순매수 유입 속 외인 매도세 방어\n'
-        '• [주도 업종 섹터]: 반도체 대형주(삼성전자, SK하이닉스 등) 및 핵심 주도주 반등 주도\n'
-        '• [지수 마감 결과]: 양대 지수 하방 경직성 확보하며 투자심리 회복세 마감'
+        '• [주도 업종 섹터]: 반도체 대형주 및 핵심 주도주 반등 주도\n'
+        '• [지수 마감 결과]: 양대 지수 하방 경직성 확보하며 마감'
     )
   else:
     market_summary_keyword = (
-        '📊 [장중 실시간 수급 카테고리별 분석]\n\n'
+        '📊 [실시간 수급 카테고리별 분석]\n\n'
         '• [수급 동향]: AI 반도체 및 핵심 소부장 중심의 선별적 매수세 유입\n'
-        '• [순환매 전개]: 전력기기·바이오·방산 섹터 간 빠른 순환매 장세 포착\n'
+        '• [순환매 전개]: 전력기기·바이오·방산 섹터 간 빠른 순환매 포착\n'
         '• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중'
     )
 
@@ -574,25 +558,8 @@ def fetch_naver_finance_news():
 
         quoted_matches = re.findall(r"'([^']+)'", title_clean)
         exclude_words = [
-            '특징주',
-            '급등',
-            '상한가',
-            '하락',
-            '폭등',
-            '마감',
-            '시황',
-            '코스피',
-            '코스닥',
-            '거래',
-            '실종',
-            '반토막',
-            '급락',
-            '폭락',
-            '증시',
-            '상승',
-            '악재',
-            '피인수',
-            '효과',
+            '특징주', '급등', '상한가', '하락', '폭등', '마감', '시황', 
+            '코스피', '코스닥', '거래', '실종', '반토막', '급락', '폭락', '증시', '상승', '악재', '피인수', '효과'
         ]
 
         valid_stocks = []
@@ -612,32 +579,14 @@ def fetch_naver_finance_news():
 
         interest_score = 0
         high_interest_keywords = [
-            '실적',
-            '서프라이즈',
-            '영업이익',
-            '컨센서스',
-            '수주',
-            '가이던스',
-            '공시',
-            '턴어라운드',
-            '수출',
+            '실적', '서프라이즈', '영업이익', '컨센서스', '수주', '가이던스', '공시', '턴어라운드', '수출'
         ]
         for kw in high_interest_keywords:
           if kw in title_clean:
             interest_score += 2
 
         negative_keywords = [
-            '하회',
-            '적자',
-            '둔화',
-            '우려',
-            '경고',
-            '규제',
-            '금리',
-            '발작',
-            '충격',
-            '소송',
-            '리스크',
+            '하회', '적자', '둔화', '우려', '경고', '규제', '금리', '발작', '충격', '소송', '리스크'
         ]
         is_negative = any(nk in title_clean for nk in negative_keywords)
 
@@ -661,10 +610,7 @@ def fetch_naver_finance_news():
 
         if is_negative:
           news_type = '리스크'
-          comment = (
-              '매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 방어적'
-              ' 포트폴리오 재편'
-          )
+          comment = '매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 포트폴리오 재편'
           interest_score += 1
         else:
           if any(
@@ -672,16 +618,11 @@ def fetch_naver_finance_news():
               for k in ['실적', '서프라이즈', '영업이익', '가이던스', '턴어라운드']
           ):
             news_type = '호재'
-            comment = (
-                '컨센서스 상회 실적 및 펀더멘털 개선에 기반한 기관·외인 순매수 유입'
-                ' 기대'
-            )
+            comment = '컨센서스 상회 실적 및 펀더멘털 개선에 기반한 순매수 유입 기대'
             interest_score += 2
           elif any(k in title_clean for k in ['수주', '계약', '수출', '공급']):
             news_type = '호재'
-            comment = (
-                '멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화'
-            )
+            comment = '멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화'
             interest_score += 1
 
         news_list.append({
@@ -769,24 +710,20 @@ def generate_theme_sync_analysis(quotes, news_list):
 
   if is_up:
     us_driver = (
-        f'글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다.'
+        f'글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 흐름은 국내 반도체 수출 실적 개선 기대감을 지지합니다.'
     )
     core_stocks = 'NVIDIA, 마이크론 테크놀로지, ASML'
     domestic_stocks = '삼성전자 - AI 반도체, SK하이닉스 - AI 반도체'
-    risk_strategy = (
-        '실적 모멘텀이 검증된 펀더멘털 우량주 중심의 공격적 비중 확대 및 눌림목 트레이딩'
-    )
+    risk_strategy = '실적 모멘텀이 검증된 우량주 중심의 비중 확대 및 트레이딩'
   else:
     us_driver = (
-        f'글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate})의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다.'
+        f'글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate}) 경계감 반영은 단기 변동성을 확대시키는 요인입니다.'
     )
     core_stocks = '테슬라, 애플, 마이크로소프트'
     domestic_stocks = (
         'KB금융 - 금융, 현대차 - 자동차, 삼성바이오로직스 - 바이오'
     )
-    risk_strategy = (
-        '매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축 및 리스크 관리'
-    )
+    risk_strategy = '매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축'
 
   return {
       'us_driver': us_driver,
@@ -816,16 +753,16 @@ def generate_smart_money_analysis(quotes):
   badge_class = 'up' if kospi_up else 'down'
 
   domestic_text = (
-      f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
+      f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 방향성과 연동한 주도세력 누적 순매수 모니터링."
   )
   decoupling_text = (
-      '코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, 지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 수급 포착'
+      '대형주와 개별주 간 차별화 장세 속 지수 방어력을 갖춘 핵심 주도주 및 실적 개선 종목 중심 순환매 포착.'
   )
   concentrated_themes = (
-      '<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> 1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, 2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다.'
+      '<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> 1) <strong>AI 반도체 대형주</strong> 중심의 쏠림 현상 지속, 2) 수익성 방어를 위한 <strong>전력기기·조선</strong> 및 <strong>금융 주주환원 업종</strong>으로의 자금 분산 흐름.'
   )
   fx_oil_text = (
-      f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검"
+      f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검."
   )
 
   return {
@@ -842,38 +779,32 @@ def generate_strategies(quotes, news_list):
   return [
       {
           'title': '실적 가시성 높은 AI 반도체 및 핵심 소부장',
-          'desc': (
-              '글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략'
-          ),
-          'stock': (
-              '삼성전자 - AI 반도체, SK하이닉스 - AI 반도체, 한미반도체 - AI 반도체'
-          ),
+          'desc': '글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 공략',
+          'stock': '삼성전자, SK하이닉스, 한미반도체',
           'rank': 'TOP 1',
       },
       {
           'title': '구조적 북미 수출 호조 전력 인프라 기기주',
-          'desc': (
-              '견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩'
-          ),
-          'stock': 'HD현대일렉트릭 - 전력기기, 효성중공업 - 전력기기',
+          'desc': '견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩',
+          'stock': 'HD현대일렉트릭, 효성중공업',
           'rank': 'TOP 2',
       },
       {
           'title': '바이오 CDMO 실적 우량주 및 파이프라인 모멘텀',
           'desc': '어닝 개선 기대감 및 스마트머니 수급 유입 포착',
-          'stock': '삼성바이오로직스 - 바이오, 셀트리온 - 바이오',
+          'stock': '삼성바이오로직스, 셀트리온',
           'rank': 'TOP 3',
       },
       {
           'title': 'K-방산 및 조선 슈퍼사이클 실적 턴어라운드',
           'desc': '환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주',
-          'stock': '한화에어로스페이스 - 방산, 현대로템 - 방산',
+          'stock': '한화에어로스페이스, 현대로템',
           'rank': 'TOP 4',
       },
       {
           'title': '저PBR 밸류업 금융주 및 정책 수혜 방어주',
           'desc': '매크로 변동성 대응 방어력 제고 및 배당 매력 부각',
-          'stock': 'KB금융 - 금융, 신한지주 - 금융',
+          'stock': 'KB금융, 신한지주',
           'rank': 'TOP 5',
       },
   ]
@@ -890,16 +821,16 @@ def generate_premarket_summary_bullets(quotes, news_list):
 
   return [
       (
-          '9월 FOMC 금리 인상 단행 및 매파적 여진: 연준의 스탠스로 인해 단기 변동성 확대 압력이 가중되고 있으나 장기물 금리의 상승 속도를 주시해야 합니다.'
+          '글로벌 통화정책 스탠스 및 매파적 여진에 따른 단기 변동성 확대 압력 속 장기물 금리 추이 주시.'
       ),
       (
-          '금리 인상 사이클과 증시 영향: 금리 인상 그 자체를 추세 하락으로 해석하기보다는, 당시의 경기 및 이익 사이클과 맞물린 장기물 금리의 상승 폭이 핵심 관전 포인트입니다.'
+          '금리 사이클과 증시 영향: 추세 하락보다는 당시의 경기 및 이익 사이클과 맞물린 금리 상승 폭이 핵심 관전 포인트.'
       ),
       (
-          f"해외 지표 및 환율 동향: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 등락 속 원/달러 환율({usdkrw.get('price')}원)의 변동성을 점검합니다."
+          f"해외 지표 및 환율 동향: 나스닥 선물({nasdaq_fut.get('rate')}) 및 필라델피아 반도체({sox.get('rate')}) 등락과 원/달러 환율({usdkrw.get('price')}원) 점검."
       ),
       (
-          '대응 전략: FOMC 직후 단기 변동성은 매수 기회로 활용하되, AI 반도체 및 주주환원 우수 업종 중심의 실적 모멘텀을 선별 기준으로 삼는 것이 적절합니다.'
+          '대응 전략: 변동성 구간은 매수 기회로 활용하되, 실적 모멘텀이 우수한 업종 중심으로 선별 접근.'
       ),
   ]
 
@@ -915,13 +846,12 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
   return (
       f'🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n'
       f'📊 [시황 총평]\n'
-      f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체 지수({sox['rate']}) 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율({usdkrw['price']}원) 추이에 주목합니다.\n\n"
+      f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체({sox['rate']}) 변동성 속 대형주 중심의 완만한 수급 균형세 유지.\n\n'
       f'🔍 [핵심 체크포인트]\n'
       f'• 주요 헤드라인: "{top_news}"\n'
-      f'• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n\n'
+      f'• 코스피·코스닥 거래대금 및 주도 섹터 순환매 속도 확인\n\n'
       f'💡 [실전 대응 가이드]\n'
-      f'• 지수 변동성 구간에서는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n'
-      f'• 매크로 리스크 방어를 위한 실적 우량주 분산 병행'
+      f'• 변동성 구간 내 수급 집중 주도주 눌림목 위주 대응 및 분산 병행'
   )
 
 
