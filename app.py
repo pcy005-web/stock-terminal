@@ -349,21 +349,23 @@ def generate_smart_money_analysis(quotes):
     badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)" if kospi_up else "외인·기관 주도세력 매도 우위 (방어적 포지션)"
     badge_class = "up" if kospi_up else "down"
     
-    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여, 주도세력(외국인·기관)의 누적 순매수 및 프로그램 매매 괴리율 축소 여부를 모니터링합니다."
+    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
+    decoupling_text = f"지수 디커플링 및 순환매: 대형주 수급 집중 속 개별 실적 장세 전개"
     
-    # 3번 세션 테마 및 업종 쏠림 분석 추가
+    # 3번 세션 테마 및 업종 쏠림 분석 데이터 정의
     concentrated_themes = (
-        "현재 스마트머니 수급 집중 테마 및 업종 분석: "
+        "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
         "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
-        "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 기관 및 개인 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
+        "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
     )
     
-    fx_oil_text = f"환율 및 매크로 민감도: 원/달러 환율({usdkrw.get('price')}원)의 변동성 확대 구간에서 외국인 현물 수급의 민감한 이탈 여부와 대형 수출주 수급 공백을 점검합니다."
+    fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검"
 
     return {
         'badge_text': badge_text,
         'badge_class': badge_class,
         'domestic': domestic_text,
+        'decoupling': decoupling_text,
         'concentrated_themes': concentrated_themes,
         'fx_oil': fx_oil_text
     }
@@ -378,28 +380,16 @@ def generate_strategies(quotes, news_list):
     if not ai_news_title and news_list:
         ai_news_title = news_list[0]['title']
 
-    if ai_news_title:
-        desc_1 = f"실적 컨센서스 상회 및 이슈('{ai_news_title[:22]}...') 기반 기관·외인 순매수 집중"
-    else:
-        desc_1 = "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략"
-
+    desc_1 = f"실적 컨센서스 상회 및 이슈('{ai_news_title[:22]}...') 기반 기관·외인 순매수 집중" if ai_news_title else "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략"
     n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표 점검"
     n3 = news_list[2]['title'] if len(news_list) > 2 else "주주환원 및 정책 모멘텀"
     
-    strategies = [
+    return [
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": desc_1, "stock": "삼성전자, SK하이닉스 + 한미반도체, 리노공업, 이오테크닉스", "rank": "TOP 1"},
         {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 + LS일렉트릭, 산일전기", "rank": "TOP 2"},
         {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": f"어닝 개선 기대감('{n2[:22]}...') 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 에이비엘바이오", "rank": "TOP 3"},
         {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 + HD현대중공업, 삼성중공업", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": f"매크로 변동성 대응 방어력 제고 및 배당 매력 부각('{n3[:22]}...')", "stock": "KB금융, 신한지주 + 현대차, 기아 (저PBR 우량 대형주)", "rank": "TOP 5"}
-    ]
-    return strategies
-
-def generate_sector_momentum_analysis(quotes, news_list):
-    return [
-        {"sector": "AI 인프라 및 반도체 소부장", "volume_status": "기관·외인 순매수 및 거래대금 최상위 집중", "leader": "삼성전자, SK하이닉스, 한미반도체", "small_caps": "리노공업, 이오테크닉스, 오픈엣지테크놀로지", "outlook": "실적 컨센서스 상향 조정과 연동된 구조적 주도주 지위 공고화"},
-        {"sector": "전력기기 및 조선·기계", "volume_status": "견고한 수주 잔고 기반 우상향 밸류에이션", "leader": "HD현대일렉트릭, HD현대중공업", "small_caps": "효성중공업, 산일전기, 제룡전기", "outlook": "글로벌 인프라 교체 사이클에 따른 실적 마진율 방어력 우수"},
-        {"sector": "바이오 CDMO 및 혁신신약", "volume_status": "기관 수급 유입 속 저점 매수세 포착", "leader": "삼성바이오로직스, 셀트리온, 알테오젠", "small_caps": "레고켐바이오, 에이비엘바이오", "outlook": "글로벌 파트너십 가시화 및 파이프라인 가치 재평가 구간"}
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
@@ -407,21 +397,16 @@ def generate_premarket_summary_bullets(quotes, news_list):
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
     
-    n_rate = nasdaq_fut.get('rate', '-0.6%')
-    w_price = usdkrw.get('price', '1,300')
-    s_rate = sox.get('rate', '-3.4%')
-    
-    bullet_1 = f"9월 FOMC 금리 인상 단행 및 매파적 여진: 이번 9월 FOMC에서 단행된 금리 인상과 예상보다 매파적이었던 연준의 스탠스로 인해 단기 변동성 확대 압력이 가중되고 있으나, 향후 연내 추가 인상 가능성 및 장기물 금리의 상승 속도를 주시해야 합니다."
-    bullet_2 = f"금리 인상 사이클과 증시 영향: 금리 인상 그 자체를 곧바로 추세 하락으로 해석하기보다는, 당시의 경기 및 이익 사이클과 맞물려 10년물 등 장기물 금리의 상승 폭이 제한되는지 여부가 증시 하단을 지지하는 핵심 관전 포인트입니다."
-    bullet_3 = f"해외 지표 및 환율 동향: 나스닥 선물({n_rate})과 필라델피아 반도체 지수({s_rate})의 등락 속에서, 원/달러 환율({w_price}원)의 변동성이 수출주 이익 전망과 실적 컨센서스에 미치는 영향을 점검해야 합니다."
-    bullet_4 = f"대응 전략: FOMC 직후 나타나는 단기 변동성은 비중 축소보다 매수 기회로 활용하되, 금리 경로의 불확실성에 대비하여 AI 반도체 및 주주환원 우수 업종 중심의 실적 모멘텀을 선별 기준으로 삼는 것이 적절합니다."
-    
-    return [bullet_1, bullet_2, bullet_3, bullet_4]
+    return [
+        f"9월 FOMC 금리 인상 단행 및 매파적 여진: 연준의 스탠스로 인해 단기 변동성 확대 압력이 가중되고 있으나 장기물 금리의 상승 속도를 주시해야 합니다.",
+        f"금리 인상 사이클과 증시 영향: 금리 인상 그 자체를 추세 하락으로 해석하기보다는, 당시의 경기 및 이익 사이클과 맞물린 장기물 금리의 상승 폭이 핵심 관전 포인트입니다.",
+        f"해외 지표 및 환율 동향: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 등락 속 원/달러 환율({usdkrw.get('price')}원)의 변동성을 점검합니다.",
+        f"대응 전략: FOMC 직후 단기 변동성은 매수 기회로 활용하되, AI 반도체 및 주주환원 우수 업종 중심의 실적 모멘텀을 선별 기준으로 삼는 것이 적절합니다."
+    ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
-    
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
@@ -430,14 +415,13 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
     return (
         f"🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n"
         f"📊 [시황 총평]\n"
-        f"실시간 대외 지표 연동 결과, 나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체 지수({sox['rate']})의 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율({usdkrw['price']}원) 추이에 따라 외국인 수급 방향성이 결정되는 국면입니다.\n\n"
+        f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체 지수({sox['rate']}) 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율({usdkrw['price']}원) 추이에 주목합니다.\n\n"
         f"🔍 [핵심 체크포인트]\n"
         f"• 주요 헤드라인: \"{top_news}\"\n"
-        f"• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n"
-        f"• 환율 안정세 안착 여부 및 외국인 선물 수급 동향 모니터링\n\n"
+        f"• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n\n"
         f"💡 [실전 대응 가이드]\n"
-        f"• 지수 변동성 구간에서는 무리한 추격 매수보다는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n"
-        f"• 매크로 리스크 방어를 위한 실적 우량주 및 배당/정책 모멘텀 주식 분산 병행"
+        f"• 지수 변동성 구간에서는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n"
+        f"• 매크로 리스크 방어를 위한 실적 우량주 분산 병행"
     )
 
 @app.route('/')
@@ -450,15 +434,11 @@ def index():
 
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        
         for future in as_completed(future_to_code):
             code = future_to_code[future]
             try:
                 data = future.result()
-                if data:
-                    price_map[code] = data
-                else:
-                    price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
             except Exception:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
@@ -483,6 +463,9 @@ def index():
         ai_briefing=ai_briefing_text
     )
 
+def generate_sector_momentum_analysis(quotes, news_list):
+    return []
+
 @app.route('/api/quotes')
 def api_quotes():
     price_map = {}
@@ -493,15 +476,11 @@ def api_quotes():
 
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        
         for future in as_completed(future_to_code):
             code = future_to_code[future]
             try:
                 data = future.result()
-                if data:
-                    price_map[code] = data
-                else:
-                    price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
             except Exception:
                 price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
                 
