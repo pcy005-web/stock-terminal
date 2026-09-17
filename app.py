@@ -586,7 +586,7 @@ def generate_strategies(quotes, news_list):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    # 5번 섹션: 하드코딩 제거 및 실시간 데이터/뉴스 연동 동적 생성
+    # 중복 점('•') 생성을 막기 위해 문자열 맨 앞의 '•' 기호를 제거했습니다.
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
@@ -596,10 +596,10 @@ def generate_premarket_summary_bullets(quotes, news_list):
     market_tone = "상승 압력 우위 및 투자심리 개선" if is_nasdaq_up else "변동성 확대 및 경계 매물 출화"
     
     return [
-        f"• [실시간 이슈 포커스]: {top_news_title}",
-        f"• [해외 증시 및 환율 연동]: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 변동 속 원/달러 환율({usdkrw.get('price')}원) 추이 밀착 모니터링",
-        f"• [장전 시장 분위기]: 현재 글로벌 지표 연동 결과 {market_tone} 국면이 전개되고 있습니다.",
-        f"• [핵심 대응 전략]: 수급이 집중되는 주도 섹터 중심의 선별적 접근과 리스크 관리를 병행하는 전략 유효"
+        f"[실시간 이슈 포커스]: {top_news_title}",
+        f"[해외 증시 및 환율 연동]: 나스닥 선물({nasdaq_fut.get('rate')})과 필라델피아 반도체 지수({sox.get('rate')}) 변동 속 원/달러 환율({usdkrw.get('price')}원) 추이 밀착 모니터링",
+        f"[장전 시장 분위기]: 현재 글로벌 지표 연동 결과 {market_tone} 국면이 전개되고 있습니다.",
+        f"[핵심 대응 전략]: 수급이 집중되는 주도 섹터 중심의 선별적 접근과 리스크 관리를 병행하는 전략 유효"
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
