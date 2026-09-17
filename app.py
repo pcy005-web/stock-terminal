@@ -187,6 +187,7 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
+# 종목별 자동 업종/테마 매핑 사전
 STOCK_THEME_MAP = {
     "한화시스템": "방산",
     "현대로템": "방산",
@@ -227,12 +228,15 @@ def fetch_feature_stocks():
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-    query = "코스피 마감 특징주" if is_market_closed else "[특징주] 급등 when:3h"
-    cache_buster = int(datetime.datetime.now().timestamp() / 15)
+    
+    # 실시간 특징주 수집 쿼리 확장 및 유연화
+    query = "코스피 특징주 급등" if is_market_closed else "주식 특징주 급등 상승"
+    cache_buster = int(datetime.datetime.now().timestamp() / 10)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
     seen_titles = set()
+    
     known_companies = list(STOCK_THEME_MAP.keys())
     
     try:
@@ -257,9 +261,6 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                if "주요 특징주" in title_clean or "오늘(" in title_clean:
-                    continue
-                
                 if title_clean in seen_titles:
                     continue
                 seen_titles.add(title_clean)
@@ -275,6 +276,7 @@ def fetch_feature_stocks():
                         pass
                 
                 item_time_str = pub_dt.strftime('%H:%M')
+                
                 raw_stock_name = ""
                 
                 for comp in known_companies:
@@ -289,30 +291,13 @@ def fetch_feature_stocks():
                         if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
                             raw_stock_name = qm
                             break
-                
-                if not raw_stock_name:
-                    bracket_match = re.search(r"\[([^\]]+)\]", title_clean)
-                    if bracket_match:
-                        bracket_content = bracket_match.group(1)
-                        if "시장분석" in bracket_content or "분석" in bracket_content:
-                            for kw in ["광통신", "첨단소재", "로봇", "에너지", "반도체", "이차전지", "바이오", "방산", "조선"]:
-                                if kw in title_clean and kw not in raw_stock_name:
-                                    raw_stock_name = f"{raw_stock_name} {kw}".strip()
-                            if not raw_stock_name:
-                                raw_stock_name = "종합시장 테마"
-                        else:
-                            no_bracket_title = re.sub(r"\[[^\]]+\]", "", title_clean).strip()
-                            if "," in no_bracket_title:
-                                potential_stock = no_bracket_title.split(",")[0].strip()
-                                if len(potential_stock) <= 15:
-                                    raw_stock_name = potential_stock
 
                 if not raw_stock_name:
-                    raw_stock_name = "시장주도주"
+                    raw_stock_name = "실시간 특징주"
                 
                 stock_name = get_stock_with_theme(raw_stock_name)
-                formatted_title = f"[{item_time_str}] {title_clean}"
                 
+                formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
                     "stock": stock_name,
                     "title": formatted_title,
@@ -405,6 +390,7 @@ def fetch_naver_finance_news():
                     valid_stocks.append(m)
                 
                 extracted_stocks_from_quotes = ", ".join(valid_stocks)
+
                 related_stock = ""
                 news_type = "중립"
                 comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
@@ -424,7 +410,7 @@ def fetch_naver_finance_news():
                     if is_negative:
                         related_stock = "원/달러 환율, 지수 방어주"
                     elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아"]):
-                        related_stock = "삼성전자"
+                        related_stock = "삼성전자, SK하이닉스"
                     elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
                         related_stock = "HD현대일렉트릭"
                     elif any(k in title_clean for k in ["방산", "조선", "수주"]):
@@ -459,6 +445,7 @@ def fetch_naver_finance_news():
                 })
                 
         news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
+        
     except Exception:
         pass
         
