@@ -158,7 +158,7 @@ def fetch_realtime_data(ticker):
                         item = res_json['datas'][0]
                 
                 if not item and isinstance(res_json, list) and len(res_json) > 0:
-                    item = res_json[0]
+                    item = res_json['datas'][0] if isinstance(res_json, dict) and 'datas' in res_json else res_json[0]
 
                 if item:
                     cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
@@ -186,14 +186,17 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """[장중 특징주 핫이슈] 증권사 HTS 요약 스타일의 특징주 분석 데이터"""
-    return [
-        {"stock": "삼성전자 / SK하이닉스", "title": "AI 반도체 밸류체인 실적 개선 가시화 속 외국인·기관 순매수 집중", "reason": "글로벌 빅테크 인프라 투자 지속 및 HBM 공급 체인 경쟁력 부각에 따른 수급 유입"},
-        {"stock": "HD현대일렉트릭 / 효성중공업", "title": "북미 및 유럽 전력망 교체 수요에 따른 실적 서프라이즈 전망", "reason": "구조적 수주 잔고 증가 및 고마진 변압기 중심의 수출 호조세 지속"},
-        {"stock": "알테오젠 / 셀트리온", "title": "바이오 섹터 글로벌 임상 및 파이프라인 가치 재평가 국면", "reason": "기술 이전 모멘텀 및 실적 턴어라운드 기대감에 따른 스마트머니 결집"},
-        {"stock": "KB금융 / 신한지주", "title": "정부 밸류업 프로그램 및 적극적 주주환원 정책 모멘텀", "reason": "ROE 개선세와 저PBR 매력에 기반한 하방 경직성 및 기관 방어 매수"},
-        {"stock": "한화에어로스페이스 / 현대로템", "title": "K-방산 수출 다변화에 따른 중장기 실적 성장의 가시성 입증", "reason": "해외 대규모 무기 체계 공급 계약 확정에 따른 수급형 성장주 트레이딩"}
+    """장중 특징주 핫이슈 및 키워드별 증시요약 데이터"""
+    items = [
+        {"stock": "삼성전자 / SK하이닉스", "title": "AI 반도체 밸류체인 실적 개선 가시화 속 수급 집중", "reason": "글로벌 빅테크 투자 지속 및 HBM 공급 체인 경쟁력 부각"},
+        {"stock": "HD현대일렉트릭 / 효성중공업", "title": "북미 및 유럽 전력망 교체 수요에 따른 실적 서프라이즈 전망", "reason": "구조적 수주 잔고 증가 및 고마진 변압기 수출 호조"},
+        {"stock": "알테오젠 / 셀트리온", "title": "바이오 섹터 글로벌 임상 및 파이프라인 가치 재평가 국면", "reason": "기술 이전 모멘텀 및 실적 턴어라운드 기대감 결집"},
+        {"stock": "KB금융 / 신한지주", "title": "정부 밸류업 프로그램 및 적극적 주주환원 정책 모멘텀", "reason": "ROE 개선세와 저PBR 매력에 기반한 기관 방어 매수"},
+        {"stock": "한화에어로스페이스 / 현대로템", "title": "K-방산 수출 다변화에 따른 중장기 실적 성장의 가시성 입증", "reason": "해외 대규모 무기 체계 공급 계약 확정에 따른 트레이딩"},
+        {"stock": "현대차 / 기아", "title": "완성차 글로벌 판매량 견조 및 주주환원 확대 기대감", "reason": "수출 호조 및 외국인 매수세 유입"}
     ]
+    market_summary_keyword = "[증시요약] 대형 반도체·전력기기 주도 섹터 중심의 기관·외인 순매수 유입, 저PBR 금융·방산 방어주 순환매 장세 전개"
+    return items, market_summary_keyword
 
 def fetch_naver_finance_news():
     kst = datetime.timezone(datetime.timedelta(hours=9))
@@ -458,7 +461,7 @@ def index():
     sector_momentum_data = generate_sector_momentum_analysis(price_map, live_news)
     market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
-    feature_stocks_data = fetch_feature_stocks()
+    feature_stocks_data, feature_market_summary = fetch_feature_stocks()
                 
     return render_template(
         'index.html', 
@@ -471,7 +474,8 @@ def index():
         sector_momentum=sector_momentum_data,
         market_summary_bullets=market_summary_bullets,
         ai_briefing=ai_briefing_text,
-        feature_stocks=feature_stocks_data
+        feature_stocks=feature_stocks_data,
+        feature_market_summary=feature_market_summary
     )
 
 def generate_sector_momentum_analysis(quotes, news_list):
