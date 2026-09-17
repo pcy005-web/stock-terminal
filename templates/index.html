@@ -286,22 +286,21 @@
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 개별 특징주 뉴스 리스트 (각 뉴스의 종목 데이터 혹은 스냅 강조 반영) -->
+            <!-- 개별 특징주 뉴스 리스트 (우측 불필요 문구 제거 완료) -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                    <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
                             {% if '스냅' in item.title %}📌 스냅 (SNAP){% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
                         </span>
-                        <span style="font-size: 0.72rem; color: var(--text-sub);">특징주 이슈</span>
                     </div>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">{{ item.title }}</span>
                 </a>
                 {% endfor %}
             </div>
 
-            <!-- 하단 증시마감 키워드 요약 (구조화 및 가독성 최적화) -->
+            <!-- 하단 증시마감 키워드 요약 (가독성 개선 리스트형) -->
             <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 6px; padding: 14px;">
                 <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
                     📈 증시마감 키워드 요약
@@ -315,7 +314,7 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                        <div style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">
+                        <div class="summary-raw-text" style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">
                             {{ feature_market_summary }}
                         </div>
                     {% endif %}
@@ -340,6 +339,31 @@
     </div>
 
     <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            formatSummaryBox();
+        });
+
+        function formatSummaryBox() {
+            const rawBox = document.querySelector('.summary-raw-text');
+            if (rawBox) {
+                let text = rawBox.textContent.trim();
+                if (text) {
+                    let items = text.split(/(?=\[)|(?<=\.)\s+/).filter(item => item.trim().length > 0);
+                    if (items.length > 1) {
+                        let html = '';
+                        items.forEach(item => {
+                            html += `
+                            <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.83rem; color: var(--text-main); line-height: 1.5;">
+                                <span style="color: var(--accent-main); font-weight: bold; min-width: 14px;">▪</span>
+                                <span>${item.trim()}</span>
+                            </div>`;
+                        });
+                        rawBox.outerHTML = html;
+                    }
+                }
+            }
+        }
+
         function toggleAiBriefing() {
             const reportBox = document.getElementById('ai-report-box');
             
@@ -416,9 +440,8 @@
                             }
                             html += `
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
                                     <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${stockLabel}</span>
-                                    <span style="font-size: 0.72rem; color: var(--text-sub);">특징주 이슈</span>
                                 </div>
                                 <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${item.title}</span>
                             </a>`;
@@ -431,20 +454,19 @@
                         }, 800);
                     }
                     
-                    if (summaryBox) {
-                        if (data.feature_market_summary_list && Array.isArray(data.feature_market_summary_list)) {
-                            let sumHtml = '';
-                            data.feature_market_summary_list.forEach(sum_item => {
-                                sumHtml += `
-                                <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.83rem; color: var(--text-main); line-height: 1.5;">
-                                    <span style="color: var(--accent-main); font-weight: bold; min-width: 14px;">▪</span>
-                                    <span>${sum_item}</span>
-                                </div>`;
-                            });
-                            summaryBox.innerHTML = sumHtml;
-                        } else if (data.feature_market_summary) {
-                            summaryBox.innerHTML = `<div style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">${data.feature_market_summary}</div>`;
-                        }
+                    if (summaryBox && data.feature_market_summary) {
+                        let sumText = data.feature_market_summary;
+                        let items = sumText.split(/(?=\[)|(?<=\.)\s+/).filter(item => item.trim().length > 0);
+                        
+                        let sumHtml = '';
+                        items.forEach(sum_item => {
+                            sumHtml += `
+                            <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.83rem; color: var(--text-main); line-height: 1.5;">
+                                <span style="color: var(--accent-main); font-weight: bold; min-width: 14px;">▪</span>
+                                <span>${sum_item.trim()}</span>
+                            </div>`;
+                        });
+                        summaryBox.innerHTML = sumHtml;
                     }
                 })
                 .catch(err => console.error('특징주 실시간 갱신 실패:', err));
