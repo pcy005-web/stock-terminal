@@ -191,6 +191,8 @@
             <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
                 <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling }}</li>
+                <!-- 테마 및 업종 쏠림 분석 추가 -->
+                <li style="margin-bottom: 6px;">{{ smart_money_summary.concentrated_themes | safe }}</li>
                 <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil }}</li>
             </ul>
         </div>
@@ -285,7 +287,6 @@
                 reportBox.textContent = '⏳ 실시간 데이터를 기반으로 새로운 AI 브리핑을 생성하는 중입니다...';
                 reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-                // 버튼 클릭 시 백엔드 API를 호출하여 최신 지표/뉴스가 반영된 동적 브리핑 수신
                 fetch('/api/ai-briefing')
                     .then(response => response.json())
                     .then(data => {
@@ -300,7 +301,6 @@
             }
         }
 
-        // 3초마다 지표 갱신 및 등락률(%) 값 변경 시 깜빡이 효과 부여
         function updateMarketQuotes() {
             fetch('/api/quotes')
                 .then(response => response.json())
@@ -339,7 +339,6 @@
                 .catch(err => console.error('실시간 지표 갱신 실패:', err));
         }
 
-        // 3초(3000ms) 주기 폴링 실행
         setInterval(updateMarketQuotes, 3000);
     </script>
 </body>
