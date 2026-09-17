@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 import re
+import pytz
 
 app = Flask(__name__)
 
@@ -23,7 +24,7 @@ MARKET_CATEGORIES = [
         'title': '🌍 해외 증시 및 변동성',
         'stocks': [
             {'code': 'sp500', 'name': 'S&P 500', 'ticker': 'NAVER_WORLD_SPOT_SP'},
-            {'code': 'dow', 'name': '다우존스', 'ticker': 'NAVER_WORLD_SPOT_DOW'},
+            {'code': 'dow', 'name': '다우존с', 'ticker': 'NAVER_WORLD_SPOT_DOW'},
             {'code': 'nasdaq', 'name': '나스닥', 'ticker': 'NAVER_WORLD_SPOT_NAS'},
             {'code': 'sp500_fut', 'name': 'S&P 500 선물', 'ticker': 'NAVER_WORLD_ES'},
             {'code': 'dow_fut', 'name': '다우존스 선물', 'ticker': 'NAVER_WORLD_YM'},
@@ -186,13 +187,17 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """실시간 구글 뉴스 RSS를 파싱하여 장중 특징주 핫이슈 및 [증시요약] 키워드 동적 생성"""
-    kst = datetime.timezone(datetime.timedelta(hours=9))
+    """장중/장마감 시간에 따른 키움 스타일 특징주 및 [증시요약] 브리핑 데이터 구성 (5개 제한, HH:MM 형태)"""
+    kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
-    current_hour_str = now_dt.strftime('%H시 %M분')
+    current_time_str = now_dt.strftime('%H:%M')
+    current_hour_min = now_dt.hour * 100 + now_dt.minute
     
-    query_str = urllib.parse.quote("코스피 코스닥 특징주 급등 상한가 when:6h")
-    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
+    # 장 마감 여부 판정 (15:30 이후 또는 주말)
+    is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
+    
+    query = "코스피 마감 증시요약 특징주" if is_market_closed else "코스피 코스닥 특징주 급등 상한가 when:6h"
+    rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
     
     feature_items = []
     seen_stocks = set()
@@ -213,9 +218,6 @@ def fetch_feature_stocks():
                 title_elem = item.find('title')
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
-                
-                if "특징주" not in title_clean:
-                    continue
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 bracket_matches = re.findall(r"\[([^\]]+)\]", title_clean)
@@ -245,30 +247,39 @@ def fetch_feature_stocks():
                     continue
                 seen_stocks.add(stock_name)
                 
+                formatted_title = f"[{current_time_str}] {title_clean}"
                 feature_items.append({
                     "stock": stock_name,
-                    "title": title_clean,
-                    "reason": "실시간 수급 집중 및 뉴스 모멘텀 발생"
+                    "title": formatted_title,
+                    "reason": "마감 시황 요약 및 수급 분석" if is_market_closed else "실시간 수급 집중 및 뉴스 모멘텀 발생"
                 })
                 
-                if len(feature_items) >= 6:
+                if len(feature_items) >= 5:
                     break
     except Exception:
         pass
         
-    if not feature_items:
-        feature_items = [
-            {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_hour_str} 실시간] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입", "reason": "글로벌 빅테크 투자 지속"},
-            {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_hour_str} 실시간] 북미 전력망 교체 모멘텀 지속에 따른 강세", "reason": "구조적 수주 잔고 증가"},
-            {"stock": "알테오젠 / 셀트리온", "title": f"[{current_hour_str} 실시간] 글로벌 바이오 파이프라인 가치 재평가 국면", "reason": "기술 이전 모멘텀 결집"},
-            {"stock": "KB금융 / 신한지주", "title": f"[{current_hour_str} 실시간] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "reason": "기관 방어 매수 유입"}
+    if len(feature_items) < 5:
+        fallbacks = [
+            {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입"},
+            {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] 북미 전력망 교체 모멘텀 지속에 따른 강세"},
+            {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] 글로벌 바이오 파이프라인 가치 재평가 국면"},
+            {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] 밸류업 프로그램 및 적극적 주주환원 정책 부각"},
+            {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장"}
         ]
+        for fb in fallbacks:
+            if len(feature_items) < 5:
+                feature_items.append(fb)
+                
+    if is_market_closed:
+        market_summary_keyword = "[증시요약] 국내 증시 마감 결과, 대형 반도체 및 주요 주도 섹터 중심의 수급 공방 속 외국인·기관 순매수 마감 및 업종별 차별화 장세 연출"
+    else:
+        market_summary_keyword = "[증시요약] 실시간 특징주 수급 분석 결과, AI 반도체 및 전력기기·바이오 섹터 중심의 선별적 매수세 유입과 순환매 장세 전개 중"
         
-    market_summary_keyword = f"[증시요약 - {current_hour_str} 갱신] 실시간 특징주 수급 분석 결과, AI 반도체 및 전력기기·바이오 섹터 중심의 선별적 매수세 유입과 순환매 장세 전개 중"
-    return feature_items, market_summary_keyword
+    return feature_items[:5], market_summary_keyword
 
 def fetch_naver_finance_news():
-    kst = datetime.timezone(datetime.timedelta(hours=9))
+    kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
@@ -486,7 +497,7 @@ def generate_premarket_summary_bullets(quotes, news_list):
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    kst = datetime.timezone(datetime.timedelta(hours=9))
+    kst = pytz.timezone('Asia/Seoul')
     now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
@@ -575,6 +586,7 @@ def api_feature_stocks():
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
+    kst = pytz.timezone('Asia/Seoul')
     price_map = {}
     tasks = []
     for cat in MARKET_CATEGORIES:
