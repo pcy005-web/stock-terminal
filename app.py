@@ -190,8 +190,8 @@ def fetch_naver_finance_news():
     now_dt = datetime.datetime.now(kst)
     current_hour_str = now_dt.strftime('%H시 %M분')
     
-    # [수정 완료] 최근 12시간 -> 최근 6시간 이내 뉴스로 단축 수집
-    query_str = urllib.parse.quote("코스피 주식 증권 경제 when:6h")
+    # [6번 세션 반영] 최근 6시간 이내 금융시장 핵심 이슈 정밀 수집
+    query_str = urllib.parse.quote("코스피 주식 증권 실적 공시 펀더멘털 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     seen_titles = set()
@@ -237,55 +237,45 @@ def fetch_naver_finance_news():
 
                 related_stock = ""
                 news_type = "중립"
-                comment = "실시간 매크로 지표 연동 및 시장 수급 변동성 모니터링 필요"
+                comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
 
                 interest_score = 0
-                high_interest_keywords = ["특징주", "급등", "서프라이즈", "최대", "돌파", "폭등", "상승", "수주", "공시", "실적", "신고가", "상한가"]
+                high_interest_keywords = ["실적", "서프라이즈", "영업이익", "컨센서스", "수주", "가이던스", "공시", "턴어라운드", "수출"]
                 for kw in high_interest_keywords:
                     if kw in title_clean:
                         interest_score += 2
 
-                negative_keywords = ["악재", "실종", "급락", "하락", "폭락", "위기", "침체", "이탈", "우려", "경고", "부진", "하회", "적자"]
+                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "발작", "충격", "소송", "리스크"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
                 if extracted_stocks_from_quotes:
-                    related_stock = f"{extracted_stocks_from_quotes} (관련주)"
+                    related_stock = f"{extracted_stocks_from_quotes} (핵심종목)"
                 else:
-                    if "미투온" in title_clean or "카카오게임즈" in title_clean:
-                        related_stock = "미투온, 카카오게임즈, 큐라티스, 엠에프씨"
-                    elif "큐라티스" in title_clean or "엠에프씨" in title_clean or "기가레인" in title_clean:
-                        related_stock = "큐라티스, 엠에프씨, 기가레인"
-                    elif is_negative:
-                        related_stock = "원/달러 환율, 코스피 대형 방어주, 현금 자산"
-                    elif any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
-                        related_stock = "한선엔지니어링, 아모센스, LS일렉트릭, 산일전기, 효성중공업"
-                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
-                        related_stock = "삼성전자, SK하이닉스, 제주반도체, 퀄리타스반도체"
-                    elif any(k in title_clean for k in ["환율", "달러", "금리", "연준", "인플레", "관세"]):
-                        related_stock = "원/달러 환율, KB금융, 현대차"
-                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "수주"]):
-                        related_stock = "한화에어로스페이스, HD현대일렉트릭, 제룡전기"
-                    elif any(k in title_clean for k in ["바이오", "제약", "임상", "신약"]):
+                    if is_negative:
+                        related_stock = "원/달러 환율, 지수 방어형 대형주, 고배당 우량주"
+                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아"]):
+                        related_stock = "삼성전자, SK하이닉스, 한미반도체, 리노공업"
+                    elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
+                        related_stock = "HD현대일렉트릭, 효성중공업, LS일렉트릭"
+                    elif any(k in title_clean for k in ["방산", "조선", "수주"]):
+                        related_stock = "한화에어로스페이스, HD현대중공업, 현대로템"
+                    elif any(k in title_clean for k in ["바이오", "제약", "임상"]):
                         related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
                     else:
-                        related_stock = "코스피/코스닥 주요 거래대금 상위 종목"
+                        related_stock = "코스피 시가총액 상위 주도주 및 기관 순매수 종목"
 
                 if is_negative:
                     news_type = "리스크"
-                    comment = "매크로 악재 및 거래 대금 위축에 따른 방어적 포트폴리오 점검 필요"
+                    comment = "매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 방어적 포트폴리오 재편"
                     interest_score += 1
                 else:
-                    if any(k in title_clean for k in ["연료전지", "전력난", "전력", "변압기", "전력기기"]):
+                    if any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "가이던스", "턴어라운드"]):
                         news_type = "호재"
-                        comment = "글로벌 AI 데이터센터 전력 수요 급증에 따른 신재생·연료전지 수급 집중"
+                        comment = "컨센서스 상회 실적 및 펀더멘털 개선에 기반한 기관·외인 순매수 유입 기대"
                         interest_score += 2
-                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "실적", "엔비디아", "칩"]):
+                    elif any(k in title_clean for k in ["수주", "계약", "수출", "공급"]):
                         news_type = "호재"
-                        comment = "인공지능 및 반도체 업황 개선 기대감 속 고거래량 소부장 유입"
-                        interest_score += 1
-                    elif any(k in title_clean for k in ["방산", "수출", "조선", "원전", "전력", "수주", "상한가", "급등"]):
-                        news_type = "호재"
-                        comment = "개별 종목 모멘텀 및 테마성 거래대금 집중 현상 포착"
+                        comment = "멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화"
                         interest_score += 1
 
                 news_list.append({
@@ -305,16 +295,16 @@ def fetch_naver_finance_news():
         
     if len(news_list) < 10:
         dynamic_fallbacks = [
-            (f"[{current_hour_str} 실시간 특징주] 글로벌 AI 인프라 투자 확대에 따른 반도체 공급망 재편 및 수급 동향", "https://news.google.com", "삼성전자, SK하이닉스, 제주반도체", "AI 밸류체인 전반 및 중소형 반도체 소부장 거래량 급증", "호재", False),
-            (f"[{current_hour_str} 실시간 시황] 원/달러 환율 변동성 확대에 따른 외환시장 안정화 조치 점검", "https://news.google.com", "원/달러 환율, KB금융", "환율 등락에 따른 외국인 자금 유출입 감시", "중립", False),
-            (f"[{current_hour_str} 실시간 핫이슈] 정부 밸류업 프로그램 가속화 및 주주환원 우수기업 수급 집중", "https://news.google.com", "KB금융, 신한지주, 저PBR 우선주", "저PBR 종목군의 하방 지지력 강화", "호재", False),
-            (f"[{current_hour_str} 실시간 특징주] K-방산 수출 다변화 및 중동·유럽향 추가 수주 모멘텀 분석", "https://news.google.com", "한화에어로스페이스, 현대로템, 빅텍", "탄탄한 수주 잔고 기반 방산 중소형 테마 강세", "호재", False),
-            (f"[{current_hour_str} 실시간 리포트] 미국 국채금리 입찰 결과에 따른 국내 성장주 영향 및 지수 반응", "https://news.google.com", "미국 국채금리, NAVER, 카카오", "금리 발작 리스크에 따른 지수 단기 변동성", "리스크", True),
-            (f"[{current_hour_str} 실시간 수급] 조선업 친환경 슈퍼사이클 고부가가치선 건조 릴레이 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "조선 기자재 중소형 테마 순환매 포착", "호재", False),
-            (f"[{current_hour_str} 실시간 특징주] 글로벌 제약·바이오 파트너십 및 기술 수출 성과 가시화", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "실적 성장성과 모멘텀 동시 보유 바이오 주도주", "호재", False),
-            (f"[{current_hour_str} 실시간 핫이슈] 북미 전력망 교체 수요 급증에 따른 전력기기 특수 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "전력기기 및 변압기 중소형주 거래대금 집중", "호재", False),
-            (f"[{current_hour_str} 실시간 시황] 국내 증시 시가총액 상위 종목 거래대금 회복 국면 점검", "https://news.google.com", "코스피, 코스닥 대형주 및 테마별 대장주", "유동성 유입 여부에 따른 순환매 대응", "중립", False),
-            (f"[{current_hour_str} 실시간 리포트] 국제유가 및 원자재 시장 수급 불안정성 대비 리스크 관리", "https://news.google.com", "WTI원유, 금현물, 흥구석유", "원자재 및 에너지 관련 단기 테마성 수급 점검", "리스크", True)
+            (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자, SK하이닉스, 리노공업", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
+            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "원/달러 환율, 현대차, 기아", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
+            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주, 저PBR 지주사", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
+            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스, 현대로템", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
+            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 10년물, NAVER, 카카오", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
+            (f"[{current_hour_str} 산업 리포트] 조선업 슈퍼사이클 고부가가치선 건조 마진율 확대 지속", "https://news.google.com", "HD현대중공업, 삼성중공업", "선가 상승 사이클 속 실적 턴어라운드 공식 입증", "호재", False),
+            (f"[{current_hour_str} 바이오 섹터] 글로벌 임상 데이터 발표에 따른 펀더멘털 재평가 국면", "https://news.google.com", "삼성바이오로직스, 셀트리온, 알테오젠", "파이프라인 가치 반영 및 기관 수급 유입 강도 체크", "호재", False),
+            (f"[{current_hour_str} 인프라 동향] 북미 전력망 교체 수요에 따른 전력기기 실적 서프라이즈 전망", "https://news.google.com", "HD현대일렉트릭, 효성중공업", "구조적 수급 우위에 있는 북미 수출주 비중 유지", "호재", False),
+            (f"[{current_hour_str} 시장 심리] 코스피/코스닥 거래대금 회복 국면에서의 섹터별 순환매 대응", "https://news.google.com", "코스피 대형주, 코스닥 우량주", "주도주 수급 쏠림 현상 해소 여부 확인", "중립", False),
+            (f"[{current_hour_str} 원자재 리스크] 에너지 가격 및 원자재 수급 불안정에 따른 원가 부담 점검", "https://news.google.com", "WTI원유, 금현물, 화학·정유 섹터", "원가 상승 압박이 마진에 미치는 부정적 영향 필터링", "리스크", True)
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
             t, l, s, c, tp, neg = dynamic_fallbacks.pop(0)
@@ -325,6 +315,7 @@ def fetch_naver_finance_news():
     return news_list[:10]
 
 def generate_theme_sync_analysis(quotes, news_list):
+    """[2번 세션] 금융전문가 관점의 필라델피아 반도체/나스닥 연동 글로벌 공급망 및 펀더멘털 싱크로율 분석"""
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
     is_up = sox.get('is_up', True)
@@ -333,15 +324,15 @@ def generate_theme_sync_analysis(quotes, news_list):
     nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
     if is_up:
-        us_driver = f"미국 기술주 강세 연동: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate}) 상승 흐름 반영"
-        core_stocks = "NVIDIA, 마이크론 테크놀로지, 인텔, 브로드컴"
-        domestic_stocks = "삼성전자, SK하이닉스 + 제주반도체, 퀄리타스반도체 (AI·반도체 소부장)"
-        risk_strategy = "글로벌 AI 인프라 투자 모멘텀 속 주도주 중심의 공격적 트레이딩 및 수급 집중"
+        us_driver = f"글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다."
+        core_stocks = "NVIDIA, 마이크론 테크놀로지, ASML, 브로드컴"
+        domestic_stocks = "삼성전자, SK하이닉스 + 한미반도체, 리노공업 (AI 반도체 핵심 소부장)"
+        risk_strategy = "실적 모멘텀이 검증된 펀더멘털 우량주 중심의 공격적 비중 확대 및 눌림목 트레이딩"
     else:
-        us_driver = f"미국 기술주 변동성 확대: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate}) 경계감 소화"
+        us_driver = f"글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate})의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다."
         core_stocks = "테슬라, 애플, 마이크로소프트, 알파벳"
-        domestic_stocks = "KB금융, 현대차, 삼성바이오로직스 (대형 방어주 및 실적 우량주)"
-        risk_strategy = "미국 증시 기술주 조정 국면에 연동된 지수 하방 경직성 확인 및 보수적 분할 매수"
+        domestic_stocks = "KB금융, 현대차, 삼성바이오로직스 (저PBR 및 실적이 방어하는 대형주)"
+        risk_strategy = "매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축 및 리스크 관리"
     
     return {
         'us_driver': us_driver,
@@ -351,7 +342,7 @@ def generate_theme_sync_analysis(quotes, news_list):
     }
 
 def generate_smart_money_analysis(quotes):
-    """[3. 스마트머니 수급 레이더] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 환율 연동 분석"""
+    """[3번 세션] 금융 전문가 관점의 외인/기관 포지션, 누적 수급 및 환율 연동 분석"""
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '0', 'rate': '+0.00%', 'is_up': True})
@@ -374,9 +365,10 @@ def generate_smart_money_analysis(quotes):
     }
 
 def generate_strategies(quotes, news_list):
+    """[4번 세션] 금융전문가 관점의 밸류에이션, 실적 모멘텀 및 수급 기반 포트폴리오 전략"""
     ai_news_title = ""
     for n in news_list:
-        if any(k in n['title'] for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아", "칩", "인프라"]):
+        if any(k in n['title'] for k in ["실적", "반도체", "AI", "삼성", "하이닉스", "서프라이즈"]):
             ai_news_title = n['title']
             break
             
@@ -384,74 +376,75 @@ def generate_strategies(quotes, news_list):
         ai_news_title = news_list[0]['title']
 
     if ai_news_title:
-        desc_1 = f"실시간 지수 연동 및 이슈('{ai_news_title[:25]}...') 기반 수급 유입"
+        desc_1 = f"실적 컨센서스 상회 및 이슈('{ai_news_title[:22]}...') 기반 기관·외인 순매수 집중"
     else:
-        desc_1 = "글로벌 AI 인프라 투자 확대 및 반도체 밸류체인 수급 집중"
+        desc_1 = "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략"
 
-    n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표"
-    n3 = news_list[2]['title'] if len(news_list) > 2 else "밸류업 및 정책 모멘텀"
+    n2 = news_list[1]['title'] if len(news_list) > 1 else "환율 및 매크로 지표 점검"
+    n3 = news_list[2]['title'] if len(news_list) > 2 else "주주환원 및 정책 모멘텀"
     
     strategies = [
         {
-            "title": "AI 반도체 및 고거래량 소부장 집중 공략", 
+            "title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", 
             "desc": desc_1, 
-            "stock": "삼성전자, SK하이닉스 + 제주반도체, 퀄리타스반도체, 오픈엣지테크놀로지", 
+            "stock": "삼성전자, SK하이닉스 + 한미반도체, 리노공업, 이오테크닉스", 
             "rank": "TOP 1"
         },
         {
-            "title": "글로벌 전력 인프라 및 전력기기 수주", 
-            "desc": "북미 중심 수출 호조세 지속에 따른 실적 모멘텀 트레이딩", 
-            "stock": "HD현대일렉트릭, 효성중공업 + 산일전기, 제룡전기", 
+            "title": "구조적 북미 수출 호조 전력 인프라 기기주", 
+            "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", 
+            "stock": "HD현대일렉트릭, 효성중공업 + LS일렉트릭, 산일전기", 
             "rank": "TOP 2"
         },
         {
-            "title": "바이오 CDMO 및 혁신 신약 순환매", 
-            "desc": f"이슈 점검('{n2[:25]}...') 및 기관/외인 수급 포착 종목", 
-            "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 레고켐바이오, 에이비엘바이오", 
+            "title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", 
+            "desc": f"어닝 개선 기대감('{n2[:22]}...') 및 스마트머니 수급 유입 포착", 
+            "stock": "삼성바이오로직스, 셀트리온 + 알테오젠, 에이비엘바이오", 
             "rank": "TOP 3"
         },
         {
-            "title": "K-방산 수출 실적주 및 테마 눌림목 매수", 
-            "desc": "견고한 수주 잔고를 바탕으로 한 중장기 성장 모멘텀", 
-            "stock": "한화에어로스페이스, 현대로템 + 빅텍, 스페코", 
+            "title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", 
+            "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", 
+            "stock": "한화에어로ส페이스, 현대로템 + HD현대중공업, 삼성중공업", 
             "rank": "TOP 4"
         },
         {
-            "title": "저PBR 금융·주주환원 정책주 및 개별 테마", 
-            "desc": f"시장 변동성 완충 및 안정적 배당 매력 부각('{n3[:25]}...')", 
-            "stock": "KB금융, 현대차 + 저PBR 우량 품절주, 정책 수혜 중소형주", 
+            "title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", 
+            "desc": f"매크로 변동성 대응 방어력 제고 및 배당 매력 부각('{n3[:22]}...')", 
+            "stock": "KB금융, 신한지주 + 현대차, 기아 (저PBR 우량 대형주)", 
             "rank": "TOP 5"
         }
     ]
     return strategies
 
 def generate_sector_momentum_analysis(quotes, news_list):
+    """[7번 세션] 금융전문가 관점의 업황 턴어라운드 및 섹터별 거래대금 집중도 분석"""
     return [
         {
-            "sector": "로봇 및 인공지능(AI) 솔루션",
-            "volume_status": "거래대금 급증 (순환매 유입)",
-            "leader": "레인보우로보틱스, 두산로보틱스",
-            "small_caps": "엔젤로보틱스, 에스피시스템스, 로보티즈",
-            "outlook": "단기 기술적 반등 및 테마성 수급 집중 구간"
+            "sector": "AI 인프라 및 반도체 소부장",
+            "volume_status": "기관·외인 순매수 및 거래대금 최상위 집중",
+            "leader": "삼성전자, SK하이닉스, 한미반도체",
+            "small_caps": "리노공업, 이오테크닉스, 오픈엣지테크놀로지",
+            "outlook": "실적 컨센서스 상향 조정과 연동된 구조적 주도주 지위 공고화"
         },
         {
-            "sector": "이차전지 소재 및 장비",
-            "volume_status": "완만한 바닥 다지기",
-            "leader": "LG에너지솔루션, POSCO홀딩스",
-            "small_caps": "엔켐, 탑머티리얼, 윤에스텍",
-            "outlook": "기관 매수 유입 여부에 따른 저점 매수세 포착"
+            "sector": "전력기기 및 조선·기계",
+            "volume_status": "견고한 수주 잔고 기반 우상향 밸류에이션",
+            "leader": "HD현대일렉트릭, HD현대중공업",
+            "small_caps": "효성중공업, 산일전기, 제룡전기",
+            "outlook": "글로벌 인프라 교체 사이클에 따른 실적 마진율 방어력 우수"
         },
         {
-            "sector": "우주항공 및 양자암호",
-            "volume_status": "종목별 차별화 장세",
-            "leader": "한국항공우주, 한화시스템",
-            "small_caps": "컨텍, 텔레필드, 드림시큐리티",
-            "outlook": "정책 이슈 연동 개별 테마주 중심 급등락 순환매"
+            "sector": "바이오 CDMO 및 혁신신약",
+            "volume_status": "기관 수급 유입 속 저점 매수세 포착",
+            "leader": "삼성바이오로직스, 셀트리온, 알테오젠",
+            "small_caps": "레고켐바이오, 에이비엘바이오",
+            "outlook": "글로벌 파트너십 가시화 및 파이프라인 가치 재평가 구간"
         }
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
-    """[5. 장전 5분 마켓 핵심 요약] 9월 FOMC 금리 인상 단행 및 매파적 여진, 연내 추가 인상 경계감 반영"""
+    """[5번 세션] 9월 FOMC 금리 인상 단행 및 매파적 여진, 연내 추가 인상 경계감을 반영한 장전 마켓 요약"""
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
