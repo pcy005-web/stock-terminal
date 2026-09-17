@@ -171,7 +171,7 @@ def fetch_realtime_data(ticker):
                         is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
                         return {
                             'price': f"{price_val:,.2f}", 
-                            'rate': f"{rate_val:+.2f}%", 
+                            'rate': f"{rate_val:,.2f}%", 
                             'is_up': is_up
                         }
     except Exception:
@@ -185,13 +185,38 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 # ==========================================
-# 뉴스 타이틀 직접 파싱 기반 다중 종목 추출 함수
+# 네이버 금융 API 연동 및 정밀 파싱 함수
 # ==========================================
+def fetch_naver_stock_theme_api(stock_name):
+    """
+    네이버 금융 API 및 검색 구조를 활용하여 종목명의 테마/업종 정보를 동적으로 조회합니다.
+    """
+    try:
+        encoded_name = urllib.parse.quote(stock_name.strip())
+        search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
+        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            # 네이버 검색 결과 내 국내 주식 항목 탐색
+            stocks_result = data.get('stocks', [])
+            if not stocks_result and 'result' in data:
+                stocks_result = data.get('result', {}).get('stocks', [])
+            
+            if stocks_result:
+                item = stocks_result[0]
+                # 업종 또는 테마 필드가 있는 경우 반환
+                item_theme = item.get('themeName') or item.get('industryName') or item.get('sectorName')
+                if item_theme:
+                    return item_theme
+    except Exception:
+        pass
+    return None
+
 def extract_and_verify_stocks_from_title(title_clean):
     """
-    뉴스 타이틀 내 구분자(·, ,, -)를 기반으로 종목 영역을 직접 파싱하여 추출합니다.
-    외부 API 검색 실패로 인한 종목 누락 문제를 원천 차단합니다.
+    뉴스 타이틀에서 종목들을 완벽하게 추출하고 네이버 API를 통해 테마를 매핑합니다.
     """
+    # 대괄호 내용 분리 및 정제 ([개장전특징주], [상한가 종목] 등 제거)
     text_no_bracket = re.sub(r'\[.*?\]', '', title_clean).strip()
     
     exclude_words = [
@@ -201,16 +226,18 @@ def extract_and_verify_stocks_from_title(title_clean):
     ]
 
     core_text = text_no_bracket
-    for sep_end in [", ", "...", " 이어 ", " 등 ", " 상장", " 주식"]:
+    # 문장 뒤쪽 불필요한 서술어 제거 (말줄임 현상 방지용 기준 완화)
+    for sep_end in [" 이어 ", " 등 ", " 상장", " 주식", " 마감"]:
         if sep_end in core_text:
             core_text = core_text.split(sep_end)[0]
 
-    parts = re.split(r'[·,\-]', core_text)
+    # 구분자(·, ,, -, 공백 등)를 기준으로 종목명 분리
+    parts = re.split(r'[·,\-\s/]+', core_text)
     valid_stocks = []
     
     for p in parts:
-        p_clean = p.strip().replace("'", "").replace('"', "").replace("↑", "").replace("↓", "")
-        if not p_clean or len(p_clean) > 15 or any(ew in p_clean for ew in exclude_words) or any(char.isdigit() for char in p_clean):
+        p_clean = p.strip().replace("'", "").replace('"', "").replace("↑", "").replace("↓", "").replace("마이크", "마이크론")
+        if not p_clean or len(p_clean) > 12 or any(ew in p_clean for ew in exclude_words) or any(char.isdigit() for char in p_clean):
             continue
         if p_clean not in valid_stocks:
             valid_stocks.append(p_clean)
@@ -225,15 +252,27 @@ def extract_and_verify_stocks_from_title(title_clean):
 
     if valid_stocks:
         stock_result = "·".join(valid_stocks[:4])
-        theme = "시장주도주"
-        joined_str = "".join(valid_stocks)
-        if any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM"]):
-            theme = "AI 반도체"
-        elif any(k in joined_str for k in ["현대차", "자동차", "레나"]):
-            theme = "자동차"
-        elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크", "앤씨앤"]):
-            theme = "우주항공/소부장"
-        return stock_result, theme
+        
+        # 네이버 API를 활용한 동적 테마 매핑 시도
+        detected_theme = None
+        for stock in valid_stocks:
+            detected_theme = fetch_naver_stock_theme_api(stock)
+            if detected_theme:
+                break
+        
+        # API 조회 실패 시 키워드 기반 폴백 매핑
+        if not detected_theme:
+            joined_str = "".join(valid_stocks)
+            if any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM", "마이크"]):
+                detected_theme = "AI 반도체"
+            elif any(k in joined_str for k in ["현대차", "자동차", "레나"]):
+                detected_theme = "자동차"
+            elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크", "앤씨앤"]):
+                detected_theme = "우주항공/소부장"
+            else:
+                detected_theme = "시장주도주"
+                
+        return stock_result, detected_theme
 
     return "시장주도주", "증시시황"
 
