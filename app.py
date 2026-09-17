@@ -245,15 +245,15 @@ def fetch_feature_stocks():
                 bracket_matches = re.findall(r"\[([^\]]+)\]", title_clean)
                 
                 stock_name = ""
-                exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전"]
+                exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합"]
                 
                 candidates = quoted_matches + bracket_matches
                 for cand in candidates:
-                    if len(cand) <= 8 and not any(ew in cand for ew in exclude_words) and not any(char.isdigit() for char in cand):
+                    if len(cand) <= 10 and not any(ew in cand for ew in exclude_words) and not any(char.isdigit() for char in cand):
                         stock_name = cand
                         break
                 
-                # '시장 주도 특징주' 대신 명확한 종목명 유도
+                # ⭐ 일반적인 문구 대신 구체적인 종목명 및 테마로 완전 대체
                 if not stock_name:
                     if any(k in title_clean for k in ["삼성전자", "하이닉스", "반도체"]):
                         stock_name = "삼성전자 / SK하이닉스"
@@ -263,8 +263,10 @@ def fetch_feature_stocks():
                         stock_name = "알테오젠 / 셀트리온"
                     elif any(k in title_clean for k in ["전력", "변압기", "효성", "HD현대"]):
                         stock_name = "HD현대일렉트릭"
+                    elif any(k in title_clean for k in ["방산", "한화", "로템"]):
+                        stock_name = "한화에어로스페이스"
                     else:
-                        stock_name = "코스피·코스닥 핵심 주도종목"
+                        stock_name = "AI 반도체 및 핵심 소부장"
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 parsed_items.append({
@@ -285,7 +287,7 @@ def fetch_feature_stocks():
         {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] [특징주] 북미 전력망 교체 모멘텀 지속에 따른 강세", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] [특징주] 글로벌 바이오 파이프라인 가치 재평가 국면", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] [특징주] 밸류업 프로그램 및 적극적 주주환원 정책 부각", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] [특징주] K-방산 수출 다변화 및 수주 모멘텀 확장", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock": "한화에어로ส페이스 / 현대로템", "title": f"[{current_time_str}] [특징주] K-방산 수출 다변화 및 수주 모멘텀 확장", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
     for fb in fallbacks:
@@ -294,7 +296,6 @@ def fetch_feature_stocks():
             
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
                 
-    # ⭐ 장마감 후 키움증권 종합뉴스 및 연동 매체 기반 카테고리별 증시마감 요약 구성
     if is_market_closed:
         market_summary_keyword = (
             "📌 [코스피·코스닥 장마감 카테고리별 요약]\n"
