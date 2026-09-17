@@ -288,45 +288,13 @@
                 {% for item in feature_stocks %}
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                        <!-- 왼쪽: 종목명 (item.stock이 있으면 사용, 없으면 타이틀 분석) -->
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
-                            {% if '삼성전자' in item.title and 'SK하이닉스' in item.title %}📌 삼성전자·SK하이닉스
-                            {% elif '삼성전자' in item.title %}📌 삼성전자
-                            {% elif 'SK하이닉스' in item.title %}📌 SK하이닉스
-                            {% elif '버크셔' in item.title or '버크셔해서웨이' in item.title %}📌 버크셔 해서웨이
-                            {% elif '아티스트스튜디오' in item.title or '아티스트' in item.title %}📌 아티스트스튜디오
-                            {% elif '파미셀' in item.title %}📌 파미셀
-                            {% elif 'SK바이오팜' in item.title %}📌 SK바이오팜
-                            {% elif 'GMI클라우드' in item.title %}📌 GMI클라우드
-                            {% elif '두산' in item.title %}📌 두산
-                            {% elif 'CATL' in item.title %}📌 CATL
-                            {% elif 'MOL' in item.title %}📌 MOL
-                            {% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
+                            📌 {{ item.stock if item.stock else ('삼성전자·SK하이닉스' if '삼성전자' in item.title and 'SK하이닉스' in item.title else ('삼성전자' if '삼성전자' in item.title else ('SK하이닉스' if 'SK하이닉스' in item.title else '실시간 특징주'))) }}
                         </span>
-                        <!-- 업종 자동 매핑 템플릿 영역 (오직 우측 태그만 표시) -->
+                        <!-- 오른쪽: 테마 및 업종 (item.theme 우선 사용) -->
                         <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">
-                            {% if item.sector %}
-                                {{ item.sector }}
-                            {% elif '삼성전자' in item.title or 'SK하이닉스' in item.title or '반도체' in item.title %}
-                                반도체/IT
-                            {% elif '버크셔' in item.title or '버크셔해서웨이' in item.title %}
-                                종합지주
-                            {% elif '아티스트스튜디오' in item.title or '아티스트' in item.title or '드라마' in item.title %}
-                                엔터테인먼트
-                            {% elif '파미셀' in item.title or '바이오팜' in item.title %}
-                                바이오/제약
-                            {% elif 'GMI클라우드' in item.title or '클라우드' in item.title %}
-                                AI/클라우드
-                            {% elif '두산' in item.title %}
-                                지주/기계
-                            {% elif 'CATL' in item.title %}
-                                2차전지/중국
-                            {% elif 'MOL' in item.title or '선박' in item.title or '해운' in item.title or '유조선' in item.title %}
-                                해운/조선
-                            {% elif '스냅' in item.title %}
-                                플랫폼/SNS
-                            {% else %}
-                                실시간테마
-                            {% endif %}
+                            {{ item.theme if item.theme else '실시간테마' }}
                         </span>
                     </div>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">
@@ -478,63 +446,14 @@
                         let html = '';
                         data.feature_stocks.forEach(item => {
                             let stockLabel = item.stock || '실시간 특징주';
+                            let themeLabel = item.theme || '실시간테마';
                             let titleText = item.title || '';
-                            let sectorText = item.sector || '';
-
-                            if (titleText.includes('삼성전자') && titleText.includes('SK하이닉스')) {
-                                stockLabel = '삼성전자·SK하이닉스';
-                            } else if (titleText.includes('삼성전자')) {
-                                stockLabel = '삼성전자';
-                            } else if (titleText.includes('SK하이닉스')) {
-                                stockLabel = 'SK하이닉스';
-                            } else if (titleText.includes('버크셔')) {
-                                stockLabel = '버크셔 해서웨이';
-                            } else if (titleText.includes('아티스트스튜디오') || titleText.includes('아티스트')) {
-                                stockLabel = '아티스트스튜디오';
-                            } else if (titleText.includes('파미셀')) {
-                                stockLabel = '파미셀';
-                            } else if (titleText.includes('SK바이오팜')) {
-                                stockLabel = 'SK바이오팜';
-                            } else if (titleText.includes('GMI클라우드')) {
-                                stockLabel = 'GMI클라우드';
-                            } else if (titleText.includes('두산')) {
-                                stockLabel = '두산';
-                            } else if (titleText.includes('CATL')) {
-                                stockLabel = 'CATL';
-                            } else if (titleText.includes('MOL')) {
-                                stockLabel = 'MOL';
-                            }
-
-                            // 실시간 갱신(JS) 시에도 업종명 자동 매칭 (좌측엔 이름만, 우측엔 태그만 깔끔하게 출력)
-                            if (!sectorText) {
-                                if (titleText.includes('삼성전자') || titleText.includes('SK하이닉스') || titleText.includes('반도체')) {
-                                    sectorText = '반도체/IT';
-                                } else if (titleText.includes('버크셔')) {
-                                    sectorText = '종합지주';
-                                } else if (titleText.includes('아티스트스튜디오') || titleText.includes('아티스트') || titleText.includes('드라마')) {
-                                    sectorText = '엔터테인먼트';
-                                } else if (titleText.includes('파미셀') || titleText.includes('바이오팜')) {
-                                    sectorText = '바이오/제약';
-                                } else if (titleText.includes('GMI클라우드') || titleText.includes('클라우드')) {
-                                    sectorText = 'AI/클라우드';
-                                } else if (titleText.includes('두산')) {
-                                    sectorText = '지주/기계';
-                                } else if (titleText.includes('CATL')) {
-                                    sectorText = '2차전지/중국';
-                                } else if (titleText.includes('MOL') || titleText.includes('선박') || titleText.includes('해운') || titleText.includes('유조선')) {
-                                    sectorText = '해운/조선';
-                                } else if (titleText.includes('스냅')) {
-                                    sectorText = '플랫폼/SNS';
-                                } else {
-                                    sectorText = '실시간테마';
-                                }
-                            }
 
                             html += `
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
                                     <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${stockLabel}</span>
-                                    <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">${sectorText}</span>
+                                    <span class="tag" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 600; color: var(--accent-main); background: var(--bg-primary);">${themeLabel}</span>
                                 </div>
                                 <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${titleText}</span>
                             </a>`;
