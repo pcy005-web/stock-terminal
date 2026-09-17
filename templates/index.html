@@ -217,41 +217,23 @@
         </div>
     </div>
 
-    <!-- 5. 장전 5분 마켓 핵심 요약 (한지영 연구원 스타일 적용) -->
+    <!-- 5. 장전 5분 마켓 핵심 요약 -->
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
-        <div class="content-card" style="line-height: 1.7; font-size: 0.9rem;">
-            
-            <!-- 타이틀 영역 -->
-            <div style="font-weight: 800; font-size: 1.05rem; color: var(--accent-main); margin-bottom: 14px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
-                [{{ morning_briefing.date_title }}]
-            </div>
-
-            <!-- 주요 지수 리스트 -->
-            <div style="background: var(--bg-primary); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-family: monospace; white-space: pre-line; color: #cbd5e1;">
-{{ morning_briefing.market_indices }}
-            </div>
-
-            <!-- 본문 문단들 (1~5번 단락) -->
-            {% for para in morning_briefing.paragraphs %}
-            <div style="margin-bottom: 16px;">
-                <strong style="color: var(--accent-main);">{{ loop.index }}.</strong><br>
-                <div style="margin-top: 4px; white-space: pre-line; color: var(--text-main);">
-{{ para }}
-                </div>
-            </div>
-            {% endfor %}
-
-            <!-- 하단 맺음말 -->
-            <div style="margin-top: 20px; padding-top: 14px; border-top: 1px dashed var(--border-color); color: var(--text-sub); white-space: pre-line; font-size: 0.85rem;">
-{{ morning_briefing.closing }}
-            </div>
-
-            <div style="margin-top: 16px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주 태그:</div>
-            <div class="tag-list" style="margin-top: 6px;">
-                {% for stock in morning_briefing.stocks %}
-                <span class="tag">{{ stock }}</span>
+        <div class="content-card">
+            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
+                {% for bullet in market_summary_bullets %}
+                <li style="margin-bottom: 8px;">{{ bullet }}</li>
                 {% endfor %}
+            </ul>
+            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
+            <div class="tag-list" style="margin-top: 6px;">
+                <span class="tag">삼성전자</span>
+                <span class="tag">SK하이닉스</span>
+                <span class="tag">한미반도체</span>
+                <span class="tag">KB금융</span>
+                <span class="tag">신한지주</span>
+                <span class="tag">현대차</span>
             </div>
         </div>
     </div>
@@ -300,9 +282,10 @@
             
             if (reportBox.style.display === 'none') {
                 reportBox.style.display = 'block';
-                reportBox.textContent = '⏳ 시황 총평 및 대응 가이드를 새롭게 분석하는 중입니다...';
+                reportBox.textContent = '⏳ 실시간 데이터를 기반으로 새로운 AI 브리핑을 생성하는 중입니다...';
                 reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+                // 버튼 클릭 시 백엔드 API를 호출하여 최신 지표/뉴스가 반영된 동적 브리핑 수신
                 fetch('/api/ai-briefing')
                     .then(response => response.json())
                     .then(data => {
@@ -310,7 +293,7 @@
                     })
                     .catch(err => {
                         console.error('AI 브리핑 생성 실패:', err);
-                        reportBox.textContent = '❌ AI 브리핑 생성에 실패했습니다.';
+                        reportBox.textContent = '❌ AI 브리핑 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.';
                     });
             } else {
                 reportBox.style.display = 'none';
