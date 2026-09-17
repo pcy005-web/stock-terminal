@@ -187,7 +187,6 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 최소한의 기본 매핑 사전 (필요시 추가 가능)
 STOCK_THEME_MAP = {
     "삼성전자": "AI 반도체",
     "SK하이닉스": "AI 반도체",
@@ -198,16 +197,14 @@ STOCK_THEME_MAP = {
 def get_stock_with_theme(stock_name, title_clean=""):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
     
-    # 1. 사전에 등록된 종목이면 해당 테마 사용
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
     
-    # 2. 사전에 없으면 뉴스 제목 키워드를 기반으로 자동으로 테마 유추
     keyword_theme_rules = {
         "바이오/제약": ["바이오", "제약", "임상", "신약", "유전체", "바이오시밀러", "FDA"],
         "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리"],
         "방산": ["방산", "수출", "무기", "방위", "K9"],
-        "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주"],
+        "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주", "우주"],
         "전력기기": ["변압기", "전력", "송배전", "그리드", "배터리"],
         "자동차": ["자동차", "차량", "전기차", "완성차", "부품"],
         "게임/콘텐츠": ["게임", "콘텐츠", "웹툰", "엔터", "피인수", "상한가"],
@@ -220,7 +217,6 @@ def get_stock_with_theme(stock_name, title_clean=""):
             
     return f"{clean_name} - 시장주도주"
 
-# 데이터 변경 감지를 위한 전역 캐시 변수
 _cached_feature_items = []
 _last_raw_titles = set()
 
@@ -234,7 +230,6 @@ def fetch_feature_stocks():
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
     
-    # 15초 주기의 공격적인 캐시 버스터를 1분(60초) 단위로 늘려 불필요한 호출 방지
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -287,13 +282,22 @@ def fetch_feature_stocks():
                 seen_titles.add(title_clean)
                 item_time_str = pub_dt.strftime('%H:%M')
                 
+                # [개선] 시황, ETF, 지수 관련 뉴스 예외 처리 분기
                 raw_stock_name = ""
-                for comp in known_companies:
-                    if comp in title_clean:
-                        raw_stock_name = comp
-                        break
+                if any(kw in title_clean for kw in ["[ETF 시황]", "[시황]", "ETF 강세", "코스피 약보합", "코스닥"]):
+                    if "조선" in title_clean or "우주" in title_clean:
+                        raw_stock_name = "조선·우주 ETF"
+                    elif "방산" in title_clean:
+                        raw_stock_name = "방산 ETF"
+                    else:
+                        raw_stock_name = "국내 증시 시황"
                 
-                # 쉼표(,) 앞의 단어 자동 추출 로직 (예: "[특징주] 쓰리빌리언, 신생아..." 형태 대응)
+                if not raw_stock_name:
+                    for comp in known_companies:
+                        if comp in title_clean:
+                            raw_stock_name = comp
+                            break
+                
                 if not raw_stock_name:
                     clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
                     if ',' in clean_for_parse:
@@ -313,7 +317,6 @@ def fetch_feature_stocks():
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                # 자동 테마 분류 함수에 title_clean 전달
                 stock_result = get_stock_with_theme(raw_stock_name, title_clean)
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 
@@ -346,10 +349,8 @@ def fetch_feature_stocks():
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = feature_items[:5]
     
-    # [핵심] 수집된 데이터의 타이틀 목록을 추출하여 이전과 동일한지 비교
     current_raw_titles = set(item["raw_title"] for item in feature_items)
     
-    # 데이터에 실질적인 변화가 없고 기존 캐시가 존재한다면 기존 캐시를 유지하여 깜박임 방지
     if _cached_feature_items and current_raw_titles == _last_raw_titles:
         feature_items = _cached_feature_items
     else:
