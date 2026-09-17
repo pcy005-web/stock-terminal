@@ -52,10 +52,13 @@ MARKET_CATEGORIES = [{
 
 
 def get_ssl_context():
-  ctx = ssl.create_default_context()
-  ctx.check_hostname = False
-  ctx.verify_mode = ssl.CERT_NONE
-  return ctx
+  try:
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+  except Exception:
+    return None
 
 
 def fetch_yahoo_data(ticker):
@@ -70,7 +73,7 @@ def fetch_yahoo_data(ticker):
   try:
     req = urllib.request.Request(url, headers=yahoo_headers)
     with urllib.request.urlopen(
-        req, context=get_ssl_context(), timeout=2
+        req, context=get_ssl_context(), timeout=3
     ) as response:
       res_json = json.loads(response.read().decode('utf-8'))
       result_arr = res_json.get('chart', {}).get('result')
@@ -118,7 +121,7 @@ def fetch_realtime_data(ticker):
 
       req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
       with urllib.request.urlopen(
-          req, context=get_ssl_context(), timeout=2
+          req, context=get_ssl_context(), timeout=3
       ) as response:
         res_json = json.loads(response.read().decode('utf-8'))
         if res_json and isinstance(res_json, list):
@@ -180,7 +183,7 @@ def fetch_realtime_data(ticker):
     if api_url:
       req = urllib.request.Request(api_url, headers=headers)
       with urllib.request.urlopen(
-          req, context=get_ssl_context(), timeout=2
+          req, context=get_ssl_context(), timeout=3
       ) as response:
         res_json = json.loads(response.read().decode('utf-8'))
         item = None
@@ -352,7 +355,6 @@ def fetch_feature_stocks():
         if title_clean in seen_titles:
           continue
 
-        # 뉴스 발행 시간(pubDate) 안전 파싱
         pub_dt = None
         if pub_date_elem is not None and pub_date_elem.text:
           try:
@@ -420,7 +422,7 @@ def fetch_feature_stocks():
   except Exception:
     pass
 
-  # 💡 [최신 뉴스 상단 배치] 명확하게 최신 시간순(내림차순)으로 정렬 수행
+  # 최신 뉴스부터 상단 배치 (내림차순 정렬)
   parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
   feature_items = parsed_items[:5]
 
@@ -467,7 +469,6 @@ def fetch_feature_stocks():
     if len(feature_items) < 5:
       feature_items.append(fb)
 
-  # 추가 후에도 최종적으로 최신 순서(내림차순)가 유지되도록 정렬
   feature_items = sorted(
       feature_items, key=lambda x: x['timestamp'], reverse=True
   )
@@ -846,7 +847,7 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
   return (
       f'🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n'
       f'📊 [시황 총평]\n'
-      f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체({sox['rate']}) 변동성 속 대형주 중심의 완만한 수급 균형세 유지.\n\n'
+      f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체({sox['rate']}) 변동성 속 대형주 중심의 완만한 수급 균형세 유지.\n\n"
       f'🔍 [핵심 체크포인트]\n'
       f'• 주요 헤드라인: "{top_news}"\n'
       f'• 코스피·코스닥 거래대금 및 주도 섹터 순환매 속도 확인\n\n'
