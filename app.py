@@ -350,9 +350,13 @@ def generate_smart_money_analysis(quotes):
     badge_class = "up" if kospi_up else "down"
     
     domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
-    decoupling_text = f"지수 디커플링 및 순환매: 대형주 수급 집중 속 개별 실적 장세 전개"
     
-    # 3번 세션 테마 및 업종 쏠림 분석 데이터 정의
+    # 보완된 시장 디커플링 및 순환매 텍스트
+    decoupling_text = (
+        "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, "
+        "지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 순환 수급 포착"
+    )
+    
     concentrated_themes = (
         "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
         "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
