@@ -229,20 +229,11 @@ def fetch_feature_stocks():
     return serializable_items, market_summary_keyword
 
 # ==========================================
-# 라우트 설정
+# 정상화된 라우트 설정
 # ==========================================
 @app.route('/')
-index_cache_time = 0
-cached_index_html = None
-
 def index():
-    global index_cache_time, cached_index_html
-    now_ts = datetime.datetime.now().timestamp()
-    
-    # 7섹션 특징주 데이터 연동
     feature_stocks, feature_market_summary = fetch_feature_stocks()
-    
-    # 만약 다른 기존 데이터 처리 함수들이 있다면 이곳에서 함께 호출하여 렌더링에 전달됩니다.
     return render_template(
         'index.html',
         feature_stocks=feature_stocks,
