@@ -187,7 +187,7 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 종목별 자동 업종/테마 매핑 사전
+# 종목별 자동 업종/테마 매핑 사전 (한화생명 금융/보험 포함)
 STOCK_THEME_MAP = {
     "한화시스템": "방산",
     "현대로템": "방산",
@@ -213,23 +213,26 @@ STOCK_THEME_MAP = {
     "현대차": "자동차",
     "기아": "자동차",
     "KB금융": "금융",
-    "신한지주": "금융"
+    "신한지주": "금융",
+    "한화생명": "금융/보험"
 }
 
 def get_stock_with_theme(stock_name):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
-    # 사전에 등록된 종목이면 "종목명 - 테마" 형식으로 반환
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
     return clean_name
 
+# [7세션 수정] 최근 6시간 이내 뉴스 수집 및 실시간 테마/업종 정상 반영 로직
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-    query = "코스피 마감 특징주" if is_market_closed else "[특징주] 급등 when:3h"
+    
+    # 요구사항 반영: 최근 6시간 이내 뉴스로 조건 설정 (when:6h)
+    query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
     cache_buster = int(datetime.datetime.now().timestamp() / 15)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -281,7 +284,7 @@ def fetch_feature_stocks():
                 
                 raw_stock_name = ""
                 
-                # 1단계: 알려진 기업명 매칭
+                # 1단계: 알려진 기업명 매칭 (STOCK_THEME_MAP 기준)
                 for comp in known_companies:
                     if comp in title_clean:
                         raw_stock_name = comp
@@ -296,16 +299,13 @@ def fetch_feature_stocks():
                             raw_stock_name = qm
                             break
                 
-                # 3단계: 대괄호 분석 (시장분석/테마형 리포트인 경우 키워드 추출)
+                # 3단계: 대괄호 분석
                 if not raw_stock_name:
                     bracket_match = re.search(r"\[([^\]]+)\]", title_clean)
                     if bracket_match:
                         bracket_content = bracket_match.group(1)
-                        # "테오도르의 시장분석" 같은 분석글 형태라면 제목 내부의 핵심 업종 키워드 조합 활용
                         if "시장분석" in bracket_content or "분석" in bracket_content:
-                            # 따옴표나 특정 명칭 추출 시도, 또는 제목 뒷부분의 키워드 활용
-                            # 예: "광통신·첨단소재·로봇·에너지" 같은 단어 캐치
-                            for kw in ["광통신", "첨단소재", "로봇", "에너지", "반도체", "이차전지", "바이오", "방산", "조선"]:
+                            for kw in ["광통신", "첨단소재", "로봇", "에너지", "반도체", "이차전지", "바이오", "방산", "조선", "금융"]:
                                 if kw in title_clean and kw not in raw_stock_name:
                                     raw_stock_name = f"{raw_stock_name} {kw}".strip()
                             if not raw_stock_name:
@@ -320,7 +320,7 @@ def fetch_feature_stocks():
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                # 요구하신 "종목 - 테마" 포맷 적용
+                # 요구하신 "종목명 - 테마/업종" 포맷 적용 (실시간테마 문구 대체)
                 stock_name = get_stock_with_theme(raw_stock_name)
                 
                 formatted_title = f"[{item_time_str}] {title_clean}"
@@ -338,10 +338,10 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
+        {"stock": "한화생명 - 금융/보험", "title": f"[{current_time_str}] [특징주] 한화생명, 실적 개선 기대감 및 주주환원 부각에 강세", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "MOL - 해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt},
         {"stock": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
     ]
     
