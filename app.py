@@ -62,15 +62,15 @@ def get_ssl_context():
 
 
 def fetch_yahoo_data(ticker):
-  yahoo_headers = {
-      'User-Agent': (
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      )
-  }
-  encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
-  url = f'https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d'
-
   try:
+    yahoo_headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        )
+    }
+    encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
+    url = f'https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d'
+
     req = urllib.request.Request(url, headers=yahoo_headers)
     with urllib.request.urlopen(
         req, context=get_ssl_context(), timeout=3
@@ -114,40 +114,42 @@ def fetch_yahoo_data(ticker):
 
 
 def fetch_realtime_data(ticker):
-  if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
-    try:
-      market_code = 'KRW-BTC' if ticker == 'NAVER_COIN_BTC' else 'KRW-ETH'
-      api_url = f'https://api.upbit.com/v1/ticker?markets={market_code}'
-
-      req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-      with urllib.request.urlopen(
-          req, context=get_ssl_context(), timeout=3
-      ) as response:
-        res_json = json.loads(response.read().decode('utf-8'))
-        if res_json and isinstance(res_json, list):
-          item = res_json[0]
-          cur_price = item.get('trade_price', 0)
-          signed_change_rate = item.get('signed_change_rate', 0)
-          rate_val = signed_change_rate * 100
-          is_up = rate_val >= 0
-          return {
-              'price': f'{float(cur_price):,.2f}',
-              'rate': f'{rate_val:+.2f}%',
-              'is_up': is_up,
-          }
-    except Exception:
-      pass
-
-  headers = {
-      'User-Agent': (
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,'
-          ' like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      ),
-      'Referer': 'https://m.stock.naver.com/',
-      'Accept': 'application/json, text/plain, */*',
-  }
-
   try:
+    if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
+      try:
+        market_code = 'KRW-BTC' if ticker == 'NAVER_COIN_BTC' else 'KRW-ETH'
+        api_url = f'https://api.upbit.com/v1/ticker?markets={market_code}'
+
+        req = urllib.request.Request(
+            api_url, headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        with urllib.request.urlopen(
+            req, context=get_ssl_context(), timeout=3
+        ) as response:
+          res_json = json.loads(response.read().decode('utf-8'))
+          if res_json and isinstance(res_json, list):
+            item = res_json[0]
+            cur_price = item.get('trade_price', 0)
+            signed_change_rate = item.get('signed_change_rate', 0)
+            rate_val = signed_change_rate * 100
+            is_up = rate_val >= 0
+            return {
+                'price': f'{float(cur_price):,.2f}',
+                'rate': f'{rate_val:+.2f}%',
+                'is_up': is_up,
+            }
+      except Exception:
+        pass
+
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,'
+            ' like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        ),
+        'Referer': 'https://m.stock.naver.com/',
+        'Accept': 'application/json, text/plain, */*',
+    }
+
     api_url = None
     if ticker.startswith('NAVER_DOMESTIC_'):
       target = ticker.replace('NAVER_DOMESTIC_', '')
@@ -267,64 +269,60 @@ STOCK_THEME_MAP = {
 
 
 def get_stock_with_theme(stock_name, title_clean=''):
-  clean_name = stock_name.replace('(핵심종목)', '').strip()
+  try:
+    clean_name = str(stock_name).replace('(핵심종목)', '').strip()
 
-  # ✅ LIKE 연산자 방식 적용 (부분 문자열 포함 여부 검사)
-  for key, theme in STOCK_THEME_MAP.items():
-    if key in clean_name or clean_name in key:
-      return f'{key} - {theme}'
+    for key, theme in STOCK_THEME_MAP.items():
+      if key in clean_name or clean_name in key:
+        return f'{key} - {theme}'
 
-  keyword_theme_rules = {
-      '바이오/제약': [
-          '바이오',
-          '제약',
-          '임상',
-          '신약',
-          '유전체',
-          '바이오시밀러',
-          'FDA',
-      ],
-      'AI 반도체': ['반도체', 'AI', '칩', '소부장', '메모리', '파운드리'],
-      '방산': ['방산', '수출', '무기', '방위', 'K9'],
-      '조선/해운': ['조선', '선박', '유조선', 'LNG', '해운', '수주', '우주'],
-      '전력기기': ['변압기', '전력', '송배전', '그리드', '배터리'],
-      '자동차': ['자동차', '차량', '전기차', '완성차', '부품'],
-      '게임/콘텐츠': ['게임', '콘텐츠', '웹툰', '엔터', '피인수', '상한가'],
-      '금융': ['금융', '은행', '증권', '보험', '주주환원'],
-      '상장폐지': ['상장폐지', '정리매매'],
-  }
+    keyword_theme_rules = {
+        '바이오/제약': [
+            '바이오',
+            '제약',
+            '임상',
+            '신약',
+            '유전체',
+            '바이오시밀러',
+            'FDA',
+        ],
+        'AI 반도체': ['반도체', 'AI', '칩', '소부장', '메모리', '파운드리'],
+        '방산': ['방산', '수출', '무기', '방위', 'K9'],
+        '조선/해운': ['조선', '선박', '유조선', 'LNG', '해운', '수주', '우주'],
+        '전력기기': ['변압기', '전력', '송배전', '그리드', '배터리'],
+        '자동차': ['자동차', '차량', '전기차', '완성차', '부품'],
+        '게임/콘텐츠': ['게임', '콘텐츠', '웹툰', '엔터', '피인수', '상한가'],
+        '금융': ['금융', '은행', '증권', '보험', '주주환원'],
+        '상장폐지': ['상장폐지', '정리매매'],
+    }
 
-  for theme, keywords in keyword_theme_rules.items():
-    if any(kw in title_clean for kw in keywords):
-      return f'{clean_name} - {theme}'
+    for theme, keywords in keyword_theme_rules.items():
+      if any(kw in title_clean for kw in keywords):
+        return f'{clean_name} - {theme}'
 
-  return f'{clean_name} - 시장주도주'
-
-
-_cached_feature_items = []
-_last_raw_titles = set()
+    return f'{clean_name} - 시장주도주'
+  except Exception:
+    return '시장 주요종목 - 시장주도주'
 
 
 def fetch_feature_stocks():
-  global _cached_feature_items, _last_raw_titles
   kst = pytz.timezone('Asia/Seoul')
   now_dt = datetime.datetime.now(kst)
-  current_hour_min = now_dt.hour * 100 + now_dt.minute
-
-  is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-
-  if is_market_closed:
-    query = '(코스피 마감 특징주 OR 美특징주 OR 개장전특징주 OR 상장폐지 OR 특징주) when:12h'
-  else:
-    query = '(특징주 OR 개장전특징주 OR 美특징주 OR 해외 특징주 OR 상장폐지 OR 급등 OR 급락) when:12h'
-
-  cache_buster = int(datetime.datetime.now().timestamp() / 60)
-  rss_url = f'https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}'
-
+  
   parsed_items = []
-  seen_titles = set()
-
   try:
+    current_hour_min = now_dt.hour * 100 + now_dt.minute
+    is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
+
+    if is_market_closed:
+      query = '(코스피 마감 특징주 OR 美특징주 OR 개장전특징주 OR 상장폐지 OR 특징주) when:12h'
+    else:
+      query = '(특징주 OR 개장전특징주 OR 美특징주 OR 해외 특징주 OR 상장폐지 OR 급등 OR 급락) when:12h'
+
+    cache_buster = int(datetime.datetime.now().timestamp() / 60)
+    rss_url = f'https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}'
+
+    seen_titles = set()
     req = urllib.request.Request(
         rss_url,
         headers={
@@ -342,88 +340,91 @@ def fetch_feature_stocks():
       root = ET.fromstring(xml_data)
 
       for item in root.findall('.//item'):
-        title_elem = item.find('title')
-        link_elem = item.find('link')
-        pub_date_elem = item.find('pubDate')
+        try:
+          title_elem = item.find('title')
+          link_elem = item.find('link')
+          pub_date_elem = item.find('pubDate')
 
-        title = title_elem.text if title_elem is not None else ''
-        title_clean = title.rsplit(' - ', 1)[0] if ' - ' in title else title
-        link = (
-            link_elem.text
-            if link_elem is not None
-            else 'https://news.google.com'
-        )
+          title = title_elem.text if title_elem is not None else ''
+          title_clean = title.rsplit(' - ', 1)[0] if ' - ' in title else title
+          link = (
+              link_elem.text
+              if link_elem is not None
+              else 'https://news.google.com'
+          )
 
-        if not any(kw in title_clean for kw in ['특징주', '상장폐지', '급등', '급락', '폭등', '폭락']):
-          continue
+          if not any(kw in title_clean for kw in ['특징주', '상장폐지', '급등', '급락', '폭등', '폭락']):
+            continue
 
-        if '주요 특징주' in title_clean or '오늘(' in title_clean:
-          continue
-        if title_clean in seen_titles:
-          continue
+          if '주요 특징주' in title_clean or '오늘(' in title_clean:
+            continue
+          if title_clean in seen_titles:
+            continue
 
-        pub_dt = None
-        if pub_date_elem is not None and pub_date_elem.text:
-          try:
-            pub_dt = parsedate_to_datetime(pub_date_elem.text)
-            if pub_dt.tzinfo is None:
-              pub_dt = pytz.utc.localize(pub_dt)
-            pub_dt = pub_dt.astimezone(kst)
-          except Exception:
-            pass
+          pub_dt = None
+          if pub_date_elem is not None and pub_date_elem.text:
+            try:
+              pub_dt = parsedate_to_datetime(pub_date_elem.text)
+              if pub_dt.tzinfo is None:
+                pub_dt = pytz.utc.localize(pub_dt)
+              pub_dt = pub_dt.astimezone(kst)
+            except Exception:
+              pass
 
-        if not pub_dt:
-          pub_dt = now_dt - datetime.timedelta(minutes=len(parsed_items) * 10 + 2)
+          if not pub_dt:
+            pub_dt = now_dt - datetime.timedelta(minutes=len(parsed_items) * 10 + 2)
 
-        time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
-        if time_diff_hours > 12:
-          continue
+          time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
+          if time_diff_hours > 12:
+            continue
 
-        seen_titles.add(title_clean)
-        item_time_str = pub_dt.strftime('%H:%M')
+          seen_titles.add(title_clean)
+          item_time_str = pub_dt.strftime('%H:%M')
 
-        raw_stock_name = ''
-        special_keywords = ['제일엠앤에스', '제네락', '나이키', 'ARM', '레나', '인텔', '마이크론', '엔비디아', '테슬라']
-        for skw in special_keywords:
-          if skw.lower() in title_clean.lower():
-            raw_stock_name = skw
-            break
-
-        if not raw_stock_name:
-          for comp in STOCK_THEME_MAP.keys():
-            if comp in title_clean:
-              raw_stock_name = comp
+          raw_stock_name = ''
+          special_keywords = ['제일엠앤에스', '제네락', '나이키', 'ARM', '레나', '인텔', '마이크론', '엔비디아', '테슬라']
+          for skw in special_keywords:
+            if skw.lower() in title_clean.lower():
+              raw_stock_name = skw
               break
 
-        if not raw_stock_name:
-          clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
-          if ',' in clean_for_parse:
-            candidate = clean_for_parse.split(',')[0].strip()
-            exclude_words = [
-                '특징주', '급등', '상한가', '하락', '폭등', '마감', 
-                '시황', '코스피', '코스닥', '거래', '장중', '오후', '오전', '종합', '미국', '일본', 'ET', 'ETF', '상장폐지'
-            ]
-            if (
-                len(candidate) <= 12
-                and not any(ew in candidate for ew in exclude_words)
-                and not any(char.isdigit() for char in candidate)
-            ):
-              raw_stock_name = candidate
+          if not raw_stock_name:
+            for comp in STOCK_THEME_MAP.keys():
+              if comp in title_clean:
+                raw_stock_name = comp
+                break
 
-        if not raw_stock_name:
-          raw_stock_name = '시장 주요종목'
+          if not raw_stock_name:
+            clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
+            if ',' in clean_for_parse:
+              candidate = clean_for_parse.split(',')[0].strip()
+              exclude_words = [
+                  '특징주', '급등', '상한가', '하락', '폭등', '마감', 
+                  '시황', '코스피', '코스닥', '거래', '장중', '오후', '오전', '종합', '미국', '일본', 'ET', 'ETF', '상장폐지'
+              ]
+              if (
+                  len(candidate) <= 12
+                  and not any(ew in candidate for ew in exclude_words)
+                  and not any(char.isdigit() for char in candidate)
+              ):
+                raw_stock_name = candidate
 
-        stock_result = get_stock_with_theme(raw_stock_name, title_clean)
-        clean_title_no_time = re.sub(r'^\[\d{2}:\d{2}\]\s*', '', title_clean)
-        formatted_title = f'[{item_time_str}] {clean_title_no_time}'
+          if not raw_stock_name:
+            raw_stock_name = '시장 주요종목'
 
-        parsed_items.append({
-            'stock_full': stock_result,
-            'title': formatted_title,
-            'link': link,
-            'timestamp': pub_dt,
-            'raw_title': title_clean,
-        })
+          stock_result = get_stock_with_theme(raw_stock_name, title_clean)
+          clean_title_no_time = re.sub(r'^\[\d{2}:\d{2}\]\s*', '', title_clean)
+          formatted_title = f'[{item_time_str}] {clean_title_no_time}'
+
+          parsed_items.append({
+              'stock_full': stock_result,
+              'title': formatted_title,
+              'link': link,
+              'timestamp': pub_dt,
+              'raw_title': title_clean,
+          })
+        except Exception:
+          continue
   except Exception:
     pass
 
@@ -456,17 +457,21 @@ def fetch_feature_stocks():
 
   serializable_items = []
   for item in feature_items:
-    parts = item['stock_full'].split(' - ')
-    stock_val = parts[0]
-    theme_val = parts[1] if len(parts) > 1 else '시장주도주'
+    try:
+      parts = item['stock_full'].split(' - ')
+      stock_val = parts[0]
+      theme_val = parts[1] if len(parts) > 1 else '시장주도주'
 
-    serializable_items.append({
-        'stock': stock_val,
-        'theme': theme_val,
-        'title': item['title'],
-        'link': item['link'],
-    })
+      serializable_items.append({
+          'stock': stock_val,
+          'theme': theme_val,
+          'title': item['title'],
+          'link': item['link'],
+      })
+    except Exception:
+      continue
 
+  is_market_closed = now_dt.hour * 100 + now_dt.minute >= 1530 or now_dt.weekday() >= 5
   if is_market_closed:
     market_summary_keyword = (
         '📊 [장마감 카테고리별 요약]\n\n'
@@ -486,16 +491,16 @@ def fetch_feature_stocks():
 
 
 def fetch_naver_finance_news():
-  kst = pytz.timezone('Asia/Seoul')
-  now_dt = datetime.datetime.now(kst)
-  current_hour_str = now_dt.strftime('%H시 %M분')
-
-  query_str = urllib.parse.quote('코스피 주식 증권 실적 공시 펀더멘털 when:6h')
-  rss_url = f'https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko'
   news_list = []
-  seen_titles = set()
-
   try:
+    kst = pytz.timezone('Asia/Seoul')
+    now_dt = datetime.datetime.now(kst)
+    current_hour_str = now_dt.strftime('%H시 %M분')
+
+    query_str = urllib.parse.quote('코스피 주식 증권 실적 공시 펀더멘털 when:6h')
+    rss_url = f'https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko'
+    seen_titles = set()
+
     req = urllib.request.Request(
         rss_url,
         headers={
@@ -514,106 +519,111 @@ def fetch_naver_finance_news():
       root = ET.fromstring(xml_data)
 
       for item in root.findall('.//item'):
-        title_elem = item.find('title')
-        link_elem = item.find('link')
+        try:
+          title_elem = item.find('title')
+          link_elem = item.find('link')
 
-        title = title_elem.text if title_elem is not None else '제목 없음'
-        title_clean = title.rsplit(' - ', 1)[0] if ' - ' in title else title
+          title = title_elem.text if title_elem is not None else '제목 없음'
+          title_clean = title.rsplit(' - ', 1)[0] if ' - ' in title else title
 
-        if title_clean in seen_titles:
-          continue
-        seen_titles.add(title_clean)
-
-        link = (
-            link_elem.text
-            if link_elem is not None
-            else 'https://news.google.com'
-        )
-
-        quoted_matches = re.findall(r"'([^']+)'", title_clean)
-        exclude_words = [
-            '특징주', '급등', '상한가', '하락', '폭등', '마감', '시황', 
-            '코스피', '코스닥', '거래', '실종', '반토막', '급락', '폭락', '증시', '상승', '악재', '피인수', '효과'
-        ]
-
-        valid_stocks = []
-        for m in quoted_matches:
-          if (
-              len(m) > 6
-              or any(char.isdigit() for char in m)
-              or any(ew in m for ew in exclude_words)
-          ):
+          if title_clean in seen_titles:
             continue
-          valid_stocks.append(m)
+          seen_titles.add(title_clean)
 
-        extracted_stocks_from_quotes = ', '.join(valid_stocks)
-        related_stock = ''
-        news_type = '중립'
-        comment = '금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요'
+          link = (
+              link_elem.text
+              if link_elem is not None
+              else 'https://news.google.com'
+          )
 
-        interest_score = 0
-        high_interest_keywords = [
-            '실적', '서프라이즈', '영업이익', '컨센서스', '수주', '가이던스', '공시', '턴어라운드', '수출'
-        ]
-        for kw in high_interest_keywords:
-          if kw in title_clean:
-            interest_score += 2
+          quoted_matches = re.findall(r"'([^']+)'", title_clean)
+          exclude_words = [
+              '특징주', '급등', '상한가', '하락', '폭등', '마감', '시황', 
+              '코스피', '코스닥', '거래', '실종', '반토막', '급락', '폭락', '증시', '상승', '악재', '피인수', '효과'
+          ]
 
-        negative_keywords = [
-            '하회', '적자', '둔화', '우려', '경고', '규제', '금리', '발작', '충격', '소송', '리스크'
-        ]
-        is_negative = any(nk in title_clean for nk in negative_keywords)
+          valid_stocks = []
+          for m in quoted_matches:
+            if (
+                len(m) > 6
+                or any(char.isdigit() for char in m)
+                or any(ew in m for ew in exclude_words)
+            ):
+              continue
+            valid_stocks.append(m)
 
-        if extracted_stocks_from_quotes:
-          related_stock = f'{extracted_stocks_from_quotes}'
-        else:
-          if is_negative:
-            related_stock = '원/달러 환율, 지수 방어주'
-          elif any(
-              k in title_clean for k in ['반도체', 'AI', '삼성', '하이닉스', '엔비디아']
-          ):
-            related_stock = '삼성전자, SK하이닉스'
-          elif any(k in title_clean for k in ['전력', '변압기', '인프라']):
-            related_stock = 'HD현대일렉트릭'
-          elif any(k in title_clean for k in ['방산', '조선', '수주']):
-            related_stock = '한화에어로스페이스'
-          elif any(k in title_clean for k in ['바이오', '제약', '임상']):
-            related_stock = '삼성바이오로직스'
+          extracted_stocks_from_quotes = ', '.join(valid_stocks)
+          related_stock = ''
+          news_type = '중립'
+          comment = '금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요'
+
+          interest_score = 0
+          high_interest_keywords = [
+              '실적', '서프라이즈', '영업이익', '컨센서스', '수주', '가이던스', '공시', '턴어라운드', '수출'
+          ]
+          for kw in high_interest_keywords:
+            if kw in title_clean:
+              interest_score += 2
+
+          negative_keywords = [
+              '하회', '적자', '둔화', '우려', '경고', '규제', '금리', '발작', '충격', '소송', '리스크'
+          ]
+          is_negative = any(nk in title_clean for nk in negative_keywords)
+
+          if extracted_stocks_from_quotes:
+            related_stock = f'{extracted_stocks_from_quotes}'
           else:
-            related_stock = '코스피 대형주'
+            if is_negative:
+              related_stock = '원/달러 환율, 지수 방어주'
+            elif any(
+                k in title_clean for k in ['반도체', 'AI', '삼성', '하이닉스', '엔비디아']
+            ):
+              related_stock = '삼성전자, SK하이닉스'
+            elif any(k in title_clean for k in ['전력', '변압기', '인프라']):
+              related_stock = 'HD현대일렉트릭'
+            elif any(k in title_clean for k in ['방산', '조선', '수주']):
+              related_stock = '한화에어로스페이스'
+            elif any(k in title_clean for k in ['바이오', '제약', '임상']):
+              related_stock = '삼성바이오로직스'
+            else:
+              related_stock = '코스피 대형주'
 
-        if is_negative:
-          news_type = '리스크'
-          comment = '매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 포트폴리오 재편'
-          interest_score += 1
-        else:
-          if any(
-              k in title_clean
-              for k in ['실적', '서프라이즈', '영업이익', '가이던스', '턴어라운드']
-          ):
-            news_type = '호재'
-            comment = '컨센서스 상회 실적 및 펀더멘털 개선에 기반한 순매수 유입 기대'
-            interest_score += 2
-          elif any(k in title_clean for k in ['수주', '계약', '수출', '공급']):
-            news_type = '호재'
-            comment = '멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화'
+          if is_negative:
+            news_type = '리스크'
+            comment = '매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 포트폴리오 재편'
             interest_score += 1
+          else:
+            if any(
+                k in title_clean
+                for k in ['실적', '서프라이즈', '영업이익', '가이던스', '턴어라운드']
+            ):
+              news_type = '호재'
+              comment = '컨센서스 상회 실적 및 펀더멘털 개선에 기반한 순매수 유입 기대'
+              interest_score += 2
+            elif any(k in title_clean for k in ['수주', '계약', '수출', '공급']):
+              news_type = '호재'
+              comment = '멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화'
+              interest_score += 1
 
-        news_list.append({
-            'title': title_clean,
-            'link': link,
-            'stock': related_stock,
-            'comment': comment,
-            'type': news_type,
-            'score': interest_score,
-            'is_negative': is_negative,
-        })
+          news_list.append({
+              'title': title_clean,
+              'link': link,
+              'stock': related_stock,
+              'comment': comment,
+              'type': news_type,
+              'score': interest_score,
+              'is_negative': is_negative,
+          })
+        except Exception:
+          continue
 
-    news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
+      news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
   except Exception:
     pass
 
   if len(news_list) < 10:
+    kst = pytz.timezone('Asia/Seoul')
+    current_hour_str = datetime.datetime.now(kst).strftime('%H시 %M분')
     dynamic_fallbacks = [
         (
             f'[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석',
@@ -656,97 +666,114 @@ def fetch_naver_finance_news():
             True,
         ),
     ]
-    while len(news_list) < 10 and dynamic_fallbacks:
-      t, l, s, c, tp, neg = dynamic_fallbacks.pop(0)
-      if t not in seen_titles:
-        seen_titles.add(t)
-        news_list.append({
-            'title': t,
-            'link': l,
-            'stock': s,
-            'comment': c,
-            'type': tp,
-            'score': 0,
-            'is_negative': neg,
-        })
+    for t, l, s, c, tp, neg in dynamic_fallbacks:
+      if len(news_list) >= 10:
+        break
+      news_list.append({
+          'title': t,
+          'link': l,
+          'stock': s,
+          'comment': c,
+          'type': tp,
+          'score': 0,
+          'is_negative': neg,
+      })
 
   return news_list[:10]
 
 
 def generate_theme_sync_analysis(quotes, news_list):
-  sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-  nasdaq_fut = quotes.get(
-      'nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True}
-  )
-  is_up = sox.get('is_up', True)
-  sox_rate = sox.get('rate', '+0.00%')
-  nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
+  try:
+    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get(
+        'nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True}
+    )
+    is_up = sox.get('is_up', True)
+    sox_rate = sox.get('rate', '+0.00%')
+    nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
 
-  if is_up:
-    us_driver = (
-        f'글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 흐름은 국내 반도체 수출 실적 개선 기대감을 지지합니다.'
-    )
-    core_stocks = 'NVIDIA, 마이크론 테크놀로지, ASML'
-    domestic_stocks = '삼성전자 - AI 반도체, SK하이닉스 - AI 반도체'
-    risk_strategy = '실적 모멘텀이 검증된 우량주 중심의 비중 확대 및 트레이딩'
-  else:
-    us_driver = (
-        f'글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate}) 경계감 반영은 단기 변동성을 확대시키는 요인입니다.'
-    )
-    core_stocks = '테슬라, 애플, 마이크로소프트'
-    domestic_stocks = (
-        'KB금융 - 금융, 현대차 - 자동차, 삼성바이오로직스 - 바이오'
-    )
-    risk_strategy = '매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축'
+    if is_up:
+      us_driver = (
+          f'글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 흐름은 국내 반도체 수출 실적 개선 기대감을 지지합니다.'
+      )
+      core_stocks = 'NVIDIA, 마이크론 테크놀로지, ASML'
+      domestic_stocks = '삼성전자 - AI 반도체, SK하이닉스 - AI 반도체'
+      risk_strategy = '실적 모멘텀이 검증된 우량주 중심의 비중 확대 및 트레이딩'
+    else:
+      us_driver = (
+          f'글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate}) 경계감 반영은 단기 변동성을 확대시키는 요인입니다.'
+      )
+      core_stocks = '테슬라, 애플, 마이크로소프트'
+      domestic_stocks = (
+          'KB금융 - 금융, 현대차 - 자동차, 삼성바이오로직스 - 바이오'
+      )
+      risk_strategy = '매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축'
 
-  return {
-      'us_driver': us_driver,
-      'core_stocks': core_stocks,
-      'domestic_stocks': domestic_stocks,
-      'risk_strategy': risk_strategy,
-  }
+    return {
+        'us_driver': us_driver,
+        'core_stocks': core_stocks,
+        'domestic_stocks': domestic_stocks,
+        'risk_strategy': risk_strategy,
+    }
+  except Exception:
+    return {
+        'us_driver': '글로벌 증시 동향 분석 중',
+        'core_stocks': '빅테크 주요주',
+        'domestic_stocks': '코스피 대형주',
+        'risk_strategy': '리스크 관리 및 분산 투자',
+    }
 
 
 def generate_smart_money_analysis(quotes):
-  kospi = quotes.get(
-      'kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True}
-  )
-  kosdaq = quotes.get(
-      'kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True}
-  )
-  usdkrw = quotes.get(
-      'usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True}
-  )
+  try:
+    kospi = quotes.get(
+        'kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True}
+    )
+    kosdaq = quotes.get(
+        'kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True}
+    )
+    usdkrw = quotes.get(
+        'usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True}
+    )
 
-  kospi_up = kospi.get('is_up', True)
-  badge_text = (
-      '외인·기관 주도세력 순매수 유입 (포지션 확장)'
-      if kospi_up
-      else '외인·기관 주도세력 매도 우위 (방어적 포지션)'
-  )
-  badge_class = 'up' if kospi_up else 'down'
+    kospi_up = kospi.get('is_up', True)
+    badge_text = (
+        '외인·기관 주도세력 순매수 유입 (포지션 확장)'
+        if kospi_up
+        else '외인·기관 주도세력 매도 우위 (방어적 포지션)'
+    )
+    badge_class = 'up' if kospi_up else 'down'
 
-  domestic_text = (
-      f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 방향성과 연동한 주도세력 누적 순매수 모니터링."
-  )
-  decoupling_text = (
-      '대형주와 개별주 간 차별화 장세 속 지수 방어력을 갖춘 핵심 주도주 및 실적 개선 종목 중심 순환매 포착.'
-  )
-  concentrated_themes = (
-      '<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> 1) <strong>AI 반도체 대형주</strong> 중심의 쏠림 현상 지속, 2) 수익성 방어를 위한 <strong>전력기기·조선</strong> 및 <strong>금융 주주환원 업종</strong>으로의 자금 분산 흐름.'
-  )
-  fx_oil_text = (
-      f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검."
-  )
+    domestic_text = (
+        f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 방향성과 연동한 주도세력 누적 순매수 모니터링."
+    )
+    decoupling_text = (
+        '대형주와 개별주 간 차별화 장세 속 지수 방어력을 갖춘 핵심 주도주 및 실적 개선 종목 중심 순환매 포착.'
+    )
+    concentrated_themes = (
+        '<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> 1) <strong>AI 반도체 대형주</strong> 중심의 쏠림 현상 지속, 2) 수익성 방어를 위한 <strong>전력기기·조선</strong> 및 <strong>금융 주주환원 업종</strong>으로의 자금 분산 흐름.'
+    )
+    fx_oil_text = (
+        f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검."
+    )
 
-  return {
-      'badge_text': badge_text,
-      'badge_class': badge_class,
-      'domestic': domestic_text,
-      'decoupling': decoupling_text,
-      'concentrated_themes': concentrated_themes,
-      'fx_oil': fx_oil_text,
-  }
+    return {
+        'badge_text': badge_text,
+        'badge_class': badge_class,
+        'domestic': domestic_text,
+        'decoupling': decoupling_text,
+        'concentrated_themes': concentrated_themes,
+        'fx_oil': fx_oil_text,
+    }
+  except Exception:
+    return {
+        'badge_text': '수급 데이터 집계 중',
+        'badge_class': 'up',
+        'domestic': '국내 수급 모니터링',
+        'decoupling': '순환매 장세 대응',
+        'concentrated_themes': '주도 업종 점검',
+        'fx_oil': '환율 변동성 체크',
+    }
 
 
 def generate_strategies(quotes, news_list):
@@ -810,144 +837,159 @@ def generate_premarket_summary_bullets(quotes, news_list):
 
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-  kst = pytz.timezone('Asia/Seoul')
-  now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
-  nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
-  usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
-  sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
-  top_news = news_list[0]['title'] if news_list else '글로벌 매크로 이슈 점검'
+  try:
+    kst = pytz.timezone('Asia/Seoul')
+    now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
+    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
+    top_news = news_list[0]['title'] if news_list else '글로벌 매크로 이슈 점검'
 
-  return (
-      f'🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n'
-      f'📊 [시황 총평]\n'
-      f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체({sox['rate']}) 변동성 속 대형주 중심의 완만한 수급 균형세 유지.\n\n'
-      f'🔍 [핵심 체크포인트]\n'
-      f'• 주요 헤드라인: "{top_news}"\n'
-      f'• 코스피·코스닥 거래대금 및 주도 섹터 순환매 속도 확인\n\n'
-      f'💡 [실전 대응 가이드]\n'
-      f'• 변동성 구간 내 수급 집중 주도주 눌림목 위주 대응 및 분산 병행'
-  )
+    return (
+        f'🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n'
+        f'📊 [시황 총평]\n'
+        f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체({sox['rate']}) 변동성 속 대형주 중심의 완만한 수급 균형세 유지.\n\n'
+        f'🔍 [핵심 체크포인트]\n'
+        f'• 주요 헤드라인: "{top_news}"\n'
+        f'• 코스피·코스닥 거래대금 및 주도 섹터 순환매 속도 확인\n\n'
+        f'💡 [실전 대응 가이드]\n'
+        f'• 변동성 구간 내 수급 집중 주도주 눌림목 위주 대응 및 분산 병행'
+    )
+  except Exception:
+    return '🤖 [AI 브리핑 일시적 지연]'
 
 
 @app.route('/')
 def index():
-  price_map = {}
-  tasks = []
-  for cat in MARKET_CATEGORIES:
-    for stock in cat['stocks']:
-      tasks.append((stock['code'], stock['ticker']))
+  try:
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+      for stock in cat['stocks']:
+        tasks.append((stock['code'], stock['ticker']))
 
-  with ThreadPoolExecutor(max_workers=15) as executor:
-    future_to_code = {
-        executor.submit(fetch_realtime_data, ticker): code
-        for code, ticker in tasks
-    }
-    for future in as_completed(future_to_code):
-      code = future_to_code[future]
-      try:
-        data = future.result()
-        price_map[code] = (
-            data
-            if data
-            else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-        )
-      except Exception:
-        price_map[code] = {
-            'price': '일시적 지연',
-            'rate': '+0.00%',
-            'is_up': True,
-        }
+    with ThreadPoolExecutor(max_workers=15) as executor:
+      future_to_code = {
+          executor.submit(fetch_realtime_data, ticker): code
+          for code, ticker in tasks
+      }
+      for future in as_completed(future_to_code):
+        code = future_to_code[future]
+        try:
+          data = future.result()
+          price_map[code] = (
+              data
+              if data
+              else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+          )
+        except Exception:
+          price_map[code] = {
+              'price': '일시적 지연',
+              'rate': '+0.00%',
+              'is_up': True,
+          }
 
-  live_news = fetch_naver_finance_news()
-  theme_text = generate_theme_sync_analysis(price_map, live_news)
-  smart_money_data = generate_smart_money_analysis(price_map)
-  strategies_data = generate_strategies(price_map, live_news)
-  market_summary_bullets = generate_premarket_summary_bullets(
-      price_map, live_news
-  )
-  ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
-  feature_stocks_data, feature_market_summary = fetch_feature_stocks()
+    live_news = fetch_naver_finance_news()
+    theme_text = generate_theme_sync_analysis(price_map, live_news)
+    smart_money_data = generate_smart_money_analysis(price_map)
+    strategies_data = generate_strategies(price_map, live_news)
+    market_summary_bullets = generate_premarket_summary_bullets(
+        price_map, live_news
+    )
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+    feature_stocks_data, feature_market_summary = fetch_feature_stocks()
 
-  return render_template(
-      'index.html',
-      categories=MARKET_CATEGORIES,
-      quotes=price_map,
-      news_list=live_news,
-      theme_summary=theme_text,
-      smart_money_summary=smart_money_data,
-      strategies=strategies_data,
-      market_summary_bullets=market_summary_bullets,
-      ai_briefing=ai_briefing_text,
-      feature_stocks=feature_stocks_data,
-      feature_market_summary=feature_market_summary,
-  )
+    return render_template(
+        'index.html',
+        categories=MARKET_CATEGORIES,
+        quotes=price_map,
+        news_list=live_news,
+        theme_summary=theme_text,
+        smart_money_summary=smart_money_data,
+        strategies=strategies_data,
+        market_summary_bullets=market_summary_bullets,
+        ai_briefing=ai_briefing_text,
+        feature_stocks=feature_stocks_data,
+        feature_market_summary=feature_market_summary,
+    )
+  except Exception as e:
+    return f'서버 내부 오류 발생: {str(e)}', 500
 
 
 @app.route('/api/quotes')
 def api_quotes():
-  price_map = {}
-  tasks = []
-  for cat in MARKET_CATEGORIES:
-    for stock in cat['stocks']:
-      tasks.append((stock['code'], stock['ticker']))
+  try:
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+      for stock in cat['stocks']:
+        tasks.append((stock['code'], stock['ticker']))
 
-  with ThreadPoolExecutor(max_workers=15) as executor:
-    future_to_code = {
-        executor.submit(fetch_realtime_data, ticker): code
-        for code, ticker in tasks
-    }
-    for future in as_completed(future_to_code):
-      code = future_to_code[future]
-      try:
-        data = future.result()
-        price_map[code] = (
-            data
-            if data
-            else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-        )
-      except Exception:
-        price_map[code] = {
-            'price': '일시적 지연',
-            'rate': '+0.00%',
-            'is_up': True,
-        }
-  return json.dumps(price_map, ensure_ascii=False)
+    with ThreadPoolExecutor(max_workers=15) as executor:
+      future_to_code = {
+          executor.submit(fetch_realtime_data, ticker): code
+          for code, ticker in tasks
+      }
+      for future in as_completed(future_to_code):
+        code = future_to_code[future]
+        try:
+          data = future.result()
+          price_map[code] = (
+              data
+              if data
+              else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+          )
+        except Exception:
+          price_map[code] = {
+              'price': '일시적 지연',
+              'rate': '+0.00%',
+              'is_up': True,
+          }
+    return json.dumps(price_map, ensure_ascii=False)
+  except Exception:
+    return json.dumps({}, ensure_ascii=False)
 
 
 @app.route('/api/feature-stocks')
 def api_feature_stocks():
-  items, market_summary = fetch_feature_stocks()
-  return json.dumps(
-      {'feature_stocks': items, 'feature_market_summary': market_summary},
-      ensure_ascii=False,
-  )
+  try:
+    items, market_summary = fetch_feature_stocks()
+    return json.dumps(
+        {'feature_stocks': items, 'feature_market_summary': market_summary},
+        ensure_ascii=False,
+    )
+  except Exception:
+    return json.dumps({'feature_stocks': [], 'feature_market_summary': ''}, ensure_ascii=False)
 
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
-  price_map = {}
-  tasks = []
-  for cat in MARKET_CATEGORIES:
-    for stock in cat['stocks']:
-      tasks.append((stock['code'], stock['ticker']))
+  try:
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+      for stock in cat['stocks']:
+        tasks.append((stock['code'], stock['ticker']))
 
-  with ThreadPoolExecutor(max_workers=15) as executor:
-    future_to_code = {
-        executor.submit(fetch_realtime_data, ticker): code
-        for code, ticker in tasks
-    }
-    for future in as_completed(future_to_code):
-      code = future_to_code[future]
-      try:
-        data = future.result()
-        if data:
-          price_map[code] = data
-      except Exception:
-        pass
+    with ThreadPoolExecutor(max_workers=15) as executor:
+      future_to_code = {
+          executor.submit(fetch_realtime_data, ticker): code
+          for code, ticker in tasks
+      }
+      for future in as_completed(future_to_code):
+        code = future_to_code[future]
+        try:
+          data = future.result()
+          if data:
+            price_map[code] = data
+        except Exception:
+          pass
 
-  news_list = fetch_naver_finance_news()
-  ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
-  return json.dumps({'ai_briefing': ai_briefing_text}, ensure_ascii=False)
+    news_list = fetch_naver_finance_news()
+    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
+    return json.dumps({'ai_briefing': ai_briefing_text}, ensure_ascii=False)
+  except Exception:
+    return json.dumps({'ai_briefing': 'AI 브리핑 갱신 중'}, ensure_ascii=False)
 
 
 if __name__ == '__main__':
