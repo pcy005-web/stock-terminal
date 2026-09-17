@@ -230,9 +230,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    # 💡 intitle 연산자로 뉴스 제목 내 키워드 매칭만 정확하게 검색
     query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
-    
     cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -296,7 +294,7 @@ def fetch_feature_stocks():
                 
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                    exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                     for qm in quoted_matches:
                         if len(qm) <= 12 and not any(ew in qm for ew in exclude_words) and not any(char.isdigit() for char in qm):
                             raw_stock_name = qm
@@ -306,7 +304,7 @@ def fetch_feature_stocks():
                     clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
                     if ',' in clean_for_parse:
                         candidate = clean_for_parse.split(',')[0].strip()
-                        exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                        exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
                         if len(candidate) <= 12 and not any(ew in candidate for ew in exclude_words) and not any(char.isdigit() for char in candidate):
                             raw_stock_name = candidate
                 
@@ -417,7 +415,7 @@ def fetch_naver_finance_news():
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 exclude_words = [
-                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코ส닥", 
+                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
                     "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과"
                 ]
                 
