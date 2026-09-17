@@ -89,7 +89,8 @@
         <a href="#sec-4" class="quick-btn">4. 수급 전략 TOP 5</a>
         <a href="#sec-5" class="quick-btn">5. 장전 5분 요약</a>
         <a href="#sec-6" class="quick-btn">6. 핵심 뉴스 10선</a>
-        <a href="#sec-7" class="quick-btn">7. AI 브리핑 생성기</a>
+        <a href="#sec-7" class="quick-btn">7. 특징주 핫이슈</a>
+        <a href="#sec-8" class="quick-btn">8. AI 브리핑 생성기</a>
     </div>
 
     <!-- 1. 실제 증시 지표 팩트체크 -->
@@ -184,7 +185,6 @@
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
-            <!-- 모바일에서 두 줄로 꺾이는 현상 방지를 위해 폰트 크기 미세 조정 및 white-space: nowrap 적용 -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
                 <span style="font-weight: 700; font-size: 0.9rem; color: var(--accent-main); white-space: nowrap;">📡 실시간 수급 동향</span>
                 <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff; white-space: nowrap;">{{ smart_money_summary.badge_text }}</span>
@@ -263,9 +263,28 @@
         </div>
     </div>
 
-    <!-- 7. 팩트 기반 AI 브리핑 생성기 -->
+    <!-- 7. 장중 특징주 핫이슈 (신규 추가) -->
     <div class="dashboard-section" id="sec-7">
-        <div class="section-header-title">7. 팩트 기반 AI 브리핑 생성기</div>
+        <div class="section-header-title">7. 장중 특징주 핫이슈</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                {% for item in feature_stocks %}
+                <div style="padding-bottom: 12px; border-bottom: 1px dashed var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 700; font-size: 0.9rem; color: var(--accent-main);">📌 {{ item.stock }}</span>
+                        <span style="font-size: 0.72rem; color: var(--text-sub); background: var(--bg-card); padding: 2px 6px; border-radius: 4px;">특징주 요약</span>
+                    </div>
+                    <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">{{ item.title }}</div>
+                    <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.4;">💡 상승/변동 배경: {{ item.reason }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. 팩트 기반 AI 브리핑 생성기 (순번 변경) -->
+    <div class="dashboard-section" id="sec-8">
+        <div class="section-header-title">8. 팩트 기반 AI 브리핑 생성기</div>
         <div class="content-card">
             <h3>원클릭 시장 종합 분석 브리핑</h3>
             <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 시황 총평, 핵심 체크포인트, 실전 대응 가이드를 작성합니다.</p>
