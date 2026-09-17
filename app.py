@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 import re
 import pytz
+from email.utils import parsedate_to_datetime
 
 app = Flask(__name__)
 
@@ -187,7 +188,7 @@ def fetch_realtime_data(ticker):
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
 def fetch_feature_stocks():
-    """가장 최신 뉴스가 최상단에 오도록 정렬하여 5개 추출, [증시요약] 문구 제거된 하단 브리핑 반환"""
+    """실시간 최신 뉴스(pubDate 기준)를 엄격히 추출하여 가장 최신순(내림차순)으로 상단 배치"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_time_str = now_dt.strftime('%H:%M')
@@ -195,10 +196,11 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "코스피 마감 증시요약 특징주" if is_market_closed else "코스피 코스닥 특징주 급등 상한가 when:6h"
+    # 키움 종합시황뉴스 성격에 맞게 최근 1시간~6시간 내의 특징주 속보를 강제로 당겨옴
+    query = "코스피 마감 증시요약 특징주" if is_market_closed else "코스피 코스닥 특징주 급등 상한가 when:1h"
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
     
-    raw_items = []
+    parsed_items = []
     seen_stocks = set()
     
     try:
@@ -219,6 +221,19 @@ def fetch_feature_stocks():
                 
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
+                
+                # 실제 뉴스 발행 시각 파싱 (없으면 현재 시각)
+                pub_dt = now_dt
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        pub_dt = parsedate_to_datetime(pub_date_elem.text)
+                        if pub_dt.tzinfo is None:
+                            pub_dt = pytz.utc.localize(pub_dt)
+                        pub_dt = pub_dt.astimezone(kst)
+                    except Exception:
+                        pass
+                
+                item_time_str = pub_dt.strftime('%H:%M')
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
                 bracket_matches = re.findall(r"\[([^\]]+)\]", title_clean)
@@ -248,32 +263,32 @@ def fetch_feature_stocks():
                     continue
                 seen_stocks.add(stock_name)
                 
-                formatted_title = f"[{current_time_str}] {title_clean}"
-                raw_items.append({
+                formatted_title = f"[{item_time_str}] {title_clean}"
+                parsed_items.append({
                     "stock": stock_name,
                     "title": formatted_title,
+                    "timestamp": pub_dt,
                     "reason": "마감 시황 요약 및 수급 분석" if is_market_closed else "실시간 수급 집중 및 뉴스 모멘텀 발생"
                 })
-                
-                if len(raw_items) >= 5:
-                    break
     except Exception:
         pass
         
-    if len(raw_items) < 5:
+    # ⭐ 가장 최근 뉴스가 맨 위로 오도록 발행 시각(timestamp) 기준 내림차순 정렬 엄격 적용!
+    parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
+    
+    feature_items = parsed_items[:5]
+        
+    if len(feature_items) < 5:
         fallbacks = [
             {"stock": "삼성전자 / SK하이닉스", "title": f"[{current_time_str}] AI 반도체 밸류체인 수급 집중 및 외인 매수세 유입"},
             {"stock": "HD현대일렉트릭 / 효성중공업", "title": f"[{current_time_str}] 북미 전력망 교체 모멘텀 지속에 따른 강세"},
             {"stock": "알테오젠 / 셀트리온", "title": f"[{current_time_str}] 글로벌 바이오 파이프라인 가치 재평가 국면"},
             {"stock": "KB금융 / 신한지주", "title": f"[{current_time_str}] 밸류업 프로그램 및 적극적 주주환원 정책 부각"},
-            {"stock": "한화에어로스페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장"}
+            {"stock": "한화에어로ส페이스 / 현대로템", "title": f"[{current_time_str}] K-방산 수출 다변화 및 수주 모멘텀 확장"}
         ]
         for fb in fallbacks:
-            if len(raw_items) < 5:
-                raw_items.append(fb)
-                
-    # 최신 뉴스가 맨 위로 오도록 정렬 (여기서는 수집된 순서가 최신이므로 그대로 유지하되 5개 보장)
-    feature_items = raw_items[:5]
+            if len(feature_items) < 5:
+                feature_items.append(fb)
                 
     if is_market_closed:
         market_summary_keyword = "국내 증시 마감 결과, 대형 반도체 및 주요 주도 섹터 중심의 수급 공방 속 외국인·기관 순매수 마감 및 업종별 차별화 장세 연출"
@@ -354,7 +369,7 @@ def fetch_naver_finance_news():
                     elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
                         related_stock = "HD현대일렉트릭, 효성중공업, LS일렉트릭"
                     elif any(k in title_clean for k in ["방산", "조선", "수주"]):
-                        related_stock = "한화에어로ส페이스, HD현대중공업, 현대로템"
+                        related_stock = "한화에어로스페이스, HD현대중공업, 현대로템"
                     elif any(k in title_clean for k in ["바이오", "제약", "임상"]):
                         related_stock = "삼성바이오로직스, 셀트리온, 알테오젠"
                     else:
