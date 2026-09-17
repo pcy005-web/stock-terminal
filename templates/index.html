@@ -9,6 +9,7 @@
             --bg-primary: #0f172a;
             --bg-secondary: #1e293b;
             --bg-card: #334155;
+            --bg-card-hover: #3f4f65;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
             --accent-red: #ef4444;
@@ -72,6 +73,24 @@
         .news-item:hover { color: var(--accent-main); text-decoration: underline; }
         .news-comment { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
         .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
+
+        /* 특징주 카드 링크 스타일 */
+        .feature-card-link {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 12px;
+            background: var(--bg-card);
+            border-radius: 6px;
+            gap: 4px;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .feature-card-link:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-main);
+        }
 
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
     </style>
@@ -264,16 +283,16 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (실시간 최신순 정렬, 우측 [실시간 특징주] 배지 삭제됨) -->
+    <!-- 7. 장중 특징주 핫이슈 (클릭 가능한 링크 및 최신순 정렬 적용) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
-                <div class="feature-card-item" style="display: flex; flex-direction: column; padding: 10px 12px; background: var(--bg-card); border-radius: 6px; gap: 4px;">
+                <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
                     <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 {{ item.stock }}</span>
                     <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">{{ item.title }}</span>
-                </div>
+                </a>
                 {% endfor %}
             </div>
 
@@ -371,16 +390,16 @@
                         let html = '';
                         data.feature_stocks.forEach(item => {
                             html += `
-                            <div class="feature-card-item highlight-update" style="display: flex; flex-direction: column; padding: 10px 12px; background: var(--bg-card); border-radius: 6px; gap: 4px;">
+                            <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
                                 <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${item.stock}</span>
                                 <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${item.title}</span>
-                            </div>`;
+                            </a>`;
                         });
                         container.innerHTML = html;
 
-                        // 갱신 시 깜빡임 효과 적용 후 제거
+                        // 갱신 시 하이라이트 깜빡임 제거
                         setTimeout(() => {
-                            const items = container.querySelectorAll('.feature-card-item');
+                            const items = container.querySelectorAll('.feature-card-link');
                             items.forEach(el => el.classList.remove('highlight-update'));
                         }, 600);
                     }
@@ -395,7 +414,7 @@
         // 3초마다 지표 갱신
         setInterval(updateMarketQuotes, 3000);
         
-        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신 (최신순 역순 정렬 반영)
+        // 30초마다 특징주 및 증시요약 키워드 비동기 갱신 (최신순 역순 정렬 및 링크 반영)
         setInterval(updateFeatureStocks, 30000);
     </script>
 </body>
