@@ -292,18 +292,22 @@
                 <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="feature-card-link">
                     <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
                         <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">
-                            {% if '스냅' in item.title %}📌 스냅 (SNAP){% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
+                            {% if '스냅' in item.title %}📌 스냅 (SNAP)
+                            {% elif '삼성전자' in item.title and '하이닉스' not in item.title %}📌 삼성전자 · SK하이닉스
+                            {% else %}📌 {{ item.stock|default('실시간 특징주') }}{% endif %}
                         </span>
                     </div>
-                    <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">{{ item.title }}</span>
+                    <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">
+                        {% if '삼성전자' in item.title and '하이닉스' not in item.title %}{{ item.title | replace('삼성전자', '삼성전자·SK하이닉스') }}{% else %}{{ item.title }}{% endif %}
+                    </span>
                 </a>
                 {% endfor %}
             </div>
 
-            <!-- 하단 증시마감 키워드 요약 (문구 수정 및 끝점/가운데점 완벽 제거) -->
+            <!-- 하단 장중 실시간 수급 분석 요약 (마감시황/키움종합뉴스 연동 기반) -->
             <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 6px; padding: 14px;">
                 <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-                    📈 증시마감 키워드 요약
+                    📡 장중 실시간 수급 분석 (마감시황 종합)
                 </div>
                 <div id="feature-market-summary-box" style="display: flex; flex-direction: column; gap: 8px;">
                     <div class="summary-raw-text" style="font-size: 0.83rem; color: var(--text-main); line-height: 1.6;">
@@ -338,10 +342,10 @@
         function cleanSummaryText(str) {
             if (!str) return '';
             let cleaned = str
-                .replace(/장중 실시간 수급 카테고리별 분석/g, '장중 실시간 수급 분석') // 문구 수정 적용
-                .replace(/[·]/g, '')           // 모든 가운데점(·) 제거
-                .replace(/^[📌\s]+/, '')        // 앞쪽 압정, 공백 제거
-                .replace(/[\s.]+$/, '')          // 🌟 문장 맨 끝에 붙는 온점(.), 가운데점, 공백 완벽 제거
+                .replace(/장중 실시간 수급 카테고리별 분석/g, '장중 실시간 수급 분석')
+                .replace(/[·]/g, '')
+                .replace(/^[📌\s]+/, '')
+                .replace(/[\s.]+$/, '')
                 .trim();
             return cleaned;
         }
@@ -443,15 +447,21 @@
                         let html = '';
                         data.feature_stocks.forEach(item => {
                             let stockLabel = item.stock || '실시간 특징주';
-                            if (item.title && item.title.includes('스냅')) {
+                            let titleText = item.title || '';
+
+                            if (titleText.includes('삼성전자') && !titleText.includes('하이닉스')) {
+                                titleText = titleText.replace('삼성전자', '삼성전자·SK하이닉스');
+                                stockLabel = '삼성전자 · SK하이닉스';
+                            } else if (titleText.includes('스냅')) {
                                 stockLabel = '스냅 (SNAP)';
                             }
+
                             html += `
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="feature-card-link highlight-update">
                                 <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
                                     <span style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main);">📌 ${stockLabel}</span>
                                 </div>
-                                <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${item.title}</span>
+                                <span style="font-size: 0.83rem; color: var(--text-main); line-height: 1.4;">${titleText}</span>
                             </a>`;
                         });
                         container.innerHTML = html;
