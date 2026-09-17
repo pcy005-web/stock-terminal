@@ -187,49 +187,55 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
-# 종목별 자동 업종/테마 매핑 사전
+# 최소한의 기본 매핑 사전 (필요시 추가 가능)
 STOCK_THEME_MAP = {
-    "한화시스템": "방산",
-    "현대로템": "방산",
-    "한화에어로스페이스": "방산",
     "삼성전자": "AI 반도체",
     "SK하이닉스": "AI 반도체",
-    "한미반도체": "AI 반도체",
-    "리노공업": "AI 반도체",
-    "HD현대일렉트릭": "전력기기",
-    "효성중공업": "전력기기",
-    "LS일렉트릭": "전력기기",
-    "삼성바이오로직스": "바이오",
-    "셀트리온": "바이오",
-    "알테오젠": "바이오",
-    "HD현대중공업": "조선",
-    "삼성중공업": "조선",
-    "MOL": "해운/조선",
-    "버크셔 해서웨이": "종합지주",
-    "앤씨앤": "반도체/IT",
-    "미투온": "게임/콘텐츠",
-    "카카오게임즈": "게임",
-    "비투엔": "AI/소프트웨어",
-    "현대차": "자동차",
-    "기아": "자동차",
-    "KB금융": "금융",
-    "신한지주": "금융"
+    "한화시스템": "방산",
+    "현대차": "자동차"
 }
 
-def get_stock_with_theme(stock_name):
+def get_stock_with_theme(stock_name, title_clean=""):
     clean_name = stock_name.replace("(핵심종목)", "").strip()
+    
+    # 1. 사전에 등록된 종목이면 해당 테마 사용
     if clean_name in STOCK_THEME_MAP:
         return f"{clean_name} - {STOCK_THEME_MAP[clean_name]}"
-    return clean_name
+    
+    # 2. 사전에 없으면 뉴스 제목 키워드를 기반으로 자동으로 테마 유추
+    keyword_theme_rules = {
+        "바이오/제약": ["바이오", "제약", "임상", "신약", "유전체", "바이오시밀러", "FDA"],
+        "AI 반도체": ["반도체", "AI", "칩", "소부장", "메모리", "파운드리"],
+        "방산": ["방산", "수출", "무기", "방위", "K9"],
+        "조선/해운": ["조선", "선박", "유조선", "LNG", "해운", "수주"],
+        "전력기기": ["변압기", "전력", "송배전", "그리드", "배터리"],
+        "자동차": ["자동차", "차량", "전기차", "완성차", "부품"],
+        "게임/콘텐츠": ["게임", "콘텐츠", "웹툰", "엔터", "피인수", "상한가"],
+        "금융": ["금융", "은행", "증권", "보험", "주주환원"]
+    }
+    
+    for theme, keywords in keyword_theme_rules.items():
+        if any(kw in title_clean for kw in keywords):
+            return f"{clean_name} - {theme}"
+            
+    return f"{clean_name} - 시장주도주"
+
+# 데이터 변경 감지를 위한 전역 캐시 변수
+_cached_feature_items = []
+_last_raw_titles = set()
 
 def fetch_feature_stocks():
+    global _cached_feature_items, _last_raw_titles
+    
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     query = "코스피 마감 특징주 when:6h" if is_market_closed else "[특징주] 급등 when:6h"
-    cache_buster = int(datetime.datetime.now().timestamp() / 15)
+    
+    # 15초 주기의 공격적인 캐시 버스터를 1분(60초) 단위로 늘려 불필요한 호출 방지
+    cache_buster = int(datetime.datetime.now().timestamp() / 60)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
@@ -274,7 +280,6 @@ def fetch_feature_stocks():
                     except Exception:
                         pass
                 
-                # 6시간 이내 발행된 뉴스만 엄격하게 필터링
                 time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
                 if time_diff_hours > 6:
                     continue
@@ -288,6 +293,15 @@ def fetch_feature_stocks():
                         raw_stock_name = comp
                         break
                 
+                # 쉼표(,) 앞의 단어 자동 추출 로직 (예: "[특징주] 쓰리빌리언, 신생아..." 형태 대응)
+                if not raw_stock_name:
+                    clean_for_parse = re.sub(r'\[.*?\]', '', title_clean).strip()
+                    if ',' in clean_for_parse:
+                        candidate = clean_for_parse.split(',')[0].strip()
+                        exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
+                        if len(candidate) <= 12 and not any(ew in candidate for ew in exclude_words) and not any(char.isdigit() for char in candidate):
+                            raw_stock_name = candidate
+                
                 if not raw_stock_name:
                     quoted_matches = re.findall(r"'([^']+)'", title_clean)
                     exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "장중", "오후", "오전", "종합", "미국", "일본", "ET", "ETF"]
@@ -299,14 +313,16 @@ def fetch_feature_stocks():
                 if not raw_stock_name:
                     raw_stock_name = "시장주도주"
                 
-                stock_name = get_stock_with_theme(raw_stock_name)
+                # 자동 테마 분류 함수에 title_clean 전달
+                stock_result = get_stock_with_theme(raw_stock_name, title_clean)
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 
                 parsed_items.append({
-                    "stock": stock_name,
+                    "stock_full": stock_result,
                     "title": formatted_title,
                     "link": link,
-                    "timestamp": pub_dt
+                    "timestamp": pub_dt,
+                    "raw_title": title_clean
                 })
     except Exception:
         pass
@@ -316,11 +332,11 @@ def fetch_feature_stocks():
         
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "MOL - 해운/조선", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt},
-        {"stock": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt}
+        {"stock_full": "버크셔 해서웨이 - 종합지주", "title": f"[{current_time_str}] [특징주] 버크셔 해서웨이 포트폴리오 조정 및 시장 영향 분석", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "버크셔 해서웨이 포트폴리오 조정"},
+        {"stock_full": "MOL - 조선/해운", "title": f"[{current_time_str}] [일본 특징주] MOL, 중동발 선박가 급등에 노후 유조선 매각 검토", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "MOL 노후 유조선 매각 검토"},
+        {"stock_full": "앤씨앤 - 반도체/IT", "title": f"[{current_time_str}] [ET특징주] 앤씨앤, 비투엔에 피인수... 주가 上", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "앤씨앤 피인수"},
+        {"stock_full": "미투온 - 게임/콘텐츠", "title": f"[{current_time_str}] [ET특징주] '카카오게임즈 피인수' 미투온, 상한가 이어 19%↑", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "미투온 상한가"},
+        {"stock_full": "한화시스템 - 방산", "title": f"[{current_time_str}] [특징주] 한화시스템, 방산 수출 확대 기대감에 강세", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "한화시스템 방산 수출"}
     ]
     
     for fb in fallbacks:
@@ -330,11 +346,19 @@ def fetch_feature_stocks():
     feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = feature_items[:5]
     
-    # JSON 직렬화 오류 방지를 위해 timestamp 객체 제외
+    # [핵심] 수집된 데이터의 타이틀 목록을 추출하여 이전과 동일한지 비교
+    current_raw_titles = set(item["raw_title"] for item in feature_items)
+    
+    # 데이터에 실질적인 변화가 없고 기존 캐시가 존재한다면 기존 캐시를 유지하여 깜박임 방지
+    if _cached_feature_items and current_raw_titles == _last_raw_titles:
+        feature_items = _cached_feature_items
+    else:
+        _cached_feature_items = feature_items
+        _last_raw_titles = current_raw_titles
+    
     serializable_items = []
     for item in feature_items:
-        # 분리된 종목명과 테마 처리 파싱
-        parts = item["stock"].split(" - ")
+        parts = item["stock_full"].split(" - ")
         stock_val = parts[0]
         theme_val = parts[1] if len(parts) > 1 else "시장주도주"
         
