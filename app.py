@@ -449,6 +449,7 @@ def generate_sector_momentum_analysis(quotes, news_list):
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
+    """[5. 장전 5분 마켓 핵심 요약] 세션 고도화 로직 (키움 한지영 리포트 스타일 이식)"""
     nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%', 'is_up': False})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%', 'is_up': False})
@@ -457,14 +458,13 @@ def generate_premarket_summary_bullets(quotes, news_list):
     w_price = usdkrw.get('price', '1,300')
     s_rate = sox.get('rate', '-3.4%')
     
-    # 💡 엉뚱한 뉴스 제목 대신 매크로 지표 중심의 자연스러운 분석 문장 생성
     is_nasdaq_up = nasdaq_fut.get('is_up', True)
-    macro_context = "기술주 중심의 투자 심리 개선과 유동성 유입" if is_nasdaq_up else "글로벌 금리 경계감 및 기술주 중심의 변동성 확대"
+    macro_context = "기술주 중심의 투자 심리 개선과 유동성 유입" if is_nasdaq_up else "통화정책 경계감 및 기술주 중심의 변동성 확대"
     
     bullet_1 = f"해외 증시 및 주요 지표: 미국 증시는 나스닥 선물({n_rate}) 및 원/달러 환율({w_price}원) 흐름 속에서 {macro_context}의 영향을 복합적으로 소화하는 모습입니다."
-    bullet_2 = f"핵심 노이즈 및 시장 심리: 통화정책 및 매크로 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 핵심 섹터의 단기 등락 요인이 국내 증시에 차별적인 수급을 형성하고 있습니다."
-    bullet_3 = "지수 하단 지지력 점검: 다만 증시가 장 초반의 낙폭을 상당 부분 만회하거나 하방 경직성을 시도한다는 점은, 시장이 극단적 우려보다는 예상 범주 내의 충돌로 받아들이고 있음을 시사합니다."
-    bullet_4 = "오늘의 대응 전략: 현 시점의 변동성을 추세 훼손 신호로 과도하게 해석하기보다는, 주요 지표 안정 여부를 확인하면서 무리한 추격 매도를 자제하고 주도주 눌림목 위주로 포트폴리오를 분산하는 대안이 유효합니다."
+    bullet_2 = f"핵심 노이즈 및 시장 심리: 매크로 경계감 속에서 필라델피아 반도체 지수({s_rate}) 등 핵심 섹터의 단기 등락 요인이 국내 증시에 차별적인 수급을 형성하고 있습니다."
+    bullet_3 = "지수 하단 지지력 점검: 역사적으로 정책 사이클 및 금리 인상 국면이 곧바로 증시의 추세 하락으로 이어지지 않았듯, 시장은 예상 범주 내의 충돌로 받아들이며 하방 경직성을 시도하고 있습니다."
+    bullet_4 = "오늘의 대응 전략: 변동성 확대 국면을 비중 축소보다는 매수 기회로 활용하되, 10년물 금리의 상승 속도와 3분기 기업 실적/이익 모멘텀을 주도주 선별의 핵심 잣대로 삼는 대응이 유효합니다."
     
     return [bullet_1, bullet_2, bullet_3, bullet_4]
 
