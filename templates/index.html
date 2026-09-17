@@ -185,13 +185,12 @@
         <div class="section-header-title">3. 스마트머니 수급 레이더</div>
         <div class="content-card" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main);">📡 실시간 수급 동향 포착</span>
+                <span style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main);">📡 실시간 수급 동향</span>
                 <span style="padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff;">{{ smart_money_summary.badge_text }}</span>
             </div>
             <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
                 <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling }}</li>
-                <!-- 테마 및 업종 쏠림 분석 추가 -->
                 <li style="margin-bottom: 6px;">{{ smart_money_summary.concentrated_themes | safe }}</li>
                 <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil }}</li>
             </ul>
