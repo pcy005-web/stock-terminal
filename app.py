@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 MARKET_CATEGORIES = [
     {
-        'title': '🇰🇷 국내 증시',
+        'title': '🇰🇷 국내 증시 ',
         'stocks': [
             {'code': 'kospi', 'name': '코스피', 'ticker': 'NAVER_DOMESTIC_KOSPI'},
             {'code': 'kosdaq', 'name': '코스닥', 'ticker': 'NAVER_DOMESTIC_KOSDAQ'},
