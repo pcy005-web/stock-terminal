@@ -263,11 +263,11 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (실시간 비동기 갱신 지원) -->
+    <!-- 7. 장중 특징주 핫이슈 (실시간 비동기 갱신 지원, 5개 제한, 증시요약 갱신 시각 제거) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 컴팩트한 리스트 레이아웃 -->
+            <!-- 컴팩트한 리스트 레이아웃 (5개 고정) -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
                 {% for item in feature_stocks %}
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-card); border-radius: 6px; gap: 10px;">
@@ -280,7 +280,7 @@
                 {% endfor %}
             </div>
 
-            <!-- 섹션 마지막 증시마감 키워드 요약 박스 -->
+            <!-- 섹션 마지막 증시마감 키워드 요약 박스 (하단 타임스탬프 제거됨) -->
             <div style="background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 12px 14px;">
                 <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-main); margin-bottom: 4px;">📈 [증시요약] 실시간 키워드 브리핑</div>
                 <div id="feature-market-summary-box" style="font-size: 0.82rem; color: var(--text-main); line-height: 1.5;">{{ feature_market_summary }}</div>
