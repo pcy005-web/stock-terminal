@@ -72,9 +72,6 @@
         .news-item:hover { color: var(--accent-main); text-decoration: underline; }
         .news-comment { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
         .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
-
-        .feature-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 10px; transition: all 0.2s; }
-        .feature-item:hover { border-color: var(--accent-main); }
         
         .ai-briefing-box { background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 8px; padding: 14px; margin-top: 14px; }
 
@@ -269,27 +266,30 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (실시간 최신순 정렬 적용) -->
+    <!-- 7. 장중 특징주 핫이슈 (6번 세션 레이아웃 통일 적용) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 특징주 리스트 컨테이너 (최신순 발행 시간 포함) -->
-            <div id="feature-stocks-container">
+            <!-- 6번 세션과 동일한 간격 및 박스 디자인 적용 -->
+            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
                 {% for item in feature_stocks %}
-                <div class="feature-item">
-                    <a href="{{ item.link }}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
-                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
-                    </a>
+                <div class="news-box">
+                    <div class="news-header-row">
+                        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
+                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ loop.index }}. {{ item.title }}
+                        </a>
+                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: var(--badge-green); white-space: nowrap;">특징주</span>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
 
             <!-- 장중 수급 분석 (마감시황 종합) -->
             <div class="ai-briefing-box">
-                <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
+                <div style="font-weight: bold; font-size: 1.0rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
                     <span>📊</span> 장중 수급 및 마감시황 종합 분석
                 </div>
-                <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.95rem; color: var(--text-main);">
+                <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.88rem; color: var(--text-main);">
                     {{ feature_market_summary }}
                 </div>
             </div>
@@ -391,12 +391,15 @@
                     lastFeatureTitles = currentTitles;
                     
                     let html = '';
-                    items.forEach(item => {
+                    items.forEach((item, index) => {
                         html += `
-                            <div class="feature-item">
-                                <a href="${item.link}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
-                                    <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${item.title}
-                                </a>
+                            <div class="news-box">
+                                <div class="news-header-row">
+                                    <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-item">
+                                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${index + 1}. ${item.title}
+                                    </a>
+                                    <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: var(--badge-green); white-space: nowrap;">특징주</span>
+                                </div>
                             </div>
                         `;
                     });
