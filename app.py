@@ -2,6 +2,7 @@ import datetime
 import json
 import re
 import ssl
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -321,11 +322,12 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    query_str = urllib.parse.quote("금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:6h")
+    # [연합인포맥스/연합인포 누락 방지 쿼리 고도화]
+    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     news_list = []
-    collected_titles = []  # Fuzzy Matching 비교를 위한 수집된 제목 리스트 저장용
+    collected_titles = [] 
     
     try:
         req = urllib.request.Request(
@@ -339,11 +341,34 @@ def fetch_naver_finance_news():
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
+                pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
-                title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
+                if " - " in title:
+                    title_clean, press_source = title.rsplit(" - ", 1)
+                else:
+                    title_clean = title
+                    press_source = ""
                 
-                # [Fuzzy Matching 정밀 유사도 검사] 기존에 수집된 제목들과 비교하여 75%(0.75) 이상 유사하면 중복으로 판단 후 제외
+                # 출처(연합인포맥스/연합인포) 정제 및 보정
+                rss_source_name = item.find('source').text if item.find('source') is not None else ""
+                combined_source_check = f"{press_source} {rss_source_name} {title}"
+                if "연합인포" in combined_source_check:
+                    display_source = "연합인포맥스"
+                else:
+                    display_source = press_source.strip() if press_source else "경제 뉴스"
+                
+                # 기사 발행일(date) 파싱
+                news_date_str = now_dt.strftime('%m/%d')
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        dt = parsedate_to_datetime(pub_date_elem.text)
+                        dt_kst = dt.astimezone(kst)
+                        news_date_str = dt_kst.strftime('%m/%d')
+                    except Exception:
+                        pass
+
+                # [Fuzzy Matching 정밀 유사도 검사] 75%(0.75) 이상 유사하면 중복 제외
                 is_duplicate = False
                 for existing_title in collected_titles:
                     similarity = SequenceMatcher(None, title_clean, existing_title).ratio()
@@ -355,7 +380,6 @@ def fetch_naver_finance_news():
                     continue
                 
                 collected_titles.append(title_clean)
-                
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크", "하락", "급락"]
@@ -380,11 +404,13 @@ def fetch_naver_finance_news():
                     comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
 
                 news_list.append({
-                    'title': title_clean,
+                    'title': title_clean.strip(),
+                    'source': display_source,
                     'link': link,
                     'stock': related_stock,
                     'comment': comment,
                     'type': news_type,
+                    'date': news_date_str,
                     'timestamp': now_dt
                 })
                 
@@ -456,16 +482,60 @@ def generate_strategies(quotes, news_list):
         {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "KB금융, 신한지주 - 금융", "rank": "TOP 5"}
     ]
 
+# -------------------------------------------------------------
+# 5번 섹션: 100% 무료, 다변화 템플릿 및 뉴스 발행일 헤더 반영 요약 생성 함수
+# -------------------------------------------------------------
 def generate_premarket_summary_bullets(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     today_str = datetime.datetime.now(kst).strftime('%m/%d')
-    header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 금리 상승과 증시 체력"
-    bullets = [
-        "미국 증시는 연준 정책 불확실성 완화와 미 10년물 금리 5.0% 하회 속에서 반등에 성공했습니다. 마이크론(+5.5%), 엔비디아(+2.5%), 인텔(+7.7%) 등 반도체주의 강세가 두드러졌습니다.",
-        "주식시장은 고금리 환경(미 10년물 금리 5.0% 등)에 단계적으로 적응하며 체력을 축적하고 있습니다. 금리 자체의 절대 레벨보다는 '금리 상승 속도'와 이익 컨센서스 변화에 주목할 시점입니다.",
-        "오늘 국내 증시는 FOMC 이후 금리 안정 및 반도체 중심의 미국 증시 반등, 야간선물 강세에 힘입어 상승 흐름을 보일 것으로 전망합니다.",
-        "외국인 연속 순매도는 펀더멘털 악화가 아닌 매크로 불확실성에 대응하기 위한 단기 리스크 관리 성격이 짙으며, 매크로 불안 정점 통과와 함께 반도체 등 주력 업종 중심의 비중 확대 및 분할 매수 전략이 유효합니다."
-    ]
+    
+    # 📌 가져온 최신 뉴스의 발행일을 헤더 날짜로 우선 채택 (없으면 오늘 날짜)
+    target_date_str = news_list[0].get('date', today_str) if news_list else today_str
+    
+    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
+    
+    # 뉴스 성격 분석 (호재 vs 리스크)
+    risk_news_count = sum(1 for n in news_list if n.get('type') == '리스크')
+    positive_news_count = sum(1 for n in news_list if n.get('type') == '호재')
+    
+    top_title = news_list[0]['title'] if news_list else "글로벌 매크로 지표 변동성 확대"
+    second_title = news_list[1]['title'] if len(news_list) > 1 else "핵심 주도주 수급 공방 지속"
+    top_source = news_list[0].get('source', '연합인포맥스') if news_list else "연합인포맥스"
+    
+    # 📌 실제 뉴스 발행일(target_date_str)을 헤더 타이틀에 적용
+    if risk_news_count > positive_news_count:
+        header_title = f"{target_date_str}, 장 시작 전 마켓 핵심 생각: 대외 리스크 요인 점검과 방어적 대응"
+    elif positive_news_count > risk_news_count:
+        header_title = f"{target_date_str}, 장 시작 전 마켓 핵심 생각: 실적 모멘텀 유입과 주도주 수급 집중"
+    else:
+        header_title = f"{target_date_str}, 장 시작 전 마켓 핵심 생각: 매크로 관망세 속 종목별 차별화 장세"
+
+    # 뼈대 문장이 유연하게 바뀌는 다변화 조합 로직
+    bullets = []
+    
+    # [첫 번째 불릿]
+    if risk_news_count > 0:
+        bullets.append(f"({top_source}) 최근 시장의 이목이 집중된 \"{top_title}\" 등 잠재적 리스크 요인이 부각되면서, 투자 심리가 단기 경계감을 형성하고 있습니다.")
+    else:
+        bullets.append(f"({top_source}) 시장은 전일 전해진 \"{top_title}\" 소식을 소화하며, 전반적인 펀더멘털 개선 기대를 반영하는 양상입니다.")
+        
+    # [두 번째 불릿]
+    if sox.get('is_up'):
+        bullets.append(f"필라델피아 반도체 지수({sox.get('rate')})의 반등 흐름은 국내 IT 및 반도체 밸류체인에 긍정적인 모멘텀으로 작용하며 지수 하단을 탄탄하게 지지할 것입니다.")
+    else:
+        bullets.append(f"필라델피아 반도체 지수({sox.get('rate')})와 나스닥 선물({nasdaq_fut.get('rate')})의 조정 압력은 국내 증시 초반 변동성을 키우는 빌미가 될 수 있어 주의가 필요합니다.")
+        
+    # [세 번째 불릿]
+    bullets.append(f"원/달러 환율이 {usdkrw.get('price')}원({usdkrw.get('rate')}) 선에서 움직이는 가운데, 외국인 수급의 유출입 강도가 장중 지수 방향성을 결정짓는 핵심 변수가 될 전망입니다.")
+    
+    # [네 번째 불릿]
+    if risk_news_count > 2:
+        bullets.append(f"추가적으로 체크된 \"{second_title}\" 이슈와 같이 개별 종목별 낙폭 과대 구간에서의 무리한 추격매수보다는, 실적이 담보된 방어주 위주의 포트폴리오 재편이 유리합니다.")
+    else:
+        bullets.append(f"\"{second_title}\" 등 시장 주도 테마 내에서 실적 가시성이 높은 종목을 선별하여, 눌림목을 활용한 분할 매수 전략을 구사하는 것이 바람직합니다.")
+
     return header_title, bullets
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
@@ -499,7 +569,7 @@ def index():
     market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
-                
+            
     return render_template(
         'index.html', 
         categories=MARKET_CATEGORIES, 
