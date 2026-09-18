@@ -47,6 +47,11 @@ MARKET_CATEGORIES = [
     }
 ]
 
+# 캐시 저장소 (속도 최적화용)
+_quote_cache = {}
+_quote_cache_time = 0
+CACHE_TTL = 3 # 3초간 캐시 유지
+
 def get_ssl_context():
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -60,7 +65,7 @@ def fetch_yahoo_data(ticker):
     
     try:
         req = urllib.request.Request(url, headers=yahoo_headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             result_arr = res_json.get('chart', {}).get('result')
             
@@ -100,7 +105,7 @@ def fetch_realtime_data(ticker):
             api_url = f"https://api.upbit.com/v1/ticker?markets={market_code}"
             
             req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 if res_json and isinstance(res_json, list):
                     item = res_json[0]
@@ -147,7 +152,7 @@ def fetch_realtime_data(ticker):
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 item = None
                 if isinstance(res_json, dict):
@@ -185,13 +190,41 @@ def fetch_realtime_data(ticker):
 
     return {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
 
+def get_all_quotes_cached():
+    global _quote_cache, _quote_cache_time
+    now_ts = datetime.datetime.now().timestamp()
+    
+    if _quote_cache and (now_ts - _quote_cache_time) < CACHE_TTL:
+        return _quote_cache
+
+    price_map = {}
+    tasks = []
+    for cat in MARKET_CATEGORIES:
+        for stock in cat['stocks']:
+            tasks.append((stock['code'], stock['ticker']))
+
+    # 병렬 스레드 처리 및 대폭 축소된 타임아웃으로 속도 극대화
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
+        for future in as_completed(future_to_code):
+            code = future_to_code[future]
+            try:
+                data = future.result()
+                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+            except Exception:
+                price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+                
+    _quote_cache = price_map
+    _quote_cache_time = now_ts
+    return price_map
+
 @lru_cache(maxsize=128)
 def fetch_naver_stock_theme_api(stock_name):
     try:
         encoded_name = urllib.parse.quote(stock_name.strip())
         search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
         req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
             data = json.loads(response.read().decode('utf-8'))
             stocks_result = data.get('stocks', [])
             if not stocks_result and 'result' in data:
@@ -255,11 +288,11 @@ def extract_and_verify_stocks_from_title(title_clean):
             joined_str = "".join(valid_stocks)
             if any(k in joined_str for k in ["제일엠앤에스"]):
                 detected_theme = "이차전지/장비"
-            elif any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM", "마이크"]):
+            elif any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM"]):
                 detected_theme = "AI 반도체"
-            elif any(k in joined_str for k in ["현대차", "자동차", "레나"]):
+            elif any(k in joined_str for k in ["현대차", "자동차"]):
                 detected_theme = "자동차"
-            elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크", "앤씨앤"]):
+            elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크"]):
                 detected_theme = "우주항공/소부장"
             else:
                 detected_theme = "시장주도주"
@@ -291,11 +324,10 @@ def fetch_feature_stocks():
             rss_url, 
             headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
+                'Cache-Control': 'no-cache'
             }
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.2) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -355,8 +387,7 @@ def fetch_feature_stocks():
     fallbacks = [
         {"stock": "뉴욕증시 개장 전 특징주", "theme": "해외증시", "title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "뉴욕증시 개장 전 특징주"},
         {"stock": "제일엠앤에스", "theme": "이차전지/장비", "title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "제일엠앤에스 상장폐지"},
-        {"stock": "인텔·네비우스·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [21:33] [개장전특징주]인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"},
-        {"stock": "진양화학·비츠로테크", "theme": "우주항공/소부장", "title": f"[{current_time_str}] [21:30] [상한가 종목] 진양화학-비츠로테크 이어 나라스페이스테크놀로지 등 마감", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "나라스페이스 상한가"}
+        {"stock": "인텔·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [21:33] [개장전특징주] 인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"}
     ]
     
     for fb in fallbacks:
@@ -410,12 +441,9 @@ def fetch_naver_finance_news():
     try:
         req = urllib.request.Request(
             rss_url, 
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
-            }
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.2) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -433,11 +461,7 @@ def fetch_naver_finance_news():
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                exclude_words = [
-                    "특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", 
-                    "거래", "실종", "반토막", "급락", "폭락", "증시", "상승", "악재", "피인수", "효과",
-                    "아티스트", "스튜디오"
-                ]
+                exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "증시", "상승"]
                 
                 valid_stocks = []
                 for m in quoted_matches:
@@ -451,12 +475,7 @@ def fetch_naver_finance_news():
                 comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
 
                 interest_score = 0
-                high_interest_keywords = ["실적", "서프라이즈", "영업이익", "컨센서스", "수주", "가이던스", "공시", "턴어라운드", "수출"]
-                for kw in high_interest_keywords:
-                    if kw in title_clean:
-                        interest_score += 2
-
-                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "발작", "충격", "소송", "리스크"]
+                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
 
                 if extracted_stocks_from_quotes:
@@ -464,30 +483,21 @@ def fetch_naver_finance_news():
                 else:
                     if is_negative:
                         related_stock = "원/달러 환율, 지수 방어주"
-                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스", "엔비디아"]):
+                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
                         related_stock = "삼성전자, SK하이닉스"
-                    elif any(k in title_clean for k in ["전력", "변압기", "인프라"]):
-                        related_stock = "HD현대일렉트릭"
-                    elif any(k in title_clean for k in ["방산", "조선", "수주"]):
-                        related_stock = "한화에어로스페이스"
-                    elif any(k in title_clean for k in ["바이오", "제약", "임상"]):
-                        related_stock = "삼성바이오로직스"
                     else:
                         related_stock = "코스피 대형주"
 
                 if is_negative:
                     news_type = "리스크"
                     comment = "매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 방어적 포트폴리오 재편"
-                    interest_score += 1
                 else:
-                    if any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "가이던스", "턴어라운드"]):
+                    if any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "가이던스"]):
                         news_type = "호재"
                         comment = "컨센서스 상회 실적 및 펀더멘털 개선에 기반한 기관·외인 순매수 유입 기대"
-                        interest_score += 2
-                    elif any(k in title_clean for k in ["수주", "계약", "수출", "공급"]):
+                    elif any(k in title_clean for k in ["수주", "계약", "수출"]):
                         news_type = "호재"
-                        comment = "멀티플 확장 구간 내 실질 수주 잔고 확보를 통한 펀더멘털 강화"
-                        interest_score += 1
+                        comment = "실질 수주 잔고 확보를 통한 펀더멘털 강화"
 
                 news_list.append({
                     'title': title_clean,
@@ -498,22 +508,20 @@ def fetch_naver_finance_news():
                     'score': interest_score,
                     'is_negative': is_negative
                 })
-                
-        news_list = sorted(news_list, key=lambda x: x['score'], reverse=True)
     except Exception:
         pass
         
     if len(news_list) < 10:
         dynamic_fallbacks = [
             (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자, SK하이닉스 - AI 반도체", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
-            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차, 기아 - 자동차", "외국인 수급 민감도에 연동된 환차익 및 마진율 변화 모니터링", "중립", False),
-            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주 - 금융", "자기자본이익률(ROE) 개선세 기반의 하방 경직성 확보", "호재", False),
-            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로ส페이스, 현대로템 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
-            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 경로 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
+            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차, 기아 - 자동차", "외국인 수급 민감도에 연동된 마진율 변화 모니터링", "중립", False),
+            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주 - 금융", "자기자본이익률(ROE) 개선세 기반 하방 경직성 확보", "호재", False),
+            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스, 현대로템 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
+            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
             (f"[{current_hour_str} 섹터 진단] 2차전지 밸류체인 수급 개선 여부 및 캐즘 구간 실적 바닥론 점검", "https://news.google.com", "LG에너지솔루션, 삼성SDI - 2차전지", "단기 실적 모멘텀 둔화 속 저가 매수세 유입 가능성 타진", "중립", False),
-            (f"[{current_hour_str} 바이오 포커스] 글로벌 제약사 파이프라인 기술이전 및 임상 결과 모멘텀", "https://news.google.com", "삼성바이오로직스, 셀트리온 - 바이오", "대형 라이선스 아웃 계약에 따른 실적 도약 기대감 반영", "호재", False),
+            (f"[{current_hour_str} 바이오 포커스] 파이프라인 기술이전 및 임상 결과 모멘텀", "https://news.google.com", "삼성바이오로직스, 셀트리온 - 바이오", "대형 라이선스 아웃 계약에 따른 실적 도약 기대감 반영", "호재", False),
             (f"[{current_hour_str} 인프라 분석] 친환경 에너지 전환 가속화에 따른 전력기기 수주 호조 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업 - 전력기기", "북미 및 중동 지역 중심의 전력망 교체 수요 확대 혜택", "호재", False),
-            (f"[{current_hour_str} 유통/소비재] 중국 내수 부양책 발표에 따른 국내 화장품 및 면세 업종 수혜 검증", "https://news.google.com", "아모레퍼시픽, LG생활건강 - 소비재", "수출 다변화 성과에 따른 실적 턴어라운드 속도 확인 필요", "중립", False),
+            (f"[{current_hour_str} 유통/소비재] 내수 부양책 발표에 따른 국내 화장품 및 면세 업종 수혜 검증", "https://news.google.com", "아모레퍼시픽, LG생활건강 - 소비재", "수출 다변화 성과에 따른 실적 턴어라운드 속도 확인 필요", "중립", False),
             (f"[{current_hour_str} 매크로 리스크] 지정학적 리스크 확대에 따른 원자재 가격 변동성 주의", "https://news.google.com", "WTI원유, 금현물 - 원자재", "공급망 불안정에 따른 수급 단기 충격 여부 모니터링", "리스크", True)
         ]
         while len(news_list) < 10 and dynamic_fallbacks:
@@ -589,8 +597,8 @@ def generate_premarket_summary_bullets(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     today_str = datetime.datetime.now(kst).strftime('%m/%d')
     
-    # 전달해주신 키움 한지영 연구원의 샘플 리포트 구조를 반영한 장전 5분 마켓 핵심 요약
-    header_title = f"{today_str}, 장 시작 전 생각: 금리 상승과 증시 체력 (키움 한지영)"
+    # 요청하신 대로 (키움 한지영) 문구를 제거하고 깔끔한 타이틀로 수정
+    header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 금리 상승과 증시 체력"
     
     bullets = [
         "미국 증시는 연준 정책 불확실성 완화와 미 10년물 금리 5.0% 하회 속에서 반등에 성공했습니다. 마이크론(+5.5%), 엔비디아(+2.5%), 인텔(+7.7%) 등 반도체주의 강세가 두드러졌습니다.",
@@ -622,22 +630,7 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
 
 @app.route('/')
 def index():
-    price_map = {}
-    tasks = []
-    for cat in MARKET_CATEGORIES:
-        for stock in cat['stocks']:
-            tasks.append((stock['code'], stock['ticker']))
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        for future in as_completed(future_to_code):
-            code = future_to_code[future]
-            try:
-                data = future.result()
-                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-            except Exception:
-                price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-                
+    price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
     theme_text = generate_theme_sync_analysis(price_map, live_news)
     smart_money_data = generate_smart_money_analysis(price_map)
@@ -645,7 +638,6 @@ def index():
     
     market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
-    
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
                 
     return render_template(
@@ -665,21 +657,7 @@ def index():
 
 @app.route('/api/quotes')
 def api_quotes():
-    price_map = {}
-    tasks = []
-    for cat in MARKET_CATEGORIES:
-        for stock in cat['stocks']:
-            tasks.append((stock['code'], stock['ticker']))
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        for future in as_completed(future_to_code):
-            code = future_to_code[future]
-            try:
-                data = future.result()
-                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-            except Exception:
-                price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+    price_map = get_all_quotes_cached()
     return json.dumps(price_map, ensure_ascii=False)
 
 @app.route('/api/feature-stocks')
@@ -692,23 +670,7 @@ def api_feature_stocks():
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
-    price_map = {}
-    tasks = []
-    for cat in MARKET_CATEGORIES:
-        for stock in cat['stocks']:
-            tasks.append((stock['code'], stock['ticker']))
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        for future in as_completed(future_to_code):
-            code = future_to_code[future]
-            try:
-                data = future.result()
-                if data:
-                    price_map[code] = data
-            except Exception:
-                pass
-
+    price_map = get_all_quotes_cached()
     news_list = fetch_naver_finance_news()
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list)
     return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
