@@ -273,15 +273,11 @@
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 특징주 리스트 컨테이너 -->
+            <!-- 특징주 리스트 컨테이너 (종목 태그, 테마 태그, 압정 아이콘 제거 및 순수 뉴스 링크 형태로 변경) -->
             <div id="feature-stocks-container">
                 {% for item in feature_stocks %}
                 <div class="feature-item">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-weight: bold; color: var(--accent-main); font-size: 1rem;">📌 {{ item.stock }}</span>
-                        <span style="background: var(--bg-primary); color: var(--accent-main); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--border-color);">{{ item.theme }}</span>
-                    </div>
-                    <a href="{{ item.link }}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; display: block;">
+                    <a href="{{ item.link }}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
                         {{ item.title }}
                     </a>
                 </div>
@@ -396,13 +392,10 @@
                     
                     let html = '';
                     items.forEach(item => {
+                        // 동적 갱신 시에도 아이콘이나 종목/테마 태그 없이 순수 뉴스 제목 및 링크만 렌더링하도록 수정
                         html += `
                             <div class="feature-item">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                    <span style="font-weight: bold; color: var(--accent-main); font-size: 1rem;">📌 ${item.stock || '특징주'}</span>
-                                    <span style="background: var(--bg-primary); color: var(--accent-main); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; border: 1px solid var(--border-color);">${item.theme || '시장주도주'}</span>
-                                </div>
-                                <a href="${item.link}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; display: block;">
+                                <a href="${item.link}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
                                     ${item.title}
                                 </a>
                             </div>
