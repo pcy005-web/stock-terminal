@@ -203,7 +203,6 @@ def get_all_quotes_cached():
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
-    # 병렬 스레드 처리 및 대폭 축소된 타임아웃으로 속도 극대화
     with ThreadPoolExecutor(max_workers=15) as executor:
         future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
         for future in as_completed(future_to_code):
@@ -431,9 +430,9 @@ def fetch_feature_stocks():
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
-    current_hour_str = now_dt.strftime('%H시 %M분')
     
-    query_str = urllib.parse.quote("코스피 주식 증권 실적 공시 펀더멘털 when:6h")
+    # 가짜 폴백을 제거하고 오직 실시간 최신 뉴스만 수집하도록 쿼리 설정
+    query_str = urllib.parse.quote("코스피 OR 주식 OR 증권 OR 실적 OR 금리 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
     seen_titles = set()
@@ -443,13 +442,14 @@ def fetch_naver_finance_news():
             rss_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.2) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
+                pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
@@ -460,44 +460,36 @@ def fetch_naver_finance_news():
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                quoted_matches = re.findall(r"'([^']+)'", title_clean)
-                exclude_words = ["특징주", "급등", "상한가", "하락", "폭등", "마감", "시황", "코스피", "코스닥", "거래", "증시", "상승"]
+                pub_dt = now_dt
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        pub_dt = parsedate_to_datetime(pub_date_elem.text)
+                        if pub_dt.tzinfo is None:
+                            pub_dt = pytz.utc.localize(pub_dt)
+                        pub_dt = pub_dt.astimezone(kst)
+                    except Exception:
+                        pass
                 
-                valid_stocks = []
-                for m in quoted_matches:
-                    if len(m) > 6 or any(char.isdigit() for char in m) or any(ew in m for ew in exclude_words):
-                        continue
-                    valid_stocks.append(m)
-                
-                extracted_stocks_from_quotes = ", ".join(valid_stocks)
-                related_stock = ""
-                news_type = "중립"
-                comment = "금융공학 및 펀더멘털 관점의 밸류에이션 리스크 검증 필요"
-
-                interest_score = 0
-                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크"]
+                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크", "하락", "급락"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
+                
+                news_type = "중립"
+                comment = "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요"
+                related_stock = "시장 대형주"
 
-                if extracted_stocks_from_quotes:
-                    related_stock = f"{extracted_stocks_from_quotes}"
-                else:
-                    if is_negative:
-                        related_stock = "원/달러 환율, 지수 방어주"
-                    elif any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
-                        related_stock = "삼성전자, SK하이닉스"
-                    else:
-                        related_stock = "코스피 대형주"
+                if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
+                    related_stock = "삼성전자, SK하이닉스"
+                elif any(k in title_clean for k in ["현대차", "자동차", "배터리"]):
+                    related_stock = "현대차, LG에너지솔루션"
+                elif any(k in title_clean for k in ["금융", "은행", "증권"]):
+                    related_stock = "KB금융, 신한지주"
 
                 if is_negative:
                     news_type = "리스크"
-                    comment = "매크로 지표 변동성 및 어닝 컨센서스 하향 위험에 따른 방어적 포트폴리오 재편"
-                else:
-                    if any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "가이던스"]):
-                        news_type = "호재"
-                        comment = "컨센서스 상회 실적 및 펀더멘털 개선에 기반한 기관·외인 순매수 유입 기대"
-                    elif any(k in title_clean for k in ["수주", "계약", "수출"]):
-                        news_type = "호재"
-                        comment = "실질 수주 잔고 확보를 통한 펀더멘털 강화"
+                    comment = "관련 이슈에 따른 단기 변동성 확대 및 리스크 관리 주의"
+                elif any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "수주", "계약"]):
+                    news_type = "호재"
+                    comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
 
                 news_list.append({
                     'title': title_clean,
@@ -505,31 +497,13 @@ def fetch_naver_finance_news():
                     'stock': related_stock,
                     'comment': comment,
                     'type': news_type,
-                    'score': interest_score,
-                    'is_negative': is_negative
+                    'timestamp': pub_dt
                 })
     except Exception:
         pass
         
-    if len(news_list) < 10:
-        dynamic_fallbacks = [
-            (f"[{current_hour_str} 전문가 리포트] 글로벌 공급망 재편에 따른 반도체 핵심 소부장 펀더멘털 분석", "https://news.google.com", "삼성전자, SK하이닉스 - AI 반도체", "실적 추정치 상향 조정 기업 중심의 밸류에이션 매력 점검", "호재", False),
-            (f"[{current_hour_str} 매크로 검증] 환율 변동성 확대에 따른 수출주 컨센서스 영향 진단", "https://news.google.com", "현대차, 기아 - 자동차", "외국인 수급 민감도에 연동된 마진율 변화 모니터링", "중립", False),
-            (f"[{current_hour_str} 기업공시 분석] 주요 상장사 실적 가이던스 및 주주환원 정책 적정성 평가", "https://news.google.com", "KB금융, 신한지주 - 금융", "자기자본이익률(ROE) 개선세 기반 하방 경직성 확보", "호재", False),
-            (f"[{current_hour_str} 수급 포커스] K-방산 수출 다변화 및 수주 잔고 기반 실적 가시성 분석", "https://news.google.com", "한화에어로스페이스, 현대로템 - 방산", "중장기 실적 성장이 담보된 수주형 성장주 트레이딩", "호재", False),
-            (f"[{current_hour_str} 리스크 점검] 미국 국채 금리 불확실성에 따른 성장주 멀티플 압박 요인", "https://news.google.com", "미국 국채 - 매크로", "할인율 상승에 따른 밸류에이션 부담 완충 여부 검증", "리스크", True),
-            (f"[{current_hour_str} 섹터 진단] 2차전지 밸류체인 수급 개선 여부 및 캐즘 구간 실적 바닥론 점검", "https://news.google.com", "LG에너지솔루션, 삼성SDI - 2차전지", "단기 실적 모멘텀 둔화 속 저가 매수세 유입 가능성 타진", "중립", False),
-            (f"[{current_hour_str} 바이오 포커스] 파이프라인 기술이전 및 임상 결과 모멘텀", "https://news.google.com", "삼성바이오로직스, 셀트리온 - 바이오", "대형 라이선스 아웃 계약에 따른 실적 도약 기대감 반영", "호재", False),
-            (f"[{current_hour_str} 인프라 분석] 친환경 에너지 전환 가속화에 따른 전력기기 수주 호조 지속", "https://news.google.com", "HD현대일렉트릭, 효성중공업 - 전력기기", "북미 및 중동 지역 중심의 전력망 교체 수요 확대 혜택", "호재", False),
-            (f"[{current_hour_str} 유통/소비재] 내수 부양책 발표에 따른 국내 화장품 및 면세 업종 수혜 검증", "https://news.google.com", "아모레퍼시픽, LG생활건강 - 소비재", "수출 다변화 성과에 따른 실적 턴어라운드 속도 확인 필요", "중립", False),
-            (f"[{current_hour_str} 매크로 리스크] 지정학적 리스크 확대에 따른 원자재 가격 변동성 주의", "https://news.google.com", "WTI원유, 금현물 - 원자재", "공급망 불안정에 따른 수급 단기 충격 여부 모니터링", "리스크", True)
-        ]
-        while len(news_list) < 10 and dynamic_fallbacks:
-            t, l, s, c, tp, neg = dynamic_fallbacks.pop(0)
-            if t not in seen_titles:
-                seen_titles.add(t)
-                news_list.append({'title': t, 'link': l, 'stock': s, 'comment': c, 'type': tp, 'score': 0, 'is_negative': neg})
-            
+    # 발행 시간 기준 최신순 정렬 후 상위 10개 반환 (가짜 폴백 데이터 전면 차단)
+    news_list = sorted(news_list, key=lambda x: x['timestamp'], reverse=True)
     return news_list[:10]
 
 def generate_theme_sync_analysis(quotes, news_list):
@@ -597,7 +571,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     today_str = datetime.datetime.now(kst).strftime('%m/%d')
     
-    # 요청하신 대로 (키움 한지영) 문구를 제거하고 깔끔한 타이틀로 수정
     header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 금리 상승과 증시 체력"
     
     bullets = [
