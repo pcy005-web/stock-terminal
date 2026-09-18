@@ -1,607 +1,413 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>AlphaFlow Terminal - 미 증시 & 국장 연동 수급 분석 터미널</title>
-<!-- Tailwind CSS CDN -->
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-darkMode: 'class',
-theme: {
-extend: {
-colors: {
-brand: {
-bg: '#0a0e17',
-card: '#111827',
-cardHover: '#1f293d',
-border: '#1f2937',
-accent: '#3b82f6',
-bull: '#10b981',
-bear: '#ef4444',
-warning: '#f59e0b',
-gold: '#fbbf24',
-kakao: '#fee500'
-}
-},
-fontFamily: {
-sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Pretendard', 'Segoe UI', 'Roboto', 'sans-serif'],
-mono: ['SF Mono', 'JetBrains Mono', 'Menlo', 'Consolas', 'monospace']
-}
-}
-}
-}
-</script>
-<!-- Lucide Icons -->
-<script src="https://unpkg.com/lucide@latest"></script>
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-/* Mobile Local Safari Safe Styles */
-* {
--webkit-tap-highlight-color: transparent;
-box-sizing: border-box;
-}
-html, body {
-background-color: #0a0e17;
-color: #f3f4f6;
-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard", sans-serif;
-margin: 0;
-padding: 0;
-width: 100%;
-height: 100%;
-overflow-x: hidden;
-}
-.custom-scrollbar::-webkit-scrollbar {
-width: 4px;
-height: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-background: #0a0e17;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-background: #1f2937;
-border-radius: 4px;
-}
-.glow-accent {
-box-shadow: 0 0 16px rgba(59, 130, 246, 0.2);
-}
-.safe-pb {
-padding-bottom: env(safe-area-inset-bottom, 20px);
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockFlow Terminal Monitor</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --bg-card-hover: #3f4f65;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --badge-green: #059669;
+            --badge-orange: #d97706;
+            --badge-red: #dc2626;
+            --accent-main: #38bdf8;
+            --border-color: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; scroll-behavior: smooth; }
+        body { background-color: var(--bg-primary); color: var(--text-main); padding: 16px; font-size: 13px; max-width: 1400px; margin: 0 auto; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; position: sticky; top: 0; background: var(--bg-primary); z-index: 100; padding-top: 12px; }
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--accent-main); }
+        
+        .quick-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        .quick-nav::-webkit-scrollbar { height: 4px; }
+        .quick-nav::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        .quick-btn { background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-sub); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; text-decoration: none; transition: all 0.2s; }
+        .quick-btn:hover { background: var(--accent-main); color: #0f172a; border-color: var(--accent-main); }
+
+        .dashboard-section { margin-bottom: 40px; scroll-margin-top: 70px; }
+        .section-header-title { font-size: 1.1rem; font-weight: 800; color: var(--accent-main); margin-bottom: 16px; border-left: 4px solid var(--accent-main); padding-left: 10px; }
+        
+        .group-container { margin-bottom: 20px; }
+        .group-title { font-size: 0.9rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; }
+
+        .market-unified-box { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .stock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+        .stock-row:last-child { border-bottom: none; }
+        .stock-name { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
+        .stock-info { display: flex; gap: 20px; text-align: right; align-items: center; }
+        
+        .stock-price { font-size: 0.95rem; font-weight: 700; color: var(--text-main); min-width: 90px; }
+
+        .stock-rate { 
+            font-size: 0.85rem; 
+            font-weight: 700; 
+            min-width: 75px; 
+            transition: background-color 0.4s ease;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .highlight-up { background-color: rgba(239, 68, 68, 0.25); }
+        .highlight-down { background-color: rgba(59, 130, 246, 0.25); }
+
+        .up { color: var(--accent-red); }
+        .down { color: var(--accent-blue); }
+
+        .content-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .content-card h3 { font-size: 0.95rem; color: var(--accent-main); margin-bottom: 8px; }
+        .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border-color); }
+        
+        .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
+        .news-box:last-child { border-bottom: none; }
+        .news-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .news-item { color: var(--text-main); text-decoration: none; font-size: 0.88rem; font-weight: 600; line-height: 1.4; }
+        .news-item:hover { color: var(--accent-main); text-decoration: underline; }
+        .news-comment { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
+        .news-stock { font-size: 0.75rem; color: var(--accent-main); background: rgba(56, 189, 248, 0.1); padding: 3px 8px; border-radius: 4px; width: fit-content; font-weight: 600; }
+        
+        .ai-briefing-box { background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 8px; padding: 14px; margin-top: 14px; }
+
+        .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col md:flex-row bg-[#0a0e17] text-gray-100 antialiased">
-<!-- Mobile Header Bar -->
-<div class="md:hidden flex items-center justify-between p-4 bg-[#0f172a] border-b border-gray-800 sticky top-0 z-30">
-<div class="flex items-center gap-2">
-<div class="p-1.5 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
-<i data-lucide="activity" class="w-5 h-5"></i>
-</div>
-<div>
-<h1 class="font-bold text-base tracking-wider text-white">ALPHA<span class="text-blue-500">FLOW</span></h1>
-<p class="text-[9px] text-gray-400 tracking-wider">US & K-STOCK TERMINAL</p>
-</div>
-</div>
-<button id="mobileMenuBtn" onclick="toggleMobileNav()" class="p-2 text-gray-300 bg-gray-800 rounded-lg">
-<i data-lucide="menu" class="w-5 h-5"></i>
-</button>
-</div>
-<!-- Sidebar / Mobile Drawer Nav -->
-<aside id="sidebar" class="hidden md:flex flex-col w-full md:w-64 bg-[#0f172a] border-b md:border-b-0 md:border-r border-gray-800 flex-shrink-0 z-20">
-<div class="hidden md:flex p-4 border-b border-gray-800 items-center gap-2">
-<div class="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
-<i data-lucide="activity" class="w-6 h-6"></i>
-</div>
-<div>
-<h1 class="font-bold text-lg tracking-wider text-white">ALPHA<span class="text-blue-500">FLOW</span></h1>
-<p class="text-[10px] text-gray-400 tracking-wider">US & K-STOCK TERMINAL</p>
-</div>
-</div>
-<nav class="p-3 space-y-1 overflow-y-auto">
-<div class="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">메인 뷰어</div>
-<button onclick="switchTab('overview')" id="tab-overview" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all bg-blue-600/20 text-blue-400 border border-blue-500/30">
-<i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-<span>시장 종합 모닝 브리핑</span>
-</button>
-<button onclick="switchTab('premarket-kr')" id="tab-premarket-kr" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="sunrise" class="w-4 h-4 text-amber-400"></i>
-<span>K-증시 장전 5분 완료</span>
-<span class="ml-auto px-1.5 py-0.5 text-[9px] bg-amber-500/20 text-amber-400 rounded font-mono">NEW</span>
-</button>
-<button onclick="switchTab('sectors')" id="tab-sectors" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="pie-chart" class="w-4 h-4"></i>
-<span>미-국장 수급 연동 매트릭스</span>
-</button>
-<button onclick="switchTab('smartmoney')" id="tab-smartmoney" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="zap" class="w-4 h-4"></i>
-<span>스마트머니 수급 종목</span>
-<span class="ml-auto px-1.5 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 rounded font-mono">HOT</span>
-</button>
-<button onclick="switchTab('news')" id="tab-news" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="newspaper" class="w-4 h-4"></i>
-<span>핵심 이슈 & 연관 분석</span>
-</button>
-<div class="pt-4 px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">도구 & 인텔리전스</div>
-<button onclick="switchTab('ai-generator')" id="tab-ai-generator" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
-<span>AI 애널리스트 리포터</span>
-</button>
-<button onclick="switchTab('watchlist')" id="tab-watchlist" class="tab-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-all">
-<i data-lucide="bookmark" class="w-4 h-4"></i>
-<span>관심 종목 & 매매 메모</span>
-<span id="watchlistCount" class="ml-auto px-1.5 py-0.5 text-[9px] bg-gray-800 text-gray-300 rounded font-mono">0</span>
-</button>
-<div class="pt-4 border-t border-gray-800 px-3 space-y-2">
-<button onclick="shareViaKakao()" class="w-full bg-[#fee500] hover:bg-[#fdd800] text-black font-semibold text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow">
-<i data-lucide="share-2" class="w-4 h-4"></i>
-<span>모닝 브리핑 카톡 공유</span>
-</button>
-</div>
-</nav>
-</aside>
+<body>
 
-<!-- Main Content Area -->
-<main class="flex-1 flex flex-col min-w-0 bg-[#0a0e17] overflow-y-auto custom-scrollbar md:h-screen safe-pb">
-<!-- Top Bar Header -->
-<header class="bg-[#0f172a]/90 backdrop-blur border-b border-gray-800 p-3 md:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sticky top-0 z-10">
-<div class="flex items-center gap-2 w-full sm:w-80">
-<div class="relative w-full">
-<i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-<input type="text" id="globalSearchInput" placeholder="티커(NVDA, SK하이닉스) 또는 테마..." class="w-full bg-gray-900 border border-gray-700/70 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-blue-500 text-gray-200 placeholder-gray-500">
-</div>
-</div>
-<div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end text-xs">
-<div class="flex items-center gap-1.5 bg-gray-900 border border-gray-800 px-2.5 py-1.5 rounded-lg text-[11px]">
-<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-<span id="marketStatusText" class="text-gray-300 font-medium">수급 연동 중</span>
-<span class="text-gray-600">|</span>
-<span id="currentDateText" class="text-gray-400 font-mono">2026-09-19</span>
-</div>
-<button onclick="copyCurrentReport()" class="p-2 text-gray-300 bg-gray-900 hover:bg-gray-800 border border-gray-800 rounded-lg flex items-center gap-1">
-<i data-lucide="copy" class="w-4 h-4"></i>
-<span class="text-xs">요약 복사</span>
-</button>
-</div>
-</header>
+    <header>
+        <div class="logo">⚡ StockFlow Terminal Monitor</div>
+        <div style="font-size: 0.8rem; color: var(--text-sub);">Real-time RSS & Intelligence Hub</div>
+    </header>
 
-<div class="p-3 md:p-6 space-y-5 flex-1">
-<!-- VIEW 1: OVERVIEW TAB (재배치된 8개 순서 적용) -->
-<div id="view-overview" class="view-content space-y-5">
+    <div class="quick-nav">
+        <a href="#sec-1" class="quick-btn">1. 팩트체크</a>
+        <a href="#sec-2" class="quick-btn">2. 테마연동성</a>
+        <a href="#sec-3" class="quick-btn">3. 장전 5분 요약</a>
+        <a href="#sec-4" class="quick-btn">4. 장중 수급 분석</a>
+        <a href="#sec-5" class="quick-btn">5. 특징주 핫이슈</a>
+        <a href="#sec-6" class="quick-btn">6. 핵심 뉴스 10선</a>
+        <a href="#sec-7" class="quick-btn">7. 수급 전략 TOP 5</a>
+        <a href="#sec-8" class="quick-btn">8. AI 브리핑 생성기</a>
+    </div>
 
     <!-- 1. 실제 증시 지표 팩트체크 -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-2.5">
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[11px] text-gray-400">
-                <span>S&P 500</span>
-                <i data-lucide="activity" class="w-3.5 h-3.5 text-blue-400"></i>
-            </div>
-            <div class="my-1">
-                <span class="text-lg font-bold font-mono text-white">5,782.40</span>
-            </div>
-            <div class="flex items-center text-[11px] font-semibold text-emerald-400 gap-0.5">
-                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
-                <span>+0.85%</span>
-            </div>
-        </div>
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[11px] text-gray-400">
-                <span>NASDAQ</span>
-                <i data-lucide="cpu" class="w-3.5 h-3.5 text-purple-400"></i>
-            </div>
-            <div class="my-1">
-                <span class="text-lg font-bold font-mono text-white">18,290.15</span>
-            </div>
-            <div class="flex items-center text-[11px] font-semibold text-emerald-400 gap-0.5">
-                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
-                <span>+1.32%</span>
+    <div class="dashboard-section" id="sec-1">
+        <div class="section-header-title">1. 실제 증시 지표 팩트체크</div>
+        
+        <div class="group-container">
+            <div class="group-title">🇰🇷 국내 증시</div>
+            <div class="market-unified-box">
+                {% for code in ['kospi', 'kosdaq', 'kospi200'] %}
+                {% set stock = {'kospi': {'name': '코스피'}, 'kosdaq': {'name': '코스닥'}, 'kospi200': {'name': '코스피 200 선물'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row" data-code="{{ code }}">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[11px] text-gray-400">
-                <span>USD/KRW 환율</span>
-                <i data-lucide="dollar-sign" class="w-3.5 h-3.5 text-amber-400"></i>
-            </div>
-            <div class="my-1">
-                <span class="text-lg font-bold font-mono text-white">1,338.50</span>
-            </div>
-            <div class="flex items-center text-[11px] font-semibold text-rose-400 gap-0.5">
-                <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i>
-                <span>-4.20 (-0.31%)</span>
-            </div>
-        </div>
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[11px] text-gray-400">
-                <span>미 국채 10년물</span>
-                <i data-lucide="percent" class="w-3.5 h-3.5 text-emerald-400"></i>
-            </div>
-            <div class="my-1">
-                <span class="text-lg font-bold font-mono text-white">3.72%</span>
-            </div>
-            <div class="flex items-center text-[11px] font-semibold text-rose-400 gap-0.5">
-                <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i>
-                <span>-4.2bp</span>
+
+        <div class="group-container">
+            <div class="group-title">🌍 해외 증시 (현물)</div>
+            <div class="market-unified-box">
+                {% for code in ['sp500', 'dow', 'nasdaq', 'phlx'] %}
+                {% set stock = {'sp500': {'name': 'S&P 500'}, 'dow': {'name': '다우존스'}, 'nasdaq': {'name': '나스닥'}, 'phlx': {'name': '필라델피아 반도체'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row" data-code="{{ code }}">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
-        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex flex-col justify-between col-span-2 md:col-span-1">
-            <div class="flex items-center justify-between text-[11px] text-gray-400">
-                <span>KOSPI 야간선물</span>
-                <i data-lucide="trending-up" class="w-3.5 h-3.5 text-blue-400"></i>
+
+        <div class="group-container">
+            <div class="group-title">📊 해외 선물 및 변동성</div>
+            <div class="market-unified-box">
+                {% for code in ['sp500_fut', 'dow_fut', 'nasdaq_fut', 'vix'] %}
+                {% set stock = {'sp500_fut': {'name': 'S&P 500 선물'}, 'dow_fut': {'name': '다우존스 선물'}, 'nasdaq_fut': {'name': '나스닥 선물'}, 'vix': {'name': 'S&P 500 VIX'}}[code] %}
+                {% set q = quotes[code] %}
+                <div class="stock-row" data-code="{{ code }}">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            <div class="my-1">
-                <span class="text-lg font-bold font-mono text-white">+0.65%</span>
-            </div>
-            <div class="flex items-center text-[11px] font-semibold text-emerald-400 gap-0.5">
-                <span>국장 갭상승 출발 예상</span>
+        </div>
+
+        <div class="group-container">
+            <div class="group-title">🛢️ 원자재 및 환율</div>
+            <div class="market-unified-box">
+                {% for stock in categories[2].stocks %}
+                {% set q = quotes[stock.code] %}
+                <div class="stock-row" data-code="{{ stock.code }}">
+                    <div class="stock-name">{{ stock.name }}</div>
+                    <div class="stock-info">
+                        <div class="stock-price">{{ q.price }}</div>
+                        <div class="stock-rate {{ 'up' if q.is_up else 'down' }}">{{ q.rate }}</div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 
     <!-- 2. 미·한 테마 연동성 및 리스크 구분 -->
-    <div class="bg-gradient-to-br from-gray-900 via-[#111827] to-[#0f172a] border border-blue-500/30 rounded-2xl p-4 md:p-5 glow-accent">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 border-b border-gray-800 pb-3">
-            <div class="flex items-center gap-2">
-                <span class="p-1 bg-blue-500/20 text-blue-400 rounded-lg">
-                    <i data-lucide="file-text" class="w-4 h-4"></i>
-                </span>
-                <h2 class="font-bold text-sm md:text-base text-white">미·한 테마 연동성 및 리스크 구분</h2>
+    <div class="dashboard-section" id="sec-2">
+        <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; line-height: 1.5;">
+                <div><strong style="color: var(--accent-main);">🇺🇸 미국 주도:</strong> {{ theme_summary.us_driver }}</div>
+                <div><strong style="color: var(--accent-main);">🔥 테마 핵심 종목:</strong> {{ theme_summary.core_stocks }}</div>
+                <div><strong style="color: var(--accent-main);">🇰🇷 국내 수혜 연동주:</strong> {{ theme_summary.domestic_stocks }}</div>
+                <div><strong style="color: var(--accent-main);">⚠️ 리스크 및 대응 전략:</strong> {{ theme_summary.risk_strategy }}</div>
             </div>
-            <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[11px] font-semibold rounded-full border border-emerald-500/30">
-                수급 연동 (Bullish)
-            </span>
-        </div>
-        <div class="grid md:grid-cols-3 gap-3 text-xs text-gray-300">
-            <div class="space-y-1 bg-gray-900/60 p-3 rounded-xl border border-gray-800">
-                <div class="font-semibold text-blue-400 flex items-center gap-1">
-                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
-                    <span>미 증시 흐름</span>
-                </div>
-                <p class="text-[11px] leading-relaxed text-gray-300">
-                    금리 안정세 및 엔비디아, 브로드컴 중심 반도체 폭등. 전력 인프라 유틸리티 섹터 자금 강한 유입.
-                </p>
-            </div>
-            <div class="space-y-1 bg-gray-900/60 p-3 rounded-xl border border-gray-800">
-                <div class="font-semibold text-emerald-400 flex items-center gap-1">
-                    <i data-lucide="arrow-right-left" class="w-3.5 h-3.5"></i>
-                    <span>국장 수혜 주력 섹터</span>
-                </div>
-                <p class="text-[11px] leading-relaxed text-gray-300">
-                    <b>1. HBM:</b> SK하이닉스, 한미반도체.<br>
-                    <b>2. 전력 망:</b> HD현대일렉트릭, 효성중공업.
-                </p>
-            </div>
-            <div class="space-y-1 bg-gray-900/60 p-3 rounded-xl border border-gray-800">
-                <div class="font-semibold text-amber-400 flex items-center gap-1">
-                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
-                    <span>리스크 구분 및 대응</span>
-                </div>
-                <p class="text-[11px] leading-relaxed text-gray-300">
-                    시초가 갭상승 출발 후 외국인 선물 매수세 체크. 갭이 높은 종목은 눌림목 분할 매수 대응 추천.
-                </p>
+            <div class="tag-list" style="margin-top: 14px;">
+                <span class="tag">관련 테마: 반도체·IT 슈퍼사이클</span>
             </div>
         </div>
     </div>
 
     <!-- 3. 장전 5분 마켓 핵심 요약 -->
-    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
-            <h2 class="text-sm font-bold text-white flex items-center gap-1.5">
-                <i data-lucide="sunrise" class="w-4 h-4 text-amber-400"></i>
-                장전 5분 마켓 핵심 요약 (연합인포맥스 연동)
-            </h2>
-            <button onclick="switchTab('premarket-kr')" class="text-[11px] text-blue-400 hover:underline">상세보기</button>
-        </div>
-        <div class="space-y-2" id="premarketNewsContainer">
-            <!-- Dynamic Rendered -->
+    <div class="dashboard-section" id="sec-3">
+        <div class="section-header-title">3. 장전 5분 마켓 핵심 요약</div>
+        <div class="content-card">
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 10px;">
+                📝 {{ market_summary_header }}
+            </div>
+            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
+                {% for bullet in market_summary_bullets %}
+                <li style="margin-bottom: 8px;">{{ bullet }}</li>
+                {% endfor %}
+            </ul>
+            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
+            <div class="tag-list" style="margin-top: 6px;">
+                <span class="tag">마이크론·엔비디아·인텔</span>
+                <span class="tag">삼성전자·SK하이닉스</span>
+                <span class="tag">한화에어로스페이스·현대로템</span>
+            </div>
         </div>
     </div>
 
     <!-- 4. 장중 수급 분석 -->
-    <div class="grid md:grid-cols-3 gap-4">
-        <div class="md:col-span-2 bg-gray-900/80 border border-gray-800 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h3 class="font-bold text-white text-sm">전일 미 증시 섹터 수익률 (%)</h3>
-                    <p class="text-[10px] text-gray-400">주요 테마 등락률 및 장중 수급 흐름</p>
-                </div>
+    <div class="dashboard-section" id="sec-4">
+        <div class="section-header-title">4. 장중 수급 분석</div>
+        <div class="content-card" style="position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+                <span style="font-weight: 700; font-size: 0.9rem; color: var(--accent-main); white-space: nowrap;">📡 실시간 수급 동향</span>
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff; white-space: nowrap;">{{ smart_money_summary.badge_text }}</span>
             </div>
-            <div class="h-48 md:h-56 w-full">
-                <canvas id="sectorChart"></canvas>
-            </div>
-        </div>
-        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-bold text-white text-sm">🔥 장중 수급 주력주</h3>
-                    <button onclick="switchTab('smartmoney')" class="text-[11px] text-blue-400 hover:underline">전체보기</button>
-                </div>
-                <div class="space-y-2" id="miniSmartMoneyList">
-                    <!-- Dynamic Rendered -->
-                </div>
-            </div>
+            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
+                <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
+                <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling }}</li>
+                <li style="margin-bottom: 6px;">{{ smart_money_summary.concentrated_themes | safe }}</li>
+                <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil }}</li>
+            </ul>
         </div>
     </div>
 
     <!-- 5. 장중 특징주 핫이슈 -->
-    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
-            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
-            장중 특징주 핫이슈
-        </h3>
-        <div id="featureStocksContainer" class="text-xs text-gray-300 space-y-1.5">
-            <!-- Dynamic Rendered -->
+    <div class="dashboard-section" id="sec-5">
+        <div class="section-header-title">5. 장중 특징주 핫이슈 (실시간)</div>
+        <div class="content-card">
+            <!-- 번호 및 우측 배지 제거, 실시간 자동 갱신 반영 -->
+            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
+                {% for item in feature_stocks %}
+                <div class="news-box">
+                    <div class="news-header-row">
+                        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
+                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 장중 수급 분석 (마감시황 종합) -->
+            <div class="ai-briefing-box">
+                <div style="font-weight: bold; font-size: 1.0rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
+                    <span>📊</span> 장중 수급 및 마감시황 종합 분석
+                </div>
+                <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.88rem; color: var(--text-main);">
+                    {{ feature_market_summary }}
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 6. 실시간 핵심 뉴스 10선 및 리스크 검증 -->
-    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
-            <h3 class="font-bold text-white text-sm">실시간 핵심 뉴스 10선 및 리스크 검증</h3>
-            <button onclick="switchTab('news')" class="text-[11px] text-blue-400 hover:underline">전체보기</button>
-        </div>
-        <div id="newsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <!-- Dynamic News Cards -->
+    <div class="dashboard-section" id="sec-6">
+        <div class="section-header-title">6. 실시간 핵심 뉴스 10선 및 리스크 검증</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                {% for news in news_list %}
+                <div class="news-box">
+                    <div class="news-header-row">
+                        <a href="{{ news.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
+                            {{ loop.index }}. {{ news.title }}
+                        </a>
+                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: {% if news.type == '호재' %}var(--badge-green){% elif news.type == '중립' %}var(--badge-orange){% else %}var(--badge-red){% endif %}; white-space: nowrap;">{{ news.type }}</span>
+                    </div>
+                    {% if news.comment %}
+                    <div class="news-comment">{{ news.comment }}</div>
+                    {% endif %}
+                    <div class="news-stock">🏷️ 관련 종목 및 주도주: {{ news.stock }}</div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
     <!-- 7. 거래소 확정 수급 기반 전략 TOP 5 -->
-    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
-            <h3 class="font-bold text-white text-sm">거래소 확정 수급 기반 전략 TOP 5</h3>
-            <button onclick="switchTab('sectors')" class="text-[11px] text-blue-400 hover:underline">전략 매트릭스</button>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-2" id="topStrategiesContainer">
-            <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-xs">
-                <span class="text-[10px] text-blue-400 font-bold">TOP 1</span>
-                <div class="font-bold text-white mt-1">AI 반도체 및 핵심 소부장</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">삼성전자, SK하이닉스</div>
-            </div>
-            <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-xs">
-                <span class="text-[10px] text-blue-400 font-bold">TOP 2</span>
-                <div class="font-bold text-white mt-1">전력 인프라 기기주</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">HD현대일렉트릭</div>
-            </div>
-            <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-xs">
-                <span class="text-[10px] text-blue-400 font-bold">TOP 3</span>
-                <div class="font-bold text-white mt-1">바이오 CDMO 우량주</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">삼성바이오로직스</div>
-            </div>
-            <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-xs">
-                <span class="text-[10px] text-blue-400 font-bold">TOP 4</span>
-                <div class="font-bold text-white mt-1">K-방산 및 조선</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">한화에어로스페이스</div>
-            </div>
-            <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-xs">
-                <span class="text-[10px] text-blue-400 font-bold">TOP 5</span>
-                <div class="font-bold text-white mt-1">저PBR 밸류업 금융주</div>
-                <div class="text-[10px] text-gray-400 mt-0.5">KB금융, 신한지주</div>
+    <div class="dashboard-section" id="sec-7">
+        <div class="section-header-title">7. 거래소 확정 수급 기반 전략 TOP 5</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                {% for stg in strategies %}
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">{{ loop.index }}. {{ stg.title }}</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">{{ stg.rank }}</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ stg.desc }}</div>
+                    <div class="tag-list" style="margin-top: 8px;">
+                        <span class="tag">{{ stg.stock }}</span>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 
     <!-- 8. 팩트 기반 AI 브리핑 생성기 -->
-    <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 space-y-3">
-        <div class="border-b border-gray-800 pb-2.5">
-            <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
-                <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
-                팩트 기반 AI 브리핑 생성기
-            </h3>
-        </div>
-        <div class="space-y-3">
-            <div class="flex gap-1.5 flex-wrap">
-                <button onclick="setAiPrompt('엔비디아 신고가 연동 SK하이닉스, 한미반도체 HBM 수급 영향')" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] rounded-lg text-gray-300">💻 엔비디아 & HBM</button>
-                <button onclick="setAiPrompt('GE 버노바 폭등에 따른 HD현대일렉트릭, 효성중공업 전력망 수혜')" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] rounded-lg text-gray-300">⚡ 미 전력망 & 변압기주</button>
-            </div>
-            <input type="text" id="aiPromptInput" placeholder="예: '두산에너빌리티 미 원전 수주 모멘텀 분석해줘'" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-xs focus:outline-none text-white">
-            <button onclick="generateAiReport()" id="aiGenBtn" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                <i data-lucide="cpu" class="w-4 h-4"></i>
-                <span>AI 브리핑 리포트 생성</span>
-            </button>
-        </div>
-        <div id="aiOutputContainer" class="hidden bg-gray-950 border border-purple-500/30 rounded-xl p-3.5 space-y-2">
-            <div id="aiOutputText" class="text-xs text-gray-300 leading-relaxed whitespace-pre-line">
-                <!-- Dynamic AI Content -->
+    <div class="dashboard-section" id="sec-8">
+        <div class="section-header-title">8. 팩트 기반 AI 브리핑 생성기</div>
+        <div class="content-card">
+            <h3>원클릭 시장 종합 분석 브리핑</h3>
+            <p style="color: var(--text-sub); margin-bottom: 12px;">현재 수집된 실시간 지수 데이터와 최신 뉴스 헤드라인을 결합하여 AI가 즉석에서 시황 총평, 핵심 체크포인트, 실전 대응 가이드를 작성합니다.</p>
+            
+            <button class="btn" onclick="toggleAiBriefing()">✨ 실시간 AI 브리핑 리포트 생성</button>
+            
+            <div id="ai-report-box" style="display: none; margin-top: 16px; background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 14px; white-space: pre-wrap; font-size: 0.88rem; line-height: 1.6; color: var(--text-main);">
+{{ ai_briefing }}
             </div>
         </div>
     </div>
 
-</div>
+    <script>
+        function toggleAiBriefing() {
+            const reportBox = document.getElementById('ai-report-box');
+            
+            if (reportBox.style.display === 'none') {
+                reportBox.style.display = 'block';
+                reportBox.textContent = '⏳ 실시간 데이터를 기반으로 새로운 AI 브리핑을 생성하는 중입니다...';
+                reportBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-<!-- 기타 서브 탭 뷰어들 (premarket-kr, sectors, smartmoney, news, ai-generator, watchlist 등) 그대로 유지 -->
-<div id="view-premarket-kr" class="view-content space-y-4 hidden">
-    <!-- 서브 뷰어 내용 -->
-</div>
-<div id="view-sectors" class="view-content space-y-4 hidden"></div>
-<div id="view-smartmoney" class="view-content space-y-4 hidden"></div>
-<div id="view-news" class="view-content space-y-4 hidden"></div>
-<div id="view-ai-generator" class="view-content space-y-4 hidden"></div>
-<div id="view-watchlist" class="view-content space-y-4 hidden"></div>
+                fetch('/api/ai-briefing')
+                    .then(response => response.json())
+                    .then(data => {
+                        reportBox.textContent = data.ai_briefing;
+                    })
+                    .catch(err => {
+                        console.error('AI 브리핑 생성 실패:', err);
+                        reportBox.textContent = '❌ AI 브리핑 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+                    });
+            } else {
+                reportBox.style.display = 'none';
+            }
+        }
 
-</div>
-</main>
-<script>
-const SECTORS_DATA = [
-{ id: 'semi-hbm', name: 'AI 반도체 & HBM', returnStr: '+2.80%', desc: '엔비디아 신고가 및 차세대 AI 가속기 모멘텀. 국장 HBM 패키징 및 반도체 장비 수급 집중.', usStocks: ['NVDA', 'AVGO'], krStocks: ['SK하이닉스', '한미반도체'] },
-{ id: 'power-grid', name: 'AI 전력 & 초고압 변압기', returnStr: '+4.15%', desc: '미 데이터센터 전력망 증설 폭주로 GE버노바, 비스트라 폭등. 국장 전력기기 대장주 직결.', usStocks: ['GEV', 'VST'], krStocks: ['HD현대일렉트릭', '효성중공업'] }
-];
-const STOCKS_DATA = [
-{ market: 'US', ticker: 'NVDA', name: 'NVIDIA Corp', sector: '반도체/AI', price: '$128.40', change: '+4.12%', score: 96, reason: 'AI 가속기 수요 폭증 및 차세대 칩 모멘텀' },
-{ market: 'KR', ticker: '000660', name: 'SK하이닉스', sector: '반도체/AI', price: '192,500원', change: '+3.85%', score: 94, reason: '엔비디아 HBM3E 공급 확대 및 외국인 매수 유입' },
-{ market: 'US', ticker: 'GEV', name: 'GE Vernova', sector: '전력/유틸리티', price: '$245.80', change: '+5.60%', score: 95, reason: 'AI 데이터센터 전용 가스터빈 수주 폭주' },
-{ market: 'KR', ticker: '267260', name: 'HD현대일렉트릭', sector: '전력/유틸리티', price: '315,000원', change: '+5.20%', score: 93, reason: '북미 변압기 숏티지 및 장기 수주 잔고 급증' }
-];
-const PREMARKET_NEWS_DATA = [
-{ category: "⚡ 전력/초고압 변압기", title: "GE버노바 +5.6% 급등... AI 데이터센터 전력망 숏티지 가속화", summary: "북미향 초고압 변압기 및 원전 기술 보유 국내 기업 수급 집중.", impact: "국장 수혜주: HD현대일렉트릭, 효성중공업" },
-{ category: "💻 HBM & 반도체", title: "엔비디아 +4.1% 신고가... 필라델피아 반도체 지수 +2.8%", summary: "AI 칩 수요 지속 확인 및 금리 하락 호재로 반도체 섹터 전반 랠리.", impact: "국장 수혜주: SK하이닉스, 한미반도체" }
-];
-const NEWS_DATA = [
-{ title: "미 빅테크 CapEx 증가... AI 전력 인프라 & 반도체 독주", time: "30분 전", sector: "전력/반도체", summary: "인플레이션 완화 지표 속에 기술주와 전력 인프라 관련주로 자금 집중.", keyTakeaway: "미 전력망 상승 ➡️ 국장 변압기주 직결." }
-];
-let myWatchlist = JSON.parse(localStorage.getItem('alphaflow_watchlist_v3')) || ['NVDA', 'SK하이닉스'];
-document.addEventListener('DOMContentLoaded', () => {
-if (window.lucide) lucide.createIcons();
-initSectorChart();
-renderMiniSmartMoney();
-renderPremarketNews();
-renderSectors();
-renderSmartStocks(STOCKS_DATA);
-renderNews();
-renderWatchlist();
-loadDailyNotes();
-});
-function toggleMobileNav() {
-const sidebar = document.getElementById('sidebar');
-sidebar.classList.toggle('hidden');
-}
-function switchTab(tabId) {
-document.querySelectorAll('.view-content').forEach(view => view.classList.add('hidden'));
-document.querySelectorAll('.tab-btn').forEach(btn => {
-btn.classList.remove('bg-blue-600/20', 'text-blue-400', 'border', 'border-blue-500/30');
-btn.classList.add('text-gray-400');
-});
-const activeView = document.getElementById(`view-${tabId}`);
-if(activeView) activeView.classList.remove('hidden');
-const activeTab = document.getElementById(`tab-${tabId}`);
-if(activeTab) {
-activeTab.classList.add('bg-blue-600/20', 'text-blue-400', 'border', 'border-blue-500/30');
-activeTab.classList.remove('text-gray-400');
-}
-if (window.innerWidth < 768) {
-document.getElementById('sidebar').classList.add('hidden');
-}
-}
-function initSectorChart() {
-const canvas = document.getElementById('sectorChart');
-if(!canvas) return;
-const ctx = canvas.getContext('2d');
-new Chart(ctx, {
-type: 'bar',
-data: {
-labels: ['전력/유틸리티', 'AI 반도체', '방산', '빅테크', '바이오'],
-datasets: [{
-label: '등락률 (%)',
-data: [4.15, 2.80, 1.65, 1.10, 0.85],
-backgroundColor: 'rgba(16, 185, 129, 0.8)',
-borderRadius: 6
-}]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-plugins: { legend: { display: false } },
-scales: {
-x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } },
-y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } }
-}
-}
-});
-}
-function renderMiniSmartMoney() {
-const container = document.getElementById('miniSmartMoneyList');
-if(!container) return;
-container.innerHTML = '';
-STOCKS_DATA.slice(0, 3).forEach(stock => {
-container.innerHTML += `<div class="flex items-center justify-between bg-gray-950/60 p-2 rounded-xl border border-gray-800 text-xs"> <div> <div class="font-bold text-white flex items-center gap-1"> <span class="text-[9px] px-1 bg-gray-800 text-gray-400 rounded">${stock.market}</span> <span>${stock.name}</span> </div> </div> <div class="text-right"> <div class="font-bold text-emerald-400 font-mono">${stock.change}</div> </div> </div>`;
-});
-}
-function renderPremarketNews() {
-const container = document.getElementById('premarketNewsContainer');
-if(!container) return;
-container.innerHTML = '';
-PREMARKET_NEWS_DATA.forEach(item => {
-container.innerHTML += `<div class="bg-gray-900/80 border border-gray-800 p-3 rounded-xl space-y-1"> <span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px] font-semibold">${item.category}</span> <h4 class="font-bold text-white text-xs">${item.title}</h4> <p class="text-[11px] text-gray-300">${item.summary}</p> <div class="text-[11px] font-semibold text-blue-400">💡 ${item.impact}</div> </div>`;
-});
-}
-function renderSectors() {
-const container = document.getElementById('sectorGrid');
-if(!container) return;
-container.innerHTML = '';
-SECTORS_DATA.forEach(s => {
-container.innerHTML += `<div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 space-y-2"> <div class="flex items-center justify-between"> <h3 class="font-bold text-white text-sm">${s.name}</h3> <span class="text-xs font-bold text-emerald-400 font-mono">${s.returnStr}</span> </div> <p class="text-[11px] text-gray-300">${s.desc}</p> <div class="text-[10px] text-gray-400"> 🇺🇸 ${s.usStocks.join(', ')} | 🇰🇷 <span class="text-blue-300 font-bold">${s.krStocks.join(', ')}</span> </div> </div>`;
-});
-}
-function renderSmartStocks(stocks) {
-const tbody = document.getElementById('smartStockTableBody');
-if(!tbody) return;
-tbody.innerHTML = '';
-stocks.forEach(st => {
-tbody.innerHTML += `<tr class="border-b border-gray-800/50"> <td class="p-2.5"> <span class="px-1.5 py-0.5 text-[9px] font-bold rounded ${st.market === 'US' ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}">${st.market}</span> </td> <td class="p-2.5 font-bold text-white">${st.name}</td> <td class="p-2.5 text-gray-400">${st.sector}</td> <td class="p-2.5 font-mono text-emerald-400 font-bold">${st.change}</td> <td class="p-2.5 font-mono text-blue-400 font-bold">${st.score}점</td> <td class="p-2.5 text-gray-300 truncate max-w-[150px]">${st.reason}</td> </tr>`;
-});
-}
-function applyStockFilters() {
-const val = document.getElementById('marketFilterSelect').value;
-let filtered = STOCKS_DATA;
-if(val !== 'ALL') filtered = STOCKS_DATA.filter(s => s.market === val);
-renderSmartStocks(filtered);
-}
-function renderNews() {
-const container = document.getElementById('newsContainer');
-if(!container) return;
-container.innerHTML = '';
-NEWS_DATA.forEach(n => {
-container.innerHTML += `<div class="bg-gray-950 border border-gray-800 rounded-xl p-3 space-y-1.5"> <h3 class="font-bold text-white text-xs">${n.title}</h3> <p class="text-[11px] text-gray-300">${n.summary}</p> <div class="text-[10px] text-blue-400 font-semibold">💡 ${n.keyTakeaway}</div> </div>`;
-});
-}
-function setAiPrompt(text) {
-document.getElementById('aiPromptInput').value = text;
-}
-function generateAiReport() {
-const input = document.getElementById('aiPromptInput').value.trim();
-if(!input) return alert('키워드를 입력해 주세요.');
-const btn = document.getElementById('aiGenBtn');
-btn.innerText = 'AI 분석 중...';
-setTimeout(() => {
-btn.innerText = 'AI 브리핑 리포트 생성';
-const outputContainer = document.getElementById('aiOutputContainer');
-const outputText = document.getElementById('aiOutputText');
-outputText.innerHTML = `<b>[K-증시 수급 분석: ${input}]</b><br><b>1. 미 증시 자금 유입</b><br>• 해당 테마의 수급 점수가 92점으로 상위 포착되었습니다.<br>• 엔비디아 및 GE버노바 강세 연동으로 관련 밸류체인 수급 지속.<br><b>2. 한국 증시 연동 수혜주</b><br>• <b>대표 종목:</b> SK하이닉스, HD현대일렉트릭, 한미반도체<br>• <b>외국인/기관:</b> 장전 야간선물 강세 연동 시초가 순매수 유력.`;
-outputContainer.classList.remove('hidden');
-}, 800);
-}
-function renderWatchlist() {
-const countEl = document.getElementById('watchlistCount');
-if(countEl) countEl.innerText = myWatchlist.length;
-const tbody = document.getElementById('watchlistTableBody');
-if(!tbody) return;
-tbody.innerHTML = '';
-myWatchlist.forEach(name => {
-const stock = STOCKS_DATA.find(s => s.name === name) || { market: 'KR', name: name, change: '+0.00%' };
-tbody.innerHTML += `<tr> <td class="p-2"><span class="px-1 py-0.5 text-[9px] rounded bg-blue-500/20 text-blue-400">${stock.market}</span></td> <td class="p-2 font-bold text-white">${stock.name}</td> <td class="p-2 text-emerald-400 font-mono font-bold">${stock.change}</td> <td class="p-2 text-right"><button onclick="removeWatchlist('${stock.name}')" class="text-rose-400">삭제</button></td> </tr>`;
-});
-}
-function removeWatchlist(name) {
-myWatchlist = myWatchlist.filter(n => n !== name);
-localStorage.setItem('alphaflow_watchlist_v3', JSON.stringify(myWatchlist));
-renderWatchlist();
-}
-function saveDailyNotes() {
-const val = document.getElementById('dailyNotesInput').value;
-localStorage.setItem('alphaflow_notes_v3', val);
-alert('저장되었습니다.');
-}
-function loadDailyNotes() {
-const val = localStorage.getItem('alphaflow_notes_v3');
-if(val) document.getElementById('dailyNotesInput').value = val;
-}
-function shareViaKakao() {
-const textSummary = `[AlphaFlow] 장전 브리핑\n- 미 증시: 엔비디아(+4.1%), GE버노바(+5.6%)\n- 국장 수혜: SK하이닉스, HD현대일렉트릭`;
-copyToClipboard(textSummary);
-alert('요약 리포트가 복사되었습니다. 카카오톡에 붙여넣기하세요!');
-}
-function copyCurrentReport() {
-const textSummary = `[AlphaFlow 리포트]\nS&P500 +0.85%, 나스닥 +1.32%\n수급 1위: 전력망/변압기 (GE버노바 ➡️ HD현대일렉트릭)`;
-copyToClipboard(textSummary);
-alert('클립보드에 복사되었습니다.');
-}
-function copyToClipboard(text) {
-const textarea = document.createElement('textarea');
-textarea.value = text;
-document.body.appendChild(textarea);
-textarea.select();
-document.execCommand('copy');
-document.body.removeChild(textarea);
-}
-</script>
+        function updateMarketQuotes() {
+            fetch('/api/quotes')
+                .then(response => response.json())
+                .then(data => {
+                    for (const [code, q] of Object.entries(data)) {
+                        const row = document.querySelector(`.stock-row[data-code="${code}"]`);
+                        if (row) {
+                            const priceElem = row.querySelector('.stock-price');
+                            const rateElem = row.querySelector('.stock-rate');
+                            
+                            if (priceElem && rateElem) {
+                                priceElem.textContent = q.price;
+                                
+                                if (rateElem.textContent !== q.rate) {
+                                    rateElem.textContent = q.rate;
+                                    
+                                    const highlightClass = q.is_up ? 'highlight-up' : 'highlight-down';
+                                    rateElem.classList.add(highlightClass);
+                                    
+                                    setTimeout(() => {
+                                        rateElem.classList.remove('highlight-up', 'highlight-down');
+                                    }, 500);
+                                }
+                                
+                                if (q.is_up) {
+                                    rateElem.classList.remove('down');
+                                    rateElem.classList.add('up');
+                                } else {
+                                    rateElem.classList.remove('up');
+                                    rateElem.classList.add('down');
+                                }
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error('실시간 지표 갱신 실패:', err));
+        }
+
+        function updateFeatureStocks() {
+            fetch('/api/feature-stocks')
+                .then(response => response.json())
+                .then(data => {
+                    let items = data.feature_stocks;
+                    let marketSummary = data.feature_market_summary;
+                    
+                    if (!items) return;
+                    
+                    let html = '';
+                    items.forEach(item => {
+                        html += `
+                            <div class="news-box">
+                                <div class="news-header-row">
+                                    <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-item">
+                                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${item.title}
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    let container = document.getElementById('feature-stocks-container');
+                    if (container) {
+                        container.innerHTML = html;
+                    }
+                    
+                    let summaryContainer = document.getElementById('feature-market-summary-content');
+                    if (summaryContainer && marketSummary) {
+                        summaryContainer.innerHTML = marketSummary;
+                    }
+                })
+                .catch(err => console.error('특징주 갱신 실패:', err));
+        }
+
+        setInterval(updateMarketQuotes, 3000);
+        setInterval(updateFeatureStocks, 15000);
+    </script>
 </body>
 </html>
