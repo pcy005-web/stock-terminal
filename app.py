@@ -49,7 +49,7 @@ MARKET_CATEGORIES = [
 
 _quote_cache = {}
 _quote_cache_time = 0
-CACHE_TTL = 60 
+CACHE_TTL = 30 
 
 def get_ssl_context():
     ctx = ssl.create_default_context()
