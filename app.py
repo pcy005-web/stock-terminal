@@ -246,7 +246,7 @@ def extract_and_verify_stocks_from_title(title_clean):
     
     exclude_words = [
         "특징주", "장전특징주", "개장전특징주", "상한가", "종합", "마감", "시황", 
-        "코스피", "코ส닥", "거래", "장중", "오후", "오전", "미국", "일본", "ETF", 
+        "코스피", "코스닥", "거래", "장중", "오후", "오전", "미국", "일본", "ETF", 
         "뉴욕증시", "개장", "장전", "이어", "등", "주식소각", "변경상장", "상장폐지", "정리매매",
         "아티스트", "스튜디오", "엔터", "버크셔"
     ]
@@ -431,7 +431,6 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    # 7번 섹션(실시간 뉴스 목록) 전용 심플 수집 로직 (불필요한 테마/업종 분류 로직 제거)
     query_str = urllib.parse.quote("코스피 OR 주식 OR 증권 OR 실적 OR 금리 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -470,10 +469,12 @@ def fetch_naver_finance_news():
                     except Exception:
                         pass
 
-                # 순수하게 타임라인과 뉴스 제목/링크만 구성 (테마, 업종, 분석 코멘트 제거)
+                # 템플릿과의 키 에러 방지를 위해 stock, theme 키를 빈 값으로 유지하면서 타이틀과 링크만 제공
                 news_list.append({
                     'title': title_clean,
                     'link': link,
+                    'stock': '',
+                    'theme': '',
                     'timestamp': pub_dt
                 })
     except Exception:
