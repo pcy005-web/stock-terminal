@@ -245,10 +245,21 @@ def fetch_feature_stocks():
             for item in root.findall('.//item')[:10]:
                 title_elem = item.find('title')
                 link_elem = item.find('link')
+                pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
+                
+                # 기사 원래 발행 시간 파싱
+                item_time_str = now_dt.strftime('%H:%M')
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        dt = parsedate_to_datetime(pub_date_elem.text)
+                        dt_kst = dt.astimezone(kst)
+                        item_time_str = dt_kst.strftime('%H:%M')
+                    except Exception:
+                        pass
                 
                 like_keywords = ["특징주", "장전특징주", "개장전특징주", "상한가", "뉴욕증시"]
                 if not any(kw in title_clean for kw in like_keywords):
@@ -260,14 +271,11 @@ def fetch_feature_stocks():
                     continue
                 
                 seen_titles.add(title_clean)
-                item_time_str = now_dt.strftime('%H:%M')
-                
-                # 종목정보 및 테마 필드를 제거하고 오직 단순 제목과 링크만 구성
-                formatted_title = f"[{item_time_str}] {title_clean}"
                 
                 parsed_items.append({
-                    "title": formatted_title,
-                    "link": link
+                    "title": title_clean,
+                    "link": link,
+                    "time": item_time_str
                 })
     except Exception:
         pass
@@ -275,8 +283,8 @@ def fetch_feature_stocks():
     feature_items = parsed_items[:5]
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com"},
-        {"title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com"}
+        {"title": "뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "time": current_time_str},
+        {"title": "[특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "time": current_time_str}
     ]
     
     for fb in fallbacks:
