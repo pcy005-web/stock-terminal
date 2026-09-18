@@ -224,10 +224,7 @@ def fetch_feature_stocks():
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
     query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
-    
-    # [수정된 부분]: 300초(5분) 주기가 아닌 초 단위 타임스탬프를 사용하여 15초마다 구글 RSS 캐시를 정상 우회
     cache_buster = int(datetime.datetime.now().timestamp())
-    
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
@@ -300,8 +297,8 @@ def fetch_feature_stocks():
             feature_items.append(fb)
             
     feature_items = feature_items[:5]
-
-    # [추가] JSON 직렬화 오류를 막기 위해 datetime 객체가 담긴 sort_dt 키를 제거합니다.
+    
+    # JSON 직렬화 에러 방지를 위해 임시 sort_dt 키 제거
     for item in feature_items:
         item.pop("sort_dt", None)
     
@@ -324,12 +321,13 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    # [개선] 금융 전문가 관점에 맞춰 최근 6시간 내 핵심 매크로 및 증시 쿼리로 변경
+    # [금융 전문가 관점 + 최근 6시간 핵심 매크로 및 증시 쿼리 적용]
     query_str = urllib.parse.quote("금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     news_list = []
-    seen_titles = set()
+    seen_titles = set()     # [중복 방지 1] 정확히 일치하는 제목 차단
+    seen_keywords = set()   # [중복 방지 2] 핵심 키워드/유사 이슈 차단
     
     try:
         req = urllib.request.Request(
@@ -340,16 +338,24 @@ def fetch_naver_finance_news():
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item')[:10]:
+            for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 
+                # [중복 검증 1] 완전 일치 중복 제거
                 if title_clean in seen_titles:
                     continue
+                
+                # [중복 검증 2] 핵심 키워드(앞 10자) 기반 유사 이슈 중복 제거
+                core_keyword = title_clean[:10]
+                if core_keyword in seen_keywords:
+                    continue
+                
                 seen_titles.add(title_clean)
+                seen_keywords.add(core_keyword)
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
@@ -382,10 +388,14 @@ def fetch_naver_finance_news():
                     'type': news_type,
                     'timestamp': now_dt
                 })
+                
+                # 상위 10개 채워지면 중단
+                if len(news_list) >= 10:
+                    break
     except Exception:
         pass
         
-    return news_list[:10]
+    return news_list
 
 def generate_theme_sync_analysis(quotes, news_list):
     sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
