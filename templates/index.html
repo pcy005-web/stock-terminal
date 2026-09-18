@@ -273,12 +273,12 @@
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 특징주 리스트 컨테이너 (종목 태그, 테마 태그, 압정 아이콘 제거 및 순수 뉴스 링크 형태로 변경) -->
+            <!-- 특징주 리스트 컨테이너 (원래 기사 발행 시간 포함) -->
             <div id="feature-stocks-container">
                 {% for item in feature_stocks %}
                 <div class="feature-item">
                     <a href="{{ item.link }}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
-                        {{ item.title }}
+                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
                     </a>
                 </div>
                 {% endfor %}
@@ -392,11 +392,10 @@
                     
                     let html = '';
                     items.forEach(item => {
-                        // 동적 갱신 시에도 아이콘이나 종목/테마 태그 없이 순수 뉴스 제목 및 링크만 렌더링하도록 수정
                         html += `
                             <div class="feature-item">
                                 <a href="${item.link}" target="_blank" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 600; display: block; line-height: 1.4;">
-                                    ${item.title}
+                                    <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${item.title}
                                 </a>
                             </div>
                         `;
