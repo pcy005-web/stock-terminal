@@ -266,19 +266,18 @@
         </div>
     </div>
 
-    <!-- 7. 장중 특징주 핫이슈 (6번 세션 레이아웃 통일 적용) -->
+    <!-- 7. 장중 특징주 핫이슈 (시간 + 제목 형태 적용) -->
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 6번 세션과 동일한 간격 및 박스 디자인 적용 -->
+            <!-- 6번 레이아웃 기반, 번호 및 우측 배지 제거 -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
                 {% for item in feature_stocks %}
                 <div class="news-box">
                     <div class="news-header-row">
                         <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
-                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ loop.index }}. {{ item.title }}
+                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
                         </a>
-                        <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: var(--badge-green); white-space: nowrap;">특징주</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -391,14 +390,13 @@
                     lastFeatureTitles = currentTitles;
                     
                     let html = '';
-                    items.forEach((item, index) => {
+                    items.forEach(item => {
                         html += `
                             <div class="news-box">
                                 <div class="news-header-row">
                                     <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-item">
-                                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${index + 1}. ${item.title}
+                                        <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[${item.time || ''}]</span> ${item.title}
                                     </a>
-                                    <span style="padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; color: #fff; background-color: var(--badge-green); white-space: nowrap;">특징주</span>
                                 </div>
                             </div>
                         `;
