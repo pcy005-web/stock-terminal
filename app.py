@@ -47,10 +47,10 @@ MARKET_CATEGORIES = [
     }
 ]
 
-# 캐시 저장소 (속도 최적화용)
+# 최적화: 캐시 TTL을 60초로 늘려 Vercel 타임아웃 및 외부 API 과부하 방지
 _quote_cache = {}
 _quote_cache_time = 0
-CACHE_TTL = 3 # 3초간 캐시 유지
+CACHE_TTL = 60 
 
 def get_ssl_context():
     ctx = ssl.create_default_context()
@@ -177,7 +177,7 @@ def fetch_realtime_data(ticker):
                         is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
                         return {
                             'price': f"{price_val:,.2f}", 
-                            'rate': f"{rate_val:,.2f}%", 
+                            'rate': f"{rate_val:+.2f}%", 
                             'is_up': is_up
                         }
     except Exception:
@@ -223,7 +223,7 @@ def fetch_naver_stock_theme_api(stock_name):
         encoded_name = urllib.parse.quote(stock_name.strip())
         search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
         req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.5) as response:
             data = json.loads(response.read().decode('utf-8'))
             stocks_result = data.get('stocks', [])
             if not stocks_result and 'result' in data:
@@ -277,11 +277,10 @@ def extract_and_verify_stocks_from_title(title_clean):
     if valid_stocks:
         stock_result = "·".join(valid_stocks[:4])
         
+        # 최적화: 타임아웃 방지를 위해 첫 번째 종목만 가볍게 테마 매칭 시도
         detected_theme = None
-        for stock in valid_stocks:
-            detected_theme = fetch_naver_stock_theme_api(stock)
-            if detected_theme:
-                break
+        if valid_stocks:
+            detected_theme = fetch_naver_stock_theme_api(valid_stocks[0])
         
         if not detected_theme:
             joined_str = "".join(valid_stocks)
@@ -312,7 +311,7 @@ def fetch_feature_stocks():
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
     query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
-    cache_buster = int(datetime.datetime.now().timestamp() / 120)
+    cache_buster = int(datetime.datetime.now().timestamp() / 300)
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
     parsed_items = []
@@ -326,11 +325,11 @@ def fetch_feature_stocks():
                 'Cache-Control': 'no-cache'
             }
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.2) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item'):
+            for item in root.findall('.//item')[:10]: # 최대 10개만 파싱하여 속도 최적화
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
@@ -348,21 +347,8 @@ def fetch_feature_stocks():
                 if title_clean in seen_titles:
                     continue
                 
-                pub_dt = now_dt
-                if pub_date_elem is not None and pub_date_elem.text:
-                    try:
-                        pub_dt = parsedate_to_datetime(pub_date_elem.text)
-                        if pub_dt.tzinfo is None:
-                            pub_dt = pytz.utc.localize(pub_dt)
-                        pub_dt = pub_dt.astimezone(kst)
-                    except Exception:
-                        pass
-                
-                time_diff_hours = (now_dt - pub_dt).total_seconds() / 3600
-                if time_diff_hours > 6:
-                    continue
-                
                 seen_titles.add(title_clean)
+                pub_dt = now_dt
                 item_time_str = pub_dt.strftime('%H:%M')
                 
                 stock_val, theme_val = extract_and_verify_stocks_from_title(title_clean)
@@ -379,29 +365,18 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    parsed_items = sorted(parsed_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = parsed_items[:5]
-        
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
         {"stock": "뉴욕증시 개장 전 특징주", "theme": "해외증시", "title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "뉴욕증시 개장 전 특징주"},
-        {"stock": "제일엠앤에스", "theme": "이차전지/장비", "title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "제일엠앤에스 상장폐지"},
-        {"stock": "인텔·마이크론", "theme": "AI 반도체", "title": f"[{current_time_str}] [21:33] [개장전특징주] 인텔, 네비우스, 마이크론", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "인텔 개장전특징주"}
+        {"stock": "제일엠앤에스", "theme": "이차전지/장비", "title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "제일엠앤에스 상장폐지"}
     ]
     
     for fb in fallbacks:
         if len(feature_items) < 5:
             feature_items.append(fb)
             
-    feature_items = sorted(feature_items, key=lambda x: x['timestamp'], reverse=True)
     feature_items = feature_items[:5]
-    
-    current_raw_titles = set(item["raw_title"] for item in feature_items)
-    if _cached_feature_items and current_raw_titles == _last_raw_titles:
-        feature_items = _cached_feature_items
-    else:
-        _cached_feature_items = feature_items
-        _last_raw_titles = current_raw_titles
     
     serializable_items = []
     for item in feature_items:
@@ -431,7 +406,6 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    # 가짜 폴백을 제거하고 오직 실시간 최신 뉴스만 수집하도록 쿼리 설정
     query_str = urllib.parse.quote("코스피 OR 주식 OR 증권 OR 실적 OR 금리 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -442,11 +416,11 @@ def fetch_naver_finance_news():
             rss_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item'):
+            for item in root.findall('.//item')[:10]: # 상위 10개만 파싱하여 부하 감소
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
@@ -459,16 +433,6 @@ def fetch_naver_finance_news():
                 seen_titles.add(title_clean)
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
-                
-                pub_dt = now_dt
-                if pub_date_elem is not None and pub_date_elem.text:
-                    try:
-                        pub_dt = parsedate_to_datetime(pub_date_elem.text)
-                        if pub_dt.tzinfo is None:
-                            pub_dt = pytz.utc.localize(pub_dt)
-                        pub_dt = pub_dt.astimezone(kst)
-                    except Exception:
-                        pass
                 
                 negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크", "하락", "급락"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
@@ -497,13 +461,11 @@ def fetch_naver_finance_news():
                     'stock': related_stock,
                     'comment': comment,
                     'type': news_type,
-                    'timestamp': pub_dt
+                    'timestamp': now_dt
                 })
     except Exception:
         pass
         
-    # 발행 시간 기준 최신순 정렬 후 상위 10개 반환 (가짜 폴백 데이터 전면 차단)
-    news_list = sorted(news_list, key=lambda x: x['timestamp'], reverse=True)
     return news_list[:10]
 
 def generate_theme_sync_analysis(quotes, news_list):
@@ -570,9 +532,7 @@ def generate_strategies(quotes, news_list):
 def generate_premarket_summary_bullets(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     today_str = datetime.datetime.now(kst).strftime('%m/%d')
-    
     header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 금리 상승과 증시 체력"
-    
     bullets = [
         "미국 증시는 연준 정책 불확실성 완화와 미 10년물 금리 5.0% 하회 속에서 반등에 성공했습니다. 마이크론(+5.5%), 엔비디아(+2.5%), 인텔(+7.7%) 등 반도체주의 강세가 두드러졌습니다.",
         "주식시장은 고금리 환경(미 10년물 금리 5.0% 등)에 단계적으로 적응하며 체력을 축적하고 있습니다. 금리 자체의 절대 레벨보다는 '금리 상승 속도'와 이익 컨센서스 변화에 주목할 시점입니다.",
