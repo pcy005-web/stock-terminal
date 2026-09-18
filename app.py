@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
 from functools import lru_cache
+from difflib import SequenceMatcher
 from flask import Flask, render_template
 import pytz
 
@@ -298,7 +299,6 @@ def fetch_feature_stocks():
             
     feature_items = feature_items[:5]
     
-    # JSON 직렬화 에러 방지를 위해 임시 sort_dt 키 제거
     for item in feature_items:
         item.pop("sort_dt", None)
     
@@ -321,13 +321,11 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    # [금융 전문가 관점 + 최근 6시간 핵심 매크로 및 증시 쿼리 적용]
     query_str = urllib.parse.quote("금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     news_list = []
-    seen_titles = set()     # [중복 방지 1] 정확히 일치하는 제목 차단
-    seen_keywords = set()   # [중복 방지 2] 핵심 키워드/유사 이슈 차단
+    collected_titles = []  # Fuzzy Matching 비교를 위한 수집된 제목 리스트 저장용
     
     try:
         req = urllib.request.Request(
@@ -345,17 +343,18 @@ def fetch_naver_finance_news():
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 
-                # [중복 검증 1] 완전 일치 중복 제거
-                if title_clean in seen_titles:
+                # [Fuzzy Matching 정밀 유사도 검사] 기존에 수집된 제목들과 비교하여 75%(0.75) 이상 유사하면 중복으로 판단 후 제외
+                is_duplicate = False
+                for existing_title in collected_titles:
+                    similarity = SequenceMatcher(None, title_clean, existing_title).ratio()
+                    if similarity >= 0.75:
+                        is_duplicate = True
+                        break
+                
+                if is_duplicate:
                     continue
                 
-                # [중복 검증 2] 핵심 키워드(앞 10자) 기반 유사 이슈 중복 제거
-                core_keyword = title_clean[:10]
-                if core_keyword in seen_keywords:
-                    continue
-                
-                seen_titles.add(title_clean)
-                seen_keywords.add(core_keyword)
+                collected_titles.append(title_clean)
                 
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
@@ -389,7 +388,6 @@ def fetch_naver_finance_news():
                     'timestamp': now_dt
                 })
                 
-                # 상위 10개 채워지면 중단
                 if len(news_list) >= 10:
                     break
     except Exception:
