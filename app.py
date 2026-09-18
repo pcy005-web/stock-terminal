@@ -300,6 +300,10 @@ def fetch_feature_stocks():
             feature_items.append(fb)
             
     feature_items = feature_items[:5]
+
+    # [추가] JSON 직렬화 오류를 막기 위해 datetime 객체가 담긴 sort_dt 키를 제거합니다.
+    for item in feature_items:
+        item.pop("sort_dt", None)
     
     if is_market_closed:
         market_summary_keyword = (
