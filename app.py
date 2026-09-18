@@ -47,7 +47,6 @@ MARKET_CATEGORIES = [
     }
 ]
 
-# 최적화: 캐시 TTL을 60초로 늘려 Vercel 타임아웃 및 외부 API 과부하 방지
 _quote_cache = {}
 _quote_cache_time = 0
 CACHE_TTL = 60 
@@ -217,93 +216,7 @@ def get_all_quotes_cached():
     _quote_cache_time = now_ts
     return price_map
 
-@lru_cache(maxsize=128)
-def fetch_naver_stock_theme_api(stock_name):
-    try:
-        encoded_name = urllib.parse.quote(stock_name.strip())
-        search_url = f"https://m.stock.naver.com/api/search/allSearch?query={encoded_name}"
-        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.5) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            stocks_result = data.get('stocks', [])
-            if not stocks_result and 'result' in data:
-                stocks_result = data.get('result', {}).get('stocks', [])
-            
-            if stocks_result:
-                item = stocks_result[0]
-                item_theme = item.get('themeName') or item.get('industryName') or item.get('sectorName')
-                if item_theme:
-                    return item_theme
-    except Exception:
-        pass
-    return None
-
-def extract_and_verify_stocks_from_title(title_clean):
-    if "뉴욕증시" in title_clean and ("개장" in title_clean or "특징주" in title_clean):
-        return "뉴욕증시 개장 전 특징주", "해외증시"
-
-    text_no_bracket = re.sub(r'\[.*?\]', '', title_clean).strip()
-    
-    exclude_words = [
-        "특징주", "장전특징주", "개장전특징주", "상한가", "종합", "마감", "시황", 
-        "코스피", "코스닥", "거래", "장중", "오후", "오전", "미국", "일본", "ETF", 
-        "뉴욕증시", "개장", "장전", "이어", "등", "주식소각", "변경상장", "상장폐지", "정리매매",
-        "아티스트", "스튜디오", "엔터", "버크셔"
-    ]
-
-    core_text = text_no_bracket
-    for sep_end in [" 이어 ", " 등 ", " 상장", " 주식", " 마감", " 상장폐지"]:
-        if sep_end in core_text:
-            core_text = core_text.split(sep_end)[0]
-
-    parts = re.split(r'[·,\-\s/]+', core_text)
-    valid_stocks = []
-    
-    for p in parts:
-        p_clean = p.strip().replace("'", "").replace('"', "").replace("↑", "").replace("↓", "")
-        if not p_clean or len(p_clean) > 12 or any(ew in p_clean for ew in exclude_words) or any(char.isdigit() for char in p_clean):
-            continue
-        if p_clean not in valid_stocks:
-            valid_stocks.append(p_clean)
-
-    if not valid_stocks:
-        words = re.findall(r'[가-힣A-Za-z0-9]+', text_no_bracket)
-        for w in words:
-            if len(w) >= 2 and w not in exclude_words and w not in valid_stocks:
-                valid_stocks.append(w)
-                if len(valid_stocks) >= 3:
-                    break
-
-    if valid_stocks:
-        stock_result = "·".join(valid_stocks[:4])
-        
-        # 최적화: 타임아웃 방지를 위해 첫 번째 종목만 가볍게 테마 매칭 시도
-        detected_theme = None
-        if valid_stocks:
-            detected_theme = fetch_naver_stock_theme_api(valid_stocks[0])
-        
-        if not detected_theme:
-            joined_str = "".join(valid_stocks)
-            if any(k in joined_str for k in ["제일엠앤에스"]):
-                detected_theme = "이차전지/장비"
-            elif any(k in joined_str for k in ["반도체", "인텔", "마이크론", "네비우스", "ARM"]):
-                detected_theme = "AI 반도체"
-            elif any(k in joined_str for k in ["현대차", "자동차"]):
-                detected_theme = "자동차"
-            elif any(k in joined_str for k in ["나라스페이스", "진양화학", "비츠로테크"]):
-                detected_theme = "우주항공/소부장"
-            else:
-                detected_theme = "시장주도주"
-                
-        return stock_result, detected_theme
-
-    return "시장주도주", "증시시황"
-
-_cached_feature_items = []
-_last_raw_titles = set()
-
 def fetch_feature_stocks():
-    global _cached_feature_items, _last_raw_titles
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     current_hour_min = now_dt.hour * 100 + now_dt.minute
@@ -329,10 +242,9 @@ def fetch_feature_stocks():
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item')[:10]: # 최대 10개만 파싱하여 속도 최적화
+            for item in root.findall('.//item')[:10]:
                 title_elem = item.find('title')
                 link_elem = item.find('link')
-                pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else ""
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
@@ -348,19 +260,14 @@ def fetch_feature_stocks():
                     continue
                 
                 seen_titles.add(title_clean)
-                pub_dt = now_dt
-                item_time_str = pub_dt.strftime('%H:%M')
+                item_time_str = now_dt.strftime('%H:%M')
                 
-                stock_val, theme_val = extract_and_verify_stocks_from_title(title_clean)
+                # 종목정보 및 테마 필드를 제거하고 오직 단순 제목과 링크만 구성
                 formatted_title = f"[{item_time_str}] {title_clean}"
                 
                 parsed_items.append({
-                    "stock": stock_val,
-                    "theme": theme_val,
                     "title": formatted_title,
-                    "link": link,
-                    "timestamp": pub_dt,
-                    "raw_title": title_clean
+                    "link": link
                 })
     except Exception:
         pass
@@ -368,8 +275,8 @@ def fetch_feature_stocks():
     feature_items = parsed_items[:5]
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"stock": "뉴욕증시 개장 전 특징주", "theme": "해외증시", "title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "뉴욕증시 개장 전 특징주"},
-        {"stock": "제일엠앤에스", "theme": "이차전지/장비", "title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "timestamp": now_dt, "raw_title": "제일엠앤에스 상장폐지"}
+        {"title": f"[{current_time_str}] [22:12] 뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com"},
+        {"title": f"[{current_time_str}] [21:47] [특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com"}
     ]
     
     for fb in fallbacks:
@@ -378,15 +285,6 @@ def fetch_feature_stocks():
             
     feature_items = feature_items[:5]
     
-    serializable_items = []
-    for item in feature_items:
-        serializable_items.append({
-            "stock": item["stock"],
-            "theme": item["theme"],
-            "title": item["title"],
-            "link": item["link"]
-        })
-                
     if is_market_closed:
         market_summary_keyword = (
             "• [마감 동향]: 국내 증시 마감에 따른 주요 업종별 수급 마감 결과 반영\n"
@@ -400,7 +298,7 @@ def fetch_feature_stocks():
             "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
         )
         
-    return serializable_items, market_summary_keyword
+    return feature_items, market_summary_keyword
 
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
@@ -420,10 +318,9 @@ def fetch_naver_finance_news():
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item')[:10]: # 상위 10개만 파싱하여 부하 감소
+            for item in root.findall('.//item')[:10]:
                 title_elem = item.find('title')
                 link_elem = item.find('link')
-                pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
