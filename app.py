@@ -242,7 +242,7 @@ def fetch_feature_stocks():
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
-            for item in root.findall('.//item')[:10]:
+            for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
@@ -251,12 +251,14 @@ def fetch_feature_stocks():
                 title_clean = title.rsplit(" - ", 1)[0] if " - " in title else title
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 기사 원래 발행 시간 파싱
                 item_time_str = now_dt.strftime('%H:%M')
+                sort_dt = now_dt
+                
                 if pub_date_elem is not None and pub_date_elem.text:
                     try:
                         dt = parsedate_to_datetime(pub_date_elem.text)
                         dt_kst = dt.astimezone(kst)
+                        sort_dt = dt_kst
                         item_time_str = dt_kst.strftime('%H:%M')
                     except Exception:
                         pass
@@ -275,16 +277,20 @@ def fetch_feature_stocks():
                 parsed_items.append({
                     "title": title_clean,
                     "link": link,
-                    "time": item_time_str
+                    "time": item_time_str,
+                    "sort_dt": sort_dt
                 })
     except Exception:
         pass
         
+    # 가장 최근 발행된 뉴스가 상단에 오도록 내림차순 정렬
+    parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
+    
     feature_items = parsed_items[:5]
     current_time_str = now_dt.strftime('%H:%M')
     fallbacks = [
-        {"title": "뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "time": current_time_str},
-        {"title": "[특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "time": current_time_str}
+        {"title": "뉴욕증시 개장 전 특징주...제네락·나이키·ARM↑ VS 레나·플루언스에너지↓", "link": "https://news.google.com", "time": current_time_str, "sort_dt": now_dt},
+        {"title": "[특징주] 제일엠앤에스 상장폐지 확정…9/21~10/1일까지 정리매매", "link": "https://news.google.com", "time": current_time_str, "sort_dt": now_dt}
     ]
     
     for fb in fallbacks:
@@ -430,7 +436,7 @@ def generate_strategies(quotes, news_list):
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자, SK하이닉스, 한미반도체 - AI 반도체", "rank": "TOP 1"},
         {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 - 전력기기", "rank": "TOP 2"},
         {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 - 바이오", "rank": "TOP 3"},
-        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 - 방산", "rank": "TOP 4"},
+        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로ส페이스, 현대로템 - 방산", "rank": "TOP 4"},
         {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "KB금융, 신한지주 - 금융", "rank": "TOP 5"}
     ]
 
