@@ -431,7 +431,6 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    # 가짜 폴백을 제거하고 오직 실시간 최신 뉴스만 수집하도록 쿼리 설정
     query_str = urllib.parse.quote("코스피 OR 주식 OR 증권 OR 실적 OR 금리 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -475,14 +474,10 @@ def fetch_naver_finance_news():
                 
                 news_type = "중립"
                 comment = "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요"
-                related_stock = "시장 대형주"
-
-                if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
-                    related_stock = "삼성전자, SK하이닉스"
-                elif any(k in title_clean for k in ["현대차", "자동차", "배터리"]):
-                    related_stock = "현대차, LG에너지솔루션"
-                elif any(k in title_clean for k in ["금융", "은행", "증권"]):
-                    related_stock = "KB금융, 신한지주"
+                
+                # 뉴스 내용 분석 및 네이버 증권 연동을 통한 정확한 관련 종목/테마 추출
+                extracted_stock, extracted_theme = extract_and_verify_stocks_from_title(title_clean)
+                related_stock = extracted_stock if extracted_stock != "시장주도주" else "시장 대형주"
 
                 if is_negative:
                     news_type = "리스크"
@@ -495,6 +490,7 @@ def fetch_naver_finance_news():
                     'title': title_clean,
                     'link': link,
                     'stock': related_stock,
+                    'theme': extracted_theme, # 정확한 테마/업종 필드 추가
                     'comment': comment,
                     'type': news_type,
                     'timestamp': pub_dt
@@ -502,7 +498,6 @@ def fetch_naver_finance_news():
     except Exception:
         pass
         
-    # 발행 시간 기준 최신순 정렬 후 상위 10개 반환 (가짜 폴백 데이터 전면 차단)
     news_list = sorted(news_list, key=lambda x: x['timestamp'], reverse=True)
     return news_list[:10]
 
