@@ -270,7 +270,7 @@
     <div class="dashboard-section" id="sec-7">
         <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 6번 레이아웃 기반, 번호 및 우측 배지 제거 -->
+            <!-- 번호 및 우측 배지 제거, 실시간 자동 갱신 반영 -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
                 {% for item in feature_stocks %}
                 <div class="news-box">
@@ -311,8 +311,6 @@
     </div>
 
     <script>
-        let lastFeatureTitles = "";
-
         function toggleAiBriefing() {
             const reportBox = document.getElementById('ai-report-box');
             
@@ -381,13 +379,6 @@
                     let marketSummary = data.feature_market_summary;
                     
                     if (!items) return;
-                    let currentTitles = items.map(item => item.title).join("||");
-                    
-                    if (currentTitles === lastFeatureTitles) {
-                        return; 
-                    }
-                    
-                    lastFeatureTitles = currentTitles;
                     
                     let html = '';
                     items.forEach(item => {
