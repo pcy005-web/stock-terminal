@@ -177,7 +177,7 @@ def fetch_realtime_data(ticker):
                         is_up = not (sign in ['4', '5'] or str(fluc_rate).startswith('-'))
                         return {
                             'price': f"{price_val:,.2f}", 
-                            'rate': f"{rate_val:+.2f}%", 
+                            'rate': f"{rate_val:,.2f}%", 
                             'is_up': is_up
                         }
     except Exception:
@@ -431,6 +431,7 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
+    # 가짜 폴백을 제거하고 오직 실시간 최신 뉴스만 수집하도록 쿼리 설정
     query_str = urllib.parse.quote("코스피 OR 주식 OR 증권 OR 실적 OR 금리 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     news_list = []
@@ -468,18 +469,40 @@ def fetch_naver_finance_news():
                         pub_dt = pub_dt.astimezone(kst)
                     except Exception:
                         pass
+                
+                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크", "하락", "급락"]
+                is_negative = any(nk in title_clean for nk in negative_keywords)
+                
+                news_type = "중립"
+                comment = "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요"
+                related_stock = "시장 대형주"
 
-                # 템플릿과의 키 에러 방지를 위해 stock, theme 키를 빈 값으로 유지하면서 타이틀과 링크만 제공
+                if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
+                    related_stock = "삼성전자, SK하이닉스"
+                elif any(k in title_clean for k in ["현대차", "자동차", "배터리"]):
+                    related_stock = "현대차, LG에너지솔루션"
+                elif any(k in title_clean for k in ["금융", "은행", "증권"]):
+                    related_stock = "KB금융, 신한지주"
+
+                if is_negative:
+                    news_type = "리스크"
+                    comment = "관련 이슈에 따른 단기 변동성 확대 및 리스크 관리 주의"
+                elif any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "수주", "계약"]):
+                    news_type = "호재"
+                    comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
+
                 news_list.append({
                     'title': title_clean,
                     'link': link,
-                    'stock': '',
-                    'theme': '',
+                    'stock': related_stock,
+                    'comment': comment,
+                    'type': news_type,
                     'timestamp': pub_dt
                 })
     except Exception:
         pass
         
+    # 발행 시간 기준 최신순 정렬 후 상위 10개 반환 (가짜 폴백 데이터 전면 차단)
     news_list = sorted(news_list, key=lambda x: x['timestamp'], reverse=True)
     return news_list[:10]
 
