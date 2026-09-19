@@ -219,6 +219,89 @@ def get_all_quotes_cached():
     return price_map
 
 # -------------------------------------------------------------
+# 4번 섹션: 실시간 기사 기반 동적 수급 분석 (출처 노출 제거 & 1분 캐싱 최적화)
+# -------------------------------------------------------------
+_smart_money_cache = None
+_smart_money_cache_time = 0
+SMART_MONEY_CACHE_TTL = 60
+
+def fetch_smart_money_analysis(quotes):
+    global _smart_money_cache, _smart_money_cache_time
+    now_ts = datetime.datetime.now().timestamp()
+    
+    if _smart_money_cache and (now_ts - _smart_money_cache_time) < SMART_MONEY_CACHE_TTL:
+        return _smart_money_cache
+
+    kst = pytz.timezone('Asia/Seoul')
+    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
+    kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
+    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
+    
+    kospi_up = kospi.get('is_up', True)
+    badge_text = "실시간 수급 동향: 외국인·기관 순매수 유입 및 지수 방어" if kospi_up else "실시간 수급 동향: 외국인·기관 매도 우위 및 경계감 확산"
+    badge_class = "up" if kospi_up else "down"
+    
+    query = "site:newspim.com (수급 OR 외국인 OR 기관 OR 코스피 OR 증시 OR 매수 OR 매도) when:12h"
+    rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+    
+    articles = []
+    try:
+        req = urllib.request.Request(
+            rss_url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        )
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
+            xml_data = response.read()
+            root = ET.fromstring(xml_data)
+            
+            for item in root.findall('.//item'):
+                title_elem = item.find('title')
+                link_elem = item.find('link')
+                if title_elem is not None and title_elem.text:
+                    t = title_elem.text
+                    if " - " in t:
+                        t = t.rsplit(" - ", 1)[0]
+                    link = link_elem.text if link_elem is not None else "#"
+                    articles.append({"title": t.strip(), "link": link})
+                if len(articles) >= 2:
+                    break
+    except Exception:
+        pass
+        
+    if articles:
+        art1 = articles[0]
+        art2 = articles[1] if len(articles) > 1 else {"title": "국내 증시 주요 수급 주체별 포지션 변화 점검", "link": "#"}
+        
+        domestic_text = f"실시간 시장 속보 반영: <a href='{art1['link']}' target='_blank' style='color: var(--accent-main); text-decoration: underline;'>\"{art1['title']}\"</a>"
+        decoupling_text = f"수급 세부 동향 브리프: <a href='{art2['link']}' target='_blank' style='color: var(--text-main); text-decoration: underline;'>\"{art2['title']}\"</a>"
+        
+        concentrated_themes = (
+            "<strong>실시간 마켓 수급 분석 요약:</strong> "
+            f"현재 장중 실시간 시황 데이터를 분석한 결과, 코스피({kospi.get('rate')})와 코스닥({kosdaq.get('rate')})의 등락 과정에서 "
+            "주요 수급 주체들의 공방이 치열하게 전개되고 있습니다. 상단 헤드라인 내용과 같이 외국인 및 기관의 포지션 변화에 따른 "
+            "업종별 차별화 장세 및 순환매 흐름을 밀착 모니터링하고 있습니다."
+        )
+    else:
+        domestic_text = f"국내 현·선물 실시간 수급: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 연동 주도세력 수급 모니터링"
+        decoupling_text = "업종별 차별화 장세 전개 및 핵심 주도주 중심의 수급 집중 현상 지속"
+        concentrated_themes = "<strong>실시간 수급 동향:</strong> 주도세력의 포지션 변화와 거래대금 유입 추이를 실시간으로 집계하고 있습니다."
+
+    fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 및 글로벌 매크로 지표 연동 외국인 수급 영향도 점검"
+
+    result_data = {
+        'badge_text': badge_text,
+        'badge_class': badge_class,
+        'domestic': domestic_text,
+        'decoupling': decoupling_text,
+        'concentrated_themes': concentrated_themes,
+        'fx_oil': fx_oil_text
+    }
+    
+    _smart_money_cache = result_data
+    _smart_money_cache_time = now_ts
+    return result_data
+
+# -------------------------------------------------------------
 # 5번 섹션: 장중 특징주 핫이슈 (실시간 최신순 5개 정렬 & 발행시간 포함)
 # -------------------------------------------------------------
 def fetch_feature_stocks():
@@ -291,10 +374,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # 최신 발행일 기준으로 내림차순 정렬 (최신 기사가 상단에 위치)
     parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
-    
-    # 가짜 Fallback 데이터 없이 정확히 5개 고정 추출
     feature_items = parsed_items[:5]
     
     for item in feature_items:
@@ -439,33 +519,6 @@ def generate_theme_sync_analysis(quotes, news_list):
         'risk_strategy': risk_strategy
     }
 
-def generate_smart_money_analysis(quotes):
-    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    
-    kospi_up = kospi.get('is_up', True)
-    badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)" if kospi_up else "외인·기관 주도세력 매도 우위 (방어적 포지션)"
-    badge_class = "up" if kospi_up else "down"
-    
-    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
-    decoupling_text = "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, 지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 수급 포착"
-    concentrated_themes = (
-        "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
-        "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
-        "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
-    )
-    fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검"
-
-    return {
-        'badge_text': badge_text,
-        'badge_class': badge_class,
-        'domestic': domestic_text,
-        'decoupling': decoupling_text,
-        'concentrated_themes': concentrated_themes,
-        'fx_oil': fx_oil_text
-    }
-
 def generate_strategies(quotes, news_list):
     return [
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자, SK하이닉스, 한미반도체 - AI 반도체", "rank": "TOP 1"},
@@ -512,7 +565,7 @@ def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
     theme_text = generate_theme_sync_analysis(price_map, live_news)
-    smart_money_data = generate_smart_money_analysis(price_map)
+    smart_money_data = fetch_smart_money_analysis(price_map) # 최적화된 동적 수급 분석 함수 호출
     strategies_data = generate_strategies(price_map, live_news)
     
     market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
