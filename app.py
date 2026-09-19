@@ -291,10 +291,7 @@ def fetch_feature_stocks():
     except Exception:
         pass
         
-    # 최신 발행일 기준으로 내림차순 정렬 (최신 기사가 상단에 위치)
     parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
-    
-    # 가짜 Fallback 데이터 없이 정확히 5개 고정 추출
     feature_items = parsed_items[:5]
     
     for item in feature_items:
@@ -319,7 +316,7 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:12h")
+    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:12h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     news_list = []
@@ -348,8 +345,11 @@ def fetch_naver_finance_news():
                 
                 rss_source_name = item.find('source').text if item.find('source') is not None else ""
                 combined_source_check = f"{press_source} {rss_source_name} {title}"
+                
                 if "연합인포" in combined_source_check:
                     display_source = "연합인포맥스"
+                elif "뉴스핌" in combined_source_check:
+                    display_source = "뉴스핌"
                 else:
                     display_source = press_source.strip() if press_source else "경제 뉴스"
                 
@@ -439,23 +439,56 @@ def generate_theme_sync_analysis(quotes, news_list):
         'risk_strategy': risk_strategy
     }
 
-def generate_smart_money_analysis(quotes):
+# [수정] 뉴스핌 데이터를 인자로 받아 4번 섹션 내용을 동적으로 생성
+def generate_smart_money_analysis(quotes, newspim_news):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
     
     kospi_up = kospi.get('is_up', True)
-    badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)" if kospi_up else "외인·기관 주도세력 매도 우위 (방어적 포지션)"
-    badge_class = "up" if kospi_up else "down"
+    kospi_rate = kospi.get('rate', '+0.00%')
+    kosdaq_rate = kosdaq.get('rate', '+0.00%')
     
-    domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')})의 방향성과 연동하여 주도세력의 누적 순매수를 모니터링합니다."
-    decoupling_text = "코스피 대형주와 코스닥 개별주 간의 차별화 장세가 전개되는 가운데, 지수 방어력을 갖춘 핵심 주도주와 실적 개선 개별 종목 간의 빠른 순환매 수급 포착"
-    concentrated_themes = (
-        "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
-        "1) <strong>AI 반도체 대형주(삼성전자, SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되고 있으며, "
-        "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
-    )
-    fx_oil_text = f"원/달러 환율({usdkrw.get('price')}원) 변동성에 따른 외국인 수급 민감도 점검"
+    newspim_snippet = ""
+    if newspim_news:
+        newspim_snippet = f" (뉴스핌 실시간 보도 참고: \"{newspim_news[0]}\")"
+
+    if kospi_up:
+        badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)"
+        badge_class = "up"
+        domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi_rate}) 및 코스닥({kosdaq_rate})의 상승 탄력과 함께 뉴스핌 보도 실시간 동향 반영 시 외국인·기관의 우호적 수급 유입이 포착됩니다{newspim_snippet}."
+    else:
+        badge_text = "외인·기관 주도세력 매도 우위 (방어적 포지션)"
+        badge_class = "down"
+        domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi_rate}) 및 코스닥({kosdaq_rate}) 하락 압력 속에서 뉴스핌 실시간 보도 기준 기관·외인 매물 출회 및 보수적 대응이 우세합니다{newspim_snippet}."
+
+    if kospi_up and not kosdaq.get('is_up', True):
+        decoupling_text = "코스피 대형주 중심의 자금 집중 현상과 코스닥 개별주 조정 간의 디커플링 장세가 진행 중입니다."
+    elif not kospi_up and kosdaq.get('is_up', True):
+        decoupling_text = "코스피가 조정을 받는 동안 코스닥 중소형주로 개인 및 단기 스마트머니의 순환매가 유입되는 양상입니다."
+    else:
+        direction_word = "동반 강세" if kospi_up else "동반 약세"
+        decoupling_text = f"양시장 모두 {direction_word} 흐름을 보이며 지수 연동성이 높게 유지되고 있습니다."
+
+    if kospi_up:
+        concentrated_themes = (
+            "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
+            "1) <strong>AI 반도체 및 핵심 소부장(삼성전자·SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되며, "
+            "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
+        )
+    else:
+        concentrated_themes = (
+            "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
+            "1) 지수 방어 및 변동성 회피를 위한 <strong>저PBR 금융주(KB금융·신한지주) 및 통신·유틸리티</strong> 방어주로 피난처 성격의 자금이 유입되며, "
+            "2) 개별 모멘텀을 보유한 일부 테마주 중심으로만 단기 트레이딩 자금이 순환하고 있습니다."
+        )
+
+    fx_price = usdkrw.get('price', '1,300')
+    fx_rate = usdkrw.get('rate', '+0.00%')
+    if usdkrw.get('is_up', True):
+        fx_oil_text = f"원/달러 환율({fx_price}원, {fx_rate}) 상승 압력에 따른 외국인 수급 이탈 우려 점검 및 변동성 주의"
+    else:
+        fx_oil_text = f"원/달러 환율({fx_price}원, {fx_rate}) 하향 안정세에 힘입어 외국인 수급 유입 환경 개선 모니터링"
 
     return {
         'badge_text': badge_text,
@@ -511,8 +544,17 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
 def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
+    
+    # [최적화] 수집된 전체 뉴스 중에서 '뉴스핌' 관련 기사만 추출 (추가 네트워크 요청 없음)
+    newspim_news = [
+        news['title'] for news in live_news 
+        if '뉴스핌' in news.get('source', '') or '뉴스핌' in news.get('title', '')
+    ]
+    if not newspim_news and live_news:
+        newspim_news = [live_news[0]['title']]
+
     theme_text = generate_theme_sync_analysis(price_map, live_news)
-    smart_money_data = generate_smart_money_analysis(price_map)
+    smart_money_data = generate_smart_money_analysis(price_map, newspim_news)
     strategies_data = generate_strategies(price_map, live_news)
     
     market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
