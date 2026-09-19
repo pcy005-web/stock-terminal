@@ -219,7 +219,7 @@ def get_all_quotes_cached():
     return price_map
 
 # -------------------------------------------------------------
-# 5번 섹션: 장중 특징주 핫이슈 (실시간 최신순 5개 정렬 보완)
+# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 6시간 이내 발행 기사 필터링)
 # -------------------------------------------------------------
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
@@ -228,7 +228,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:12h"
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
     cache_buster = int(datetime.datetime.now().timestamp())
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -256,24 +256,38 @@ def fetch_feature_stocks():
                 if not title:
                     continue
                 
+                # 발행 시간 파싱 및 엄격한 6시간 이내 검증
+                sort_dt = None
+                item_time_str = ""
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        dt = parsedate_to_datetime(pub_date_elem.text)
+                        sort_dt = dt.astimezone(kst)
+                        item_time_str = sort_dt.strftime('%H:%M')
+                    except Exception:
+                        pass
+                
+                # 발행 시간 정보가 아예 없거나, 현재 기준 6시간을 초과한 경우 강제 제외
+                if not sort_dt:
+                    continue
+                
+                time_diff = now_dt - sort_dt
+                if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
+                    continue
+                
                 if " - " in title:
                     title_clean = title.rsplit(" - ", 1)[0]
                 else:
                     title_clean = title
                     
+                title_clean = title_clean.strip()
+                
+                # 제목 길이 제한 (38자 초과 시 '…' 처리)
+                max_len = 38
+                if len(title_clean) > max_len:
+                    title_clean = title_clean[:max_len] + "…"
+                    
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
-                
-                sort_dt = now_dt - datetime.timedelta(days=1)
-                item_time_str = now_dt.strftime('%H:%M')
-                
-                if pub_date_elem is not None and pub_date_elem.text:
-                    try:
-                        dt = parsedate_to_datetime(pub_date_elem.text)
-                        dt_kst = dt.astimezone(kst)
-                        sort_dt = dt_kst
-                        item_time_str = dt_kst.strftime('%H:%M')
-                    except Exception:
-                        pass
                 
                 if "주요 특징주" in title_clean or "오늘(" in title_clean:
                     continue
@@ -283,7 +297,7 @@ def fetch_feature_stocks():
                 seen_titles.add(title_clean)
                 
                 parsed_items.append({
-                    "title": title_clean.strip(),
+                    "title": title_clean,
                     "link": link,
                     "time": item_time_str,
                     "sort_dt": sort_dt
@@ -316,7 +330,7 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:12h")
+    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     news_list = []
@@ -336,6 +350,19 @@ def fetch_naver_finance_news():
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
                 
+                # 본문 뉴스 발행 시간 엄격한 6시간 이내 검증
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        dt = parsedate_to_datetime(pub_date_elem.text)
+                        dt_kst = dt.astimezone(kst)
+                        time_diff = now_dt - dt_kst
+                        if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
+                            continue
+                    except Exception:
+                        continue
+                else:
+                    continue
+
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 if " - " in title:
                     title_clean, press_source = title.rsplit(" - ", 1)
@@ -343,6 +370,11 @@ def fetch_naver_finance_news():
                     title_clean = title
                     press_source = ""
                 
+                title_clean = title_clean.strip()
+                max_len = 40
+                if len(title_clean) > max_len:
+                    title_clean = title_clean[:max_len] + "…"
+
                 rss_source_name = item.find('source').text if item.find('source') is not None else ""
                 combined_source_check = f"{press_source} {rss_source_name} {title}"
                 
@@ -353,14 +385,7 @@ def fetch_naver_finance_news():
                 else:
                     display_source = press_source.strip() if press_source else "경제 뉴스"
                 
-                news_date_str = now_dt.strftime('%m/%d')
-                if pub_date_elem is not None and pub_date_elem.text:
-                    try:
-                        dt = parsedate_to_datetime(pub_date_elem.text)
-                        dt_kst = dt.astimezone(kst)
-                        news_date_str = dt_kst.strftime('%m/%d')
-                    except Exception:
-                        pass
+                news_date_str = dt_kst.strftime('%m/%d')
 
                 is_duplicate = False
                 for existing_title in collected_titles:
@@ -397,7 +422,7 @@ def fetch_naver_finance_news():
                     comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
 
                 news_list.append({
-                    'title': title_clean.strip(),
+                    'title': title_clean,
                     'source': display_source,
                     'link': link,
                     'stock': related_stock,
