@@ -219,7 +219,7 @@ def get_all_quotes_cached():
     return price_map
 
 # -------------------------------------------------------------
-# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 6시간 이내 발행 기사 필터링)
+# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 12시간 이내 발행 기사 필터링)
 # -------------------------------------------------------------
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
@@ -228,7 +228,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:12h"
     cache_buster = int(datetime.datetime.now().timestamp())
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
