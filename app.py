@@ -3,7 +3,6 @@ import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 import ssl
-import pytz
 from flask import Flask, render_template
 
 app = Flask(__name__)
@@ -16,19 +15,20 @@ def get_ssl_context():
 
 def fetch_newspim_supply_news():
     """뉴스핌(Newspim)에서 장중 수급 및 증시 관련 키워드로 뉴스를 수집합니다."""
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    
-    query_str = urllib.parse.quote("site:newspim.com 수급 OR 외국인 OR 기관 OR 코스피 OR 증시 when:1d")
-    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    news_contents = []
     try:
+        # 파이썬 표준 내장 타임존 사용 (pytz 패키지 불필요)
+        kst = datetime.timezone(datetime.timedelta(hours=9))
+        now_dt = datetime.datetime.now(kst)
+        
+        query_str = urllib.parse.quote("site:newspim.com 수급 OR 외국인 OR 기관 OR 코스피 OR 증시 when:1d")
+        rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
+        
+        news_contents = []
         req = urllib.request.Request(
             rss_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -41,10 +41,10 @@ def fetch_newspim_supply_news():
                     news_contents.append(title.strip())
                 if len(news_contents) >= 3:
                     break
-    except Exception:
-        pass
-        
-    return news_contents
+        return news_contents
+    except Exception as e:
+        print(f"News fetch warning: {e}")
+        return []
 
 def generate_smart_money_analysis(quotes):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
@@ -81,14 +81,12 @@ def generate_smart_money_analysis(quotes):
 
 @app.route('/')
 def index():
-    # 샘플 지수 데이터
     quotes = {
         'kospi': {'price': '2,680.15', 'rate': '+0.85%', 'is_up': True},
         'kosdaq': {'price': '870.40', 'rate': '-0.20%', 'is_up': False},
         'usdkrw': {'price': '1,350.50', 'rate': '+0.15%', 'is_up': True}
     }
     
-    # 뉴스핌 기반 장중 수급 분석 데이터 생성
     smart_money_summary = generate_smart_money_analysis(quotes)
     
     return render_template('index_2.html', quotes=quotes, smart_money_summary=smart_money_summary)
