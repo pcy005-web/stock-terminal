@@ -219,7 +219,7 @@ def get_all_quotes_cached():
     return price_map
 
 # -------------------------------------------------------------
-# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 12시간 이내 발행 기사 필터링)
+# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 24시간 이내 발행 기사 필터링)
 # -------------------------------------------------------------
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
@@ -228,7 +228,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:12h"
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:24h"
     cache_buster = int(datetime.datetime.now().timestamp())
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -256,7 +256,7 @@ def fetch_feature_stocks():
                 if not title:
                     continue
                 
-                # 발행 시간 파싱 및 엄격한 6시간 이내 검증
+                # 발행 시간 파싱 및 엄격한 24시간 이내 검증
                 sort_dt = None
                 item_time_str = ""
                 if pub_date_elem is not None and pub_date_elem.text:
@@ -267,12 +267,12 @@ def fetch_feature_stocks():
                     except Exception:
                         pass
                 
-                # 발행 시간 정보가 아예 없거나, 현재 기준 6시간을 초과한 경우 강제 제외
+                # 발행 시간 정보가 아예 없거나, 현재 기준 24시간을 초과한 경우 강제 제외
                 if not sort_dt:
                     continue
                 
                 time_diff = now_dt - sort_dt
-                if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
+                if time_diff.total_seconds() > 24 * 3600 or time_diff.total_seconds() < 0:
                     continue
                 
                 if " - " in title:
