@@ -198,9 +198,9 @@
             </ul>
             <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
             <div class="tag-list" style="margin-top: 6px;">
-                <span class="tag">마이크론·엔비디아·인텔</span>
-                <span class="tag">삼성전자·SK하이닉스</span>
-                <span class="tag">한화에어로스페이스·현대로템</span>
+                {% for tag in market_summary_tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -226,7 +226,6 @@
     <div class="dashboard-section" id="sec-5">
         <div class="section-header-title">5. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <!-- 번호 및 우측 배지 제거, 실시간 자동 갱신 반영 -->
             <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
                 {% for item in feature_stocks %}
                 <div class="news-box">
@@ -239,7 +238,6 @@
                 {% endfor %}
             </div>
 
-            <!-- 장중 수급 분석 (마감시황 종합) -->
             <div class="ai-briefing-box">
                 <div style="font-weight: bold; font-size: 1.0rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
                     <span>📊</span> 장중 수급 및 마감시황 종합 분석
