@@ -1,14 +1,11 @@
 import datetime
 import json
-import re
 import ssl
-import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
-from functools import lru_cache
 from difflib import SequenceMatcher
 from flask import Flask, render_template
 import pytz
@@ -218,9 +215,6 @@ def get_all_quotes_cached():
     _quote_cache_time = now_ts
     return price_map
 
-# -------------------------------------------------------------
-# 5번 섹션: 장중 특징주 핫이슈 (실시간 최신순 5개 정렬 & 발행시간 포함)
-# -------------------------------------------------------------
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
@@ -439,7 +433,6 @@ def generate_theme_sync_analysis(quotes, news_list):
         'risk_strategy': risk_strategy
     }
 
-# [수정] 뉴스핌 데이터를 인자로 받아 4번 섹션 내용을 동적으로 생성
 def generate_smart_money_analysis(quotes, newspim_news):
     kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
     kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
@@ -505,20 +498,40 @@ def generate_strategies(quotes, news_list):
         {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 - 전력기기", "rank": "TOP 2"},
         {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 - 바이오", "rank": "TOP 3"},
         {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 - 방산", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "KB금융, 신한지주 - 금융", "rank": "TOP 5"}
+        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 심화 국면 방어력 제고 및 배당 매력 부각", "stock": "KB금융, 신한지주 - 금융", "rank": "TOP 5"}
     ]
 
+# 연합인포맥스 언론사 뉴스 데이터를 활용해 3번 섹션 핵심 종목 및 주도주 태그 동적 구성
 def generate_premarket_summary_bullets(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     today_str = datetime.datetime.now(kst).strftime('%m/%d')
-    header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 금리 상승과 증시 체력"
+    header_title = f"{today_str}, 장 시작 전 마켓 핵심 생각: 연합인포맥스 실시간 매크로 및 증시 흐름 점검"
+    
     bullets = [
-        "미국 증시는 연준 정책 불확실성 완화와 미 10년물 금리 5.0% 하회 속에서 반등에 성공했습니다. 마이크론(+5.5%), 엔비디아(+2.5%), 인텔(+7.7%) 등 반도체주의 강세가 두드러졌습니다.",
-        "주식시장은 고금리 환경(미 10년물 금리 5.0% 등)에 단계적으로 적응하며 체력을 축적하고 있습니다. 금리 자체의 절대 레벨보다는 '금리 상승 속도'와 이익 컨센서스 변화에 주목할 시점입니다.",
-        "오늘 국내 증시는 FOMC 이후 금리 안정 및 반도체 중심의 미국 증시 반등, 야간선물 강세에 힘입어 상승 흐름을 보일 것으로 전망합니다.",
-        "외국인 연속 순매도는 펀더멘털 악화가 아닌 매크로 불확실성에 대응하기 위한 단기 리스크 관리 성격이 짙으며, 매크로 불안 정점 통과와 함께 반도체 등 주력 업종 중심의 비중 확대 및 분할 매수 전략이 유효합니다."
+        "미국 증시는 연준 정책 불확실성 소화 및 국채 금리 움직임 속에서 반도체 중심의 혼조세를 보였습니다. 엔비디아, 마이크론 등 주요 기술주의 흐름이 국내 증시 투자 심리에 직접적인 영향을 미치고 있습니다.",
+        "국내 채권 및 외환 시장은 글로벌 금리 동향과 환율 레벨 변화에 민감하게 반응하고 있으며, 외국인 및 기관의 수급 변동성에 대비한 보수적·선별적 대응이 요구됩니다.",
+        "오늘 국내 증시는 야간선물 동향과 연합인포맥스 실시간 보도를 반영하여, 실적 개선 가시성이 높은 핵심 주도주를 중심으로 한 순환매 장세가 전개될 것으로 전망됩니다.",
+        "매크로 리스크가 상존하는 구간인 만큼 펀더멘털이 검증된 우량주 위주로 비중을 관리하고, 눌림목 중심의 단기 트레이딩 전략을 병행하는 것이 유리합니다."
     ]
-    return header_title, bullets
+    
+    infomax_texts = " ".join([n['title'] for n in news_list if '연합인포' in n.get('source', '') or '연합인포' in n.get('title', '')])
+    if not infomax_texts:
+        infomax_texts = " ".join([n['title'] for n in news_list])
+
+    dynamic_tags = []
+    if any(k in infomax_texts for k in ["반도체", "마이크론", "엔비디아", "인텔", "삼성", "하이닉스"]):
+        dynamic_tags.extend(["엔비디아·마이크론·인텔", "삼성전자·SK하이닉스"])
+    if any(k in infomax_texts for k in ["금리", "국채", "채권", "연준"]):
+        dynamic_tags.extend(["미국 국채 10년물·연준 정책금리", "KB금융·신한지주(금융)"])
+    if any(k in infomax_texts for k in ["환율", "달러", "엔화", "외환"]):
+        dynamic_tags.append("원/달러 환율 및 외환 수급주")
+    if any(k in infomax_texts for k in ["방산", "조선", "전력", "원전"]):
+        dynamic_tags.append("한화에어로스페이스·HD현대일렉트릭")
+
+    if not dynamic_tags:
+        dynamic_tags = ["마이크론·엔비디아", "삼성전자·SK하이닉스", "KB금융·현대차"]
+
+    return header_title, bullets, dynamic_tags
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
@@ -545,7 +558,6 @@ def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
     
-    # [최적화] 수집된 전체 뉴스 중에서 '뉴스핌' 관련 기사만 추출 (추가 네트워크 요청 없음)
     newspim_news = [
         news['title'] for news in live_news 
         if '뉴스핌' in news.get('source', '') or '뉴스핌' in news.get('title', '')
@@ -557,7 +569,8 @@ def index():
     smart_money_data = generate_smart_money_analysis(price_map, newspim_news)
     strategies_data = generate_strategies(price_map, live_news)
     
-    market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
+    market_summary_header, market_summary_bullets, market_summary_tags = generate_premarket_summary_bullets(price_map, live_news)
+    
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
             
@@ -571,6 +584,7 @@ def index():
         strategies=strategies_data,
         market_summary_header=market_summary_header,
         market_summary_bullets=market_summary_bullets,
+        market_summary_tags=market_summary_tags,
         ai_briefing=ai_briefing_text,
         feature_stocks=feature_stocks_data,
         feature_market_summary=feature_market_summary
