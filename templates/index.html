@@ -88,11 +88,11 @@
     <div class="quick-nav">
         <a href="#sec-1" class="quick-btn">1. 팩트체크</a>
         <a href="#sec-2" class="quick-btn">2. 테마연동성</a>
-        <a href="#sec-3" class="quick-btn">3. 장전 5분 요약</a>
-        <a href="#sec-4" class="quick-btn">4. 장중 수급 분석</a>
-        <a href="#sec-5" class="quick-btn">5. 특징주 핫이슈</a>
+        <a href="#sec-3" class="quick-btn">3. 장중 수급 분석</a>
+        <a href="#sec-4" class="quick-btn">4. 수급 전략 TOP 5</a>
+        <a href="#sec-5" class="quick-btn">5. 장전 5분 요약</a>
         <a href="#sec-6" class="quick-btn">6. 핵심 뉴스 10선</a>
-        <a href="#sec-7" class="quick-btn">7. 수급 전략 TOP 5</a>
+        <a href="#sec-7" class="quick-btn">7. 특징주 핫이슈</a>
         <a href="#sec-8" class="quick-btn">8. AI 브리핑 생성기</a>
     </div>
 
@@ -184,9 +184,58 @@
         </div>
     </div>
 
-    <!-- 3. 장전 5분 마켓 핵심 요약 -->
+    <!-- 3. 장중 수급 분석 (동적 생성 연동 영역) -->
     <div class="dashboard-section" id="sec-3">
-        <div class="section-header-title">3. 장전 5분 마켓 핵심 요약</div>
+        <div class="section-header-title">3. 장중 수급 분석</div>
+        <div class="content-card">
+            <ul style="line-height: 1.8; padding-left: 20px;">
+                <li><strong>[국내 현·선물 수급 동향]:</strong> {{ smart_money_summary.domestic_sync }}</li>
+                <br>
+                <li>
+                    <strong>[스마트머니 수급 집중 테마 및 업종 분석]:</strong>
+                    <ol style="margin-top: 5px; margin-bottom: 5px; padding-left: 20px;">
+                        <li>{{ smart_money_summary.sub_item_1 }}</li>
+                        <br>
+                        <li>{{ smart_money_summary.sub_item_2 }}</li>
+                    </ol>
+                </li>
+                <br>
+                <li>
+                    <strong>[뉴스핌 실시간 속보 연동]:</strong> 
+                    <a href="{{ smart_money_summary.news_link }}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-main); text-decoration: underline;">
+                        "{{ smart_money_summary.news_title }}"
+                    </a> (뉴스핌 RSS 실시간 파싱 내용)
+                </li>
+                <br>
+                <li><strong>[환율·유가 연동 점검]:</strong> {{ smart_money_summary.fx_oil }}</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 4. 거래소 확정 수급 기반 전략 TOP 5 -->
+    <div class="dashboard-section" id="sec-4">
+        <div class="section-header-title">4. 거래소 확정 수급 기반 전략 TOP 5</div>
+        <div class="content-card">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                {% for stg in strategies %}
+                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">{{ loop.index }}. {{ stg.title }}</div>
+                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">{{ stg.rank }}</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ stg.desc }}</div>
+                    <div class="tag-list" style="margin-top: 8px;">
+                        <span class="tag">{{ stg.stock }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 장전 5분 마켓 핵심 요약 -->
+    <div class="dashboard-section" id="sec-5">
+        <div class="section-header-title">5. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
             <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 10px;">
                 📝 {{ market_summary_header }}
@@ -201,52 +250,6 @@
                 <span class="tag">마이크론·엔비디아·인텔</span>
                 <span class="tag">삼성전자·SK하이닉스</span>
                 <span class="tag">한화에어로스페이스·현대로템</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4. 장중 수급 분석 -->
-    <div class="dashboard-section" id="sec-4">
-        <div class="section-header-title">4. 장중 수급 분석</div>
-        <div class="content-card" style="position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
-                <span style="font-weight: 700; font-size: 0.9rem; color: var(--accent-main); white-space: nowrap;">📡 실시간 수급 동향</span>
-                <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff; white-space: nowrap;">{{ smart_money_summary.badge_text }}</span>
-            </div>
-            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
-                <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
-                <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling }}</li>
-                <li style="margin-bottom: 6px;">{{ smart_money_summary.concentrated_themes | safe }}</li>
-                <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil }}</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- 5. 장중 특징주 핫이슈 -->
-    <div class="dashboard-section" id="sec-5">
-        <div class="section-header-title">5. 장중 특징주 핫이슈 (실시간)</div>
-        <div class="content-card">
-            <!-- 번호 및 우측 배지 제거, 실시간 자동 갱신 반영 -->
-            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
-                {% for item in feature_stocks %}
-                <div class="news-box">
-                    <div class="news-header-row">
-                        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
-                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
-                        </a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- 장중 수급 분석 (마감시황 종합) -->
-            <div class="ai-briefing-box">
-                <div style="font-weight: bold; font-size: 1.0rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
-                    <span>📊</span> 장중 수급 및 마감시황 종합 분석
-                </div>
-                <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.88rem; color: var(--text-main);">
-                    {{ feature_market_summary }}
-                </div>
             </div>
         </div>
     </div>
@@ -274,23 +277,29 @@
         </div>
     </div>
 
-    <!-- 7. 거래소 확정 수급 기반 전략 TOP 5 -->
+    <!-- 7. 장중 특징주 핫이슈 -->
     <div class="dashboard-section" id="sec-7">
-        <div class="section-header-title">7. 거래소 확정 수급 기반 전략 TOP 5</div>
+        <div class="section-header-title">7. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                {% for stg in strategies %}
-                <div style="position: relative; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">{{ loop.index }}. {{ stg.title }}</div>
-                        <span style="background: var(--bg-card); color: var(--accent-main); padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; border: 1px solid var(--border-color);">{{ stg.rank }}</span>
-                    </div>
-                    <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ stg.desc }}</div>
-                    <div class="tag-list" style="margin-top: 8px;">
-                        <span class="tag">{{ stg.stock }}</span>
+            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
+                {% for item in feature_stocks %}
+                <div class="news-box">
+                    <div class="news-header-row">
+                        <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="news-item">
+                            <span style="color: var(--accent-main); font-weight: 700; margin-right: 6px;">[{{ item.time }}]</span> {{ item.title }}
+                        </a>
                     </div>
                 </div>
                 {% endfor %}
+            </div>
+
+            <div class="ai-briefing-box">
+                <div style="font-weight: bold; font-size: 1.0rem; margin-bottom: 12px; color: var(--accent-main); display: flex; align-items: center; gap: 8px;">
+                    <span>📊</span> 장중 수급 및 마감시황 종합 분석
+                </div>
+                <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.88rem; color: var(--text-main);">
+                    {{ feature_market_summary }}
+                </div>
             </div>
         </div>
     </div>
