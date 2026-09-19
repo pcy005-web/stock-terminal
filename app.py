@@ -218,9 +218,6 @@ def get_all_quotes_cached():
     _quote_cache_time = now_ts
     return price_map
 
-# -------------------------------------------------------------
-# 5번 섹션: 장중 특징주 핫이슈 (엄격한 최근 24시간 이내 발행 기사 필터링)
-# -------------------------------------------------------------
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
@@ -228,7 +225,7 @@ def fetch_feature_stocks():
     
     is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
     
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:24h"
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
     cache_buster = int(datetime.datetime.now().timestamp())
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -256,7 +253,6 @@ def fetch_feature_stocks():
                 if not title:
                     continue
                 
-                # 발행 시간 파싱 및 엄격한 24시간 이내 검증
                 sort_dt = None
                 item_time_str = ""
                 if pub_date_elem is not None and pub_date_elem.text:
@@ -267,12 +263,11 @@ def fetch_feature_stocks():
                     except Exception:
                         pass
                 
-                # 발행 시간 정보가 아예 없거나, 현재 기준 24시간을 초과한 경우 강제 제외
                 if not sort_dt:
                     continue
                 
                 time_diff = now_dt - sort_dt
-                if time_diff.total_seconds() > 24 * 3600 or time_diff.total_seconds() < 0:
+                if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
                     continue
                 
                 if " - " in title:
@@ -282,7 +277,6 @@ def fetch_feature_stocks():
                     
                 title_clean = title_clean.strip()
                 
-                # 제목 길이 제한 (38자 초과 시 '…' 처리)
                 max_len = 38
                 if len(title_clean) > max_len:
                     title_clean = title_clean[:max_len] + "…"
@@ -326,22 +320,28 @@ def fetch_feature_stocks():
         
     return feature_items, market_summary_keyword
 
+# -------------------------------------------------------------
+# 6번 섹션: 실시간 핵심 뉴스 10선 (노이즈 차단 및 스코어링 정예화)
+# -------------------------------------------------------------
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    query_str = urllib.parse.quote("연합인포맥스 OR 연합인포 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 외국인 OR 수급 OR 인플레이션 OR 증시 when:6h")
+    query_str = urllib.parse.quote("연합인포맥스 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 영업이익 OR 외국인 OR 수급 OR FOMC OR 증시 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
-    news_list = []
+    scored_news_list = []
     collected_titles = [] 
     
+    # 노이즈/홍보성/유튜브 차단 키워드 리스트
+    noise_keywords = ["@", "[영상]", "[포토]", "[클릭]", "특집", "[종합]", "채널", "WOWTV", "구독", "좋아요"]
+
     try:
         req = urllib.request.Request(
             rss_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         )
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
             xml_data = response.read()
             root = ET.fromstring(xml_data)
             
@@ -350,7 +350,6 @@ def fetch_naver_finance_news():
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
                 
-                # 본문 뉴스 발행 시간 엄격한 6시간 이내 검증
                 if pub_date_elem is not None and pub_date_elem.text:
                     try:
                         dt = parsedate_to_datetime(pub_date_elem.text)
@@ -364,6 +363,11 @@ def fetch_naver_finance_news():
                     continue
 
                 title = title_elem.text if title_elem is not None else "제목 없음"
+                
+                # 노이즈 키워드가 포함된 경우 무조건 스킵
+                if any(nk in title for nk in noise_keywords):
+                    continue
+
                 if " - " in title:
                     title_clean, press_source = title.rsplit(" - ", 1)
                 else:
@@ -400,7 +404,19 @@ def fetch_naver_finance_news():
                 collected_titles.append(title_clean)
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "금리", "충격", "리스크", "하락", "급락"]
+                # 전문가 관점 중요도 스코어링 시스템 (임팩트 팩트 가중치 부여)
+                score = 0
+                high_impact_keywords = ["실적", "영업이익", "서프라이즈", "FOMC", "금리", "환율", "한국은행", "연준", "수주", "인하", "인상"]
+                for hik in high_impact_keywords:
+                    if hik in title_clean:
+                        score += 3
+                        
+                medium_impact_keywords = ["외국인", "기관", "순매수", "반도체", "삼성전자", "하이닉스", "증시", "코스피"]
+                for mik in medium_impact_keywords:
+                    if mik in title_clean:
+                        score += 1
+
+                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "충격", "리스크", "하락", "급락"]
                 is_negative = any(nk in title_clean for nk in negative_keywords)
                 
                 news_type = "중립"
@@ -421,21 +437,25 @@ def fetch_naver_finance_news():
                     news_type = "호재"
                     comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
 
-                news_list.append({
-                    'title': title_clean,
-                    'source': display_source,
-                    'link': link,
-                    'stock': related_stock,
-                    'comment': comment,
-                    'type': news_type,
-                    'date': news_date_str,
-                    'timestamp': now_dt
+                scored_news_list.append({
+                    'score': score,
+                    'item': {
+                        'title': title_clean,
+                        'source': display_source,
+                        'link': link,
+                        'stock': related_stock,
+                        'comment': comment,
+                        'type': news_type,
+                        'date': news_date_str,
+                        'timestamp': now_dt
+                    }
                 })
-                
-                if len(news_list) >= 10:
-                    break
     except Exception:
         pass
+        
+    # 중요도 점수(score)가 높은 순서대로 정렬 후 상위 10개만 추출
+    scored_news_list.sort(key=lambda x: x['score'], reverse=True)
+    news_list = [x['item'] for x in scored_news_list[:10]]
         
     return news_list
 
