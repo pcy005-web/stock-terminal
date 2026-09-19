@@ -219,7 +219,7 @@ def get_all_quotes_cached():
     return price_map
 
 # -------------------------------------------------------------
-# 4번 섹션: 실시간 기사 기반 동적 수급 분석 (출처 노출 제거 & 1분 캐싱 최적화)
+# 4번 섹션: 실시간 기사 기반 동적 수급 분석 (중복 레이블 제거 & 1분 캐싱)
 # -------------------------------------------------------------
 _smart_money_cache = None
 _smart_money_cache_time = 0
@@ -272,17 +272,18 @@ def fetch_smart_money_analysis(quotes):
         art1 = articles[0]
         art2 = articles[1] if len(articles) > 1 else {"title": "국내 증시 주요 수급 주체별 포지션 변화 점검", "link": "#"}
         
-        domestic_text = f"실시간 시장 속보 반영: <a href='{art1['link']}' target='_blank' style='color: var(--accent-main); text-decoration: underline;'>\"{art1['title']}\"</a>"
-        decoupling_text = f"수급 세부 동향 브리프: <a href='{art2['link']}' target='_blank' style='color: var(--text-main); text-decoration: underline;'>\"{art2['title']}\"</a>"
+        # 템플릿 레이블과 겹치지 않도록 순수 링크 태그만 생성
+        domestic_text = f"<a href='{art1['link']}' target='_blank' style='color: var(--accent-main); text-decoration: underline;'>\"{art1['title']}\"</a>"
+        decoupling_text = f"<a href='{art2['link']}' target='_blank' style='color: var(--text-main); text-decoration: underline;'>\"{art2['title']}\"</a>"
         
         concentrated_themes = (
             "<strong>실시간 마켓 수급 분석 요약:</strong> "
             f"현재 장중 실시간 시황 데이터를 분석한 결과, 코스피({kospi.get('rate')})와 코스닥({kosdaq.get('rate')})의 등락 과정에서 "
-            "주요 수급 주체들의 공방이 치열하게 전개되고 있습니다. 상단 헤드라인 내용과 같이 외국인 및 기관의 포지션 변화에 따른 "
+            "주요 수급 주체들의 공방이 치열하게 전개되고 있습니다. 주요 헤드라인 내용과 같이 외국인 및 기관의 포지션 변화에 따른 "
             "업종별 차별화 장세 및 순환매 흐름을 밀착 모니터링하고 있습니다."
         )
     else:
-        domestic_text = f"국내 현·선물 실시간 수급: 코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 연동 주도세력 수급 모니터링"
+        domestic_text = f"코스피({kospi.get('rate')}), 코스닥({kosdaq.get('rate')}) 연동 주도세력 수급 모니터링"
         decoupling_text = "업종별 차별화 장세 전개 및 핵심 주도주 중심의 수급 집중 현상 지속"
         concentrated_themes = "<strong>실시간 수급 동향:</strong> 주도세력의 포지션 변화와 거래대금 유입 추이를 실시간으로 집계하고 있습니다."
 
@@ -565,7 +566,7 @@ def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
     theme_text = generate_theme_sync_analysis(price_map, live_news)
-    smart_money_data = fetch_smart_money_analysis(price_map) # 최적화된 동적 수급 분석 함수 호출
+    smart_money_data = fetch_smart_money_analysis(price_map)
     strategies_data = generate_strategies(price_map, live_news)
     
     market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
