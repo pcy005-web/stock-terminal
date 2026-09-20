@@ -552,16 +552,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     us_macro_news = []
     macro_indicator_news = []
-    detected_sectors = set()
-    
-    sector_keywords = {
-        "반도체": ["반도체", "삼성전자", "SK하이닉스", "메모리", "AI칩"],
-        "2차전지": ["2차전지", "배터리", "에코프로", "LG에너지솔루션", "리튬"],
-        "바이오": ["바이오", "제약", "임상", "FDA", "셀트리온"],
-        "전력기기": ["전력", "변압기", "전력인프라", "K-전력"],
-        "방산·조선": ["방산", "조선", "한화에어로스페이스", "HD현대", "수주"],
-        "금융·밸류업": ["금융", "은행", "증권", "밸류업", "저PBR", "KB금융"]
-    }
     
     for news in news_list:
         title = news.get('title', '')
@@ -571,9 +561,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
         if any(k in title for k in ["CPI", "PCE", "고용", "물가", "실업률", "소비자물가", "인플레이션", "발언", "점도표"]):
             if title not in macro_indicator_news and title not in us_macro_news:
                 macro_indicator_news.append(title)
-        for sector_name, keywords in sector_keywords.items():
-            if any(kw in title for kw in keywords):
-                detected_sectors.add(sector_name)
                 
     nasdaq_fut = quotes.get('nasdaq_fut', {'rate': '+0.00%', 'is_up': True})
     is_up = nasdaq_fut.get('is_up', True)
@@ -581,29 +568,30 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     bullets = []
     
+    # 1. 글로벌 마감
     if us_macro_news:
         bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"{us_macro_news[0]}\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
     else:
         bullets.append(f"[글로벌 마감 핵심] 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
         
+    # 2. 경제 지표
     if macro_indicator_news:
         bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"{macro_indicator_news[0]}\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
     else:
         bullets.append(f"[경제 지표 점검] 다가오는 주요 경제 지표 발표 및 연준 주요 인사의 통화정책 발언에 따른 글로벌 금리 변동성을 모니터링해야 합니다.")
     
-    sector_list_str = ", ".join(list(detected_sectors)[:3]) if detected_sectors else ("반도체, AI 소부장, 전력기기" if is_up else "금융주, 방어주, 통신주")
-    
+    # 3. 국내 증시 영향 및 주도주 (누락 방지를 위해 명확한 핵심 종목 표기)
     if is_up:
-        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 **{sector_list_str}** 등 주도 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 AI 반도체 및 전력기기 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
         
-        focus_stocks = "삼성전자, SK하이닉스, HD현대일렉트릭 등 주도 밸류체인" if not detected_sectors else f"감지된 테마({sector_list_str}) 관련 핵심 대형주 및 소부장"
+        focus_stocks = "삼성전자, SK하이닉스, 한미반도체 (AI 반도체) 및 HD현대일렉트릭 (전력인프라)"
         bullets.append(f"[핵심 주목 종목 및 주도주] 상승 랠리 기대감에 발맞춘 **{focus_stocks}**")
         
         bullets.append(f"[실전 대응 전략] 지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다.")
     else:
-        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세({nasdaq_rate})의 여파로, 오늘 국내 증시는 **{sector_list_str}** 등 고베타 업종을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세({nasdaq_rate})의 여파로, 오늘 국내 증시는 고베타 업종을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
         
-        focus_stocks = "KB금융, 신한지주, KT 등 저PBR·고배당 방어주" if not detected_sectors else f"하방 방어력이 검증된 안전자산 및 방어주 종목군"
+        focus_stocks = "KB금융, 신한지주 (저PBR 금융주) 및 삼성바이오로직스 (방어주)"
         bullets.append(f"[핵심 주목 종목 및 주도주] 변동성 방어를 위한 **{focus_stocks}**")
         
         bullets.append(f"[실전 대응 전략] 지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다.")
