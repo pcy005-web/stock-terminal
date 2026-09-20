@@ -572,57 +572,51 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     for news in news_list:
         title = news.get('title', '')
-        
-        # 1. 글로벌 마감 핵심 뉴스 탐색
         if any(k in title for k in ["뉴욕", "증시", "FOMC", "금리", "CPI", "연준", "파월", "미국", "나스닥", "다우"]):
             if not us_macro_news:
                 us_macro_news.append(title)
-                
-        # 2. 경제 지표 및 물가/고용 관련 동적 키워드 탐색
-        if any(k in title for k in ["CPI", "PCE", "고용", "물가", "실업률", "소비자물가", "생산자물가", "인플레이션", "발언", "점도표"]):
+        if any(k in title for k in ["CPI", "PCE", "고용", "물가", "실업률", "소비자물가", "인플레이션", "발언", "점도표"]):
             if title not in macro_indicator_news and title not in us_macro_news:
                 macro_indicator_news.append(title)
-        
-        # 3. 업종 키워드 동적 매칭
         for sector_name, keywords in sector_keywords.items():
             if any(kw in title for kw in keywords):
                 detected_sectors.add(sector_name)
                 
-    # 나스닥 선물 및 주요 지수 상태 확인
     nasdaq_fut = quotes.get('nasdaq_fut', {'rate': '+0.00%', 'is_up': True})
     is_up = nasdaq_fut.get('is_up', True)
     nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
     bullets = []
     
-    # [1] 글로벌 마감 핵심 이슈 동적 출력
+    # 1. 글로벌 마감
     if us_macro_news:
-        bullets.append(f"• [글로벌 마감 핵심]: 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"{us_macro_news[0]}\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
+        bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"{us_macro_news[0]}\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
     else:
-        bullets.append(f"• [글로벌 마감 핵심]: 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
+        bullets.append(f"[글로벌 마감 핵심] 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
         
-    # [2] 경제 지표 점검 동적 출력
+    # 2. 경제 지표
     if macro_indicator_news:
-        bullets.append(f"• [경제 지표 점검]: 실시간 주요 경제 동향으로 \"{macro_indicator_news[0]}\" 관련 소식이 전해지며, 글로벌 통화정책 및 멀티플 변화 압력을 가중시키고 있습니다.")
+        bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"{macro_indicator_news[0]}\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
     else:
-        bullets.append(f"• [경제 지표 점검]: 다가오는 주요 경제 지표 발표 및 연준 주요 인사의 통화정책 발언에 따른 글로벌 금리 변동성을 밀착 모니터링해야 합니다.")
+        bullets.append(f"[경제 지표 점검] 다가오는 주요 경제 지표 발표 및 연준 주요 인사의 통화정책 발언에 따른 글로벌 금리 변동성을 모니터링해야 합니다.")
     
-    # 감지된 업종 리스트 문자열 생성
     sector_list_str = ", ".join(list(detected_sectors)[:3]) if detected_sectors else ("반도체, AI 소부장, 전력기기" if is_up else "금융주, 방어주, 통신주")
     
-    # [3] 국내 증시 영향 동적 출력
+    # 3. 국내 증시 영향 및 주도주
     if is_up:
-        bullets.append(f"• [국내 증시 영향]: 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 실시간 뉴스에서 부각된 **{sector_list_str}** 등 주도 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 **{sector_list_str}** 등 주도 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
         
-        # [4-A] 상승장 맞춤형 실전 대응 전략 동적 조합
-        strategy_action = f"실시간 감지된 핵심 주도 테마({sector_list_str}) 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응"
-        bullets.append(f"• [실전 대응 전략]: 지수 상승 랠리와 수급 유입에 발맞춰, **{strategy_action}**을 통해 수익 극대화를 도모하는 전략이 유효합니다.")
+        focus_stocks = "삼성전자, SK하이닉스, HD현대일렉트릭 등 주도 밸류체인" if not detected_sectors else f"감지된 테마({sector_list_str}) 관련 핵심 대형주 및 소부장"
+        bullets.append(f"[핵심 주목 종목 및 주도주] 상승 랠리 기대감에 발맞춘 **{focus_stocks}**")
+        
+        bullets.append(f"[실전 대응 전략] 지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다.")
     else:
-        bullets.append(f"• [국내 증시 영향]: 간밤 뉴욕증시 조정 및 야간 선물 약세({nasdaq_rate})의 여파로, 오늘 국내 증시는 실시간 뉴스에서 부각된 **{sector_list_str}** 등 고베타 업종을 중심으로 매물 출회 및 변동성 확대가 불가피합니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세({nasdaq_rate})의 여파로, 오늘 국내 증시는 **{sector_list_str}** 등 고베타 업종을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
         
-        # [4-B] 하락장 맞춤형 실전 대응 전략 동적 조합
-        strategy_action = f"변동성 장세에 대비한 리스크 관리 및 방어적 포트폴리오(현금 비중 확대 또는 저PBR·배당주 중심 압축)"
-        bullets.append(f"• [실전 대응 전략]: 지수 하방 압력과 매물 출회에 대응하여, **{strategy_action}**을 실행하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다.")
+        focus_stocks = "KB금융, 신한지주, KT 등 저PBR·고배당 방어주" if not detected_sectors else f"하방 방어력이 검증된 안전자산 및 방어주 종목군"
+        bullets.append(f"[핵심 주목 종목 및 주도주] 변동성 방어를 위한 **{focus_stocks}**")
+        
+        bullets.append(f"[실전 대응 전략] 지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다.")
         
     return header_title, bullets
 
