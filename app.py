@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
 from functools import lru_cache
 from difflib import SequenceMatcher
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 import pytz
 
 app = Flask(__name__)
@@ -320,9 +320,6 @@ def fetch_feature_stocks():
         
     return feature_items, market_summary_keyword
 
-# -------------------------------------------------------------
-# 6번 섹션: 실시간 핵심 뉴스 10선 (노이즈 차단 및 스코어링 정예화)
-# -------------------------------------------------------------
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
@@ -333,7 +330,6 @@ def fetch_naver_finance_news():
     scored_news_list = []
     collected_titles = [] 
     
-    # 노이즈/홍보성/유튜브 차단 키워드 리스트
     noise_keywords = ["@", "[영상]", "[포토]", "[클릭]", "특집", "[종합]", "채널", "WOWTV", "구독", "좋아요"]
 
     try:
@@ -364,7 +360,6 @@ def fetch_naver_finance_news():
 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 
-                # 노이즈 키워드가 포함된 경우 무조건 스킵
                 if any(nk in title for nk in noise_keywords):
                     continue
 
@@ -404,7 +399,6 @@ def fetch_naver_finance_news():
                 collected_titles.append(title_clean)
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
-                # 전문가 관점 중요도 스코어링 시스템 (임팩트 팩트 가중치 부여)
                 score = 0
                 high_impact_keywords = ["실적", "영업이익", "서프라이즈", "FOMC", "금리", "환율", "한국은행", "연준", "수주", "인하", "인상"]
                 for hik in high_impact_keywords:
@@ -453,7 +447,6 @@ def fetch_naver_finance_news():
     except Exception:
         pass
         
-    # 중요도 점수(score)가 높은 순서대로 정렬 후 상위 10개만 추출
     scored_news_list.sort(key=lambda x: x['score'], reverse=True)
     news_list = [x['item'] for x in scored_news_list[:10]]
         
@@ -588,13 +581,11 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     bullets = []
     
-    # 1. 글로벌 마감
     if us_macro_news:
         bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"{us_macro_news[0]}\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
     else:
         bullets.append(f"[글로벌 마감 핵심] 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
         
-    # 2. 경제 지표
     if macro_indicator_news:
         bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"{macro_indicator_news[0]}\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
     else:
@@ -602,7 +593,6 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     sector_list_str = ", ".join(list(detected_sectors)[:3]) if detected_sectors else ("반도체, AI 소부장, 전력기기" if is_up else "금융주, 방어주, 통신주")
     
-    # 3. 국내 증시 영향 및 주도주
     if is_up:
         bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 **{sector_list_str}** 등 주도 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
         
@@ -678,22 +668,22 @@ def index():
 @app.route('/api/quotes')
 def api_quotes():
     price_map = get_all_quotes_cached()
-    return json.dumps(price_map, ensure_ascii=False)
+    return jsonify(price_map)
 
 @app.route('/api/feature-stocks')
 def api_feature_stocks():
     items, market_summary = fetch_feature_stocks()
-    return json.dumps({
+    return jsonify({
         "feature_stocks": items,
         "feature_market_summary": market_summary
-    }, ensure_ascii=False)
+    })
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
     price_map = get_all_quotes_cached()
     news_list = fetch_naver_finance_news()
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list=news_list)
-    return json.dumps({"ai_briefing": ai_briefing_text}, ensure_ascii=False)
+    return jsonify({"ai_briefing": ai_briefing_text})
 
 if __name__ == '__main__':
     app.run(debug=True)
