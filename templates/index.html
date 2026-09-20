@@ -65,6 +65,11 @@
         .tag-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         .tag { background: var(--bg-card); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border-color); }
         
+        /* 네이버 증권 실시간 연동 테마 배지 스타일 */
+        .theme-badge { background: #0f172a; color: var(--accent-main); padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 6px; }
+        .theme-rate-up { color: var(--accent-red); font-size: 0.72rem; }
+        .theme-rate-down { color: var(--accent-blue); font-size: 0.72rem; }
+
         .news-box { padding: 12px 0; border-bottom: 1px dashed var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .news-box:last-child { border-bottom: none; }
         .news-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
@@ -184,7 +189,7 @@
         </div>
     </div>
 
-    <!-- 3. 장전 5분 마켓 핵심 요약 (수정됨) -->
+    <!-- 3. 장전 5분 마켓 핵심 요약 (네이버 증권 테마 연동 포함) -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
@@ -196,11 +201,25 @@
                 <li style="margin-bottom: 8px;">{{ bullet | safe }}</li>
                 {% endfor %}
             </ul>
-            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
+            
+            <div style="margin-top: 16px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
             <div class="tag-list" style="margin-top: 6px;">
                 {% for tag in market_summary_tags %}
                 <span class="tag">{{ tag | safe }}</span>
                 {% endfor %}
+            </div>
+
+            <!-- 네이버 증권 브리핑 연동 업종 및 테마 정보 표시 영역 -->
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                <div style="font-size: 0.85rem; color: var(--accent-main); font-weight: 700; margin-bottom: 8px;">🔥 네이버 증권 브리핑 연동 주요 업종·테마 현황:</div>
+                <div class="tag-list">
+                    {% for theme in naver_themes %}
+                    <span class="theme-badge">
+                        {{ theme.name }}
+                        <span class="{{ 'theme-rate-up' if theme.is_up else 'theme-rate-down' }}">{{ theme.rate }}</span>
+                    </span>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -337,7 +356,7 @@
                 .then(data => {
                     for (const [code, q] of Object.entries(data)) {
                         const row = document.querySelector(`.stock-row[data-code="${code}"]`);
-                        if (row) {
+                        if, (row) {
                             const priceElem = row.querySelector('.stock-price');
                             const rateElem = row.querySelector('.stock-rate');
                             
