@@ -580,25 +580,35 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     if is_up:
         bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세(**{nasdaq_rate}**)의 영향으로, 오늘 국내 증시는 **AI 반도체 및 전력기기** 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
-        market_summary_tags = [
-            "**삼성전자**", 
-            "**SK하이닉스**", 
-            "**한미반도체** (AI 반도체)", 
-            "**HD현대일렉트릭** (전력인프라)"
-        ]
     else:
         bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세(**{nasdaq_rate}**)의 여파로, 오늘 국내 증시는 **고베타 업종**을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
-        market_summary_tags = [
-            "**KB금융**", 
-            "**신한지주** (저PBR 금융주)", 
-            "**삼성바이오로직스** (방어주)"
-        ]
         
     strategy_text = "지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다." if is_up else "지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다."
     bullets.append(f"[실전 대응 전략] {strategy_text}")
+    
+    # [개선 영역] 실시간 수집된 news_list의 'stock' 필드나 키워드에서 동적으로 태그 추출
+    dynamic_tags = set()
+    for news in news_list:
+        stock_field = news.get('stock', '')
+        # 주식 종목 마크다운 볼드(**)가 포함되어 있다면 정제해서 추출
+        if stock_field and stock_field != "시장 대형주":
+            # 예: "**삼성전자, SK하이닉스**" -> 태그 형태로 분리 혹은 그대로 활용
+            clean_stocks = stock_field.replace('**', '')
+            for s in clean_stocks.split(','):
+                s_trimmed = s.strip()
+                if s_trimmed:
+                    dynamic_tags.add(f"**{s_trimmed}**")
+                    
+    # 만약 뉴스에서 충분한 태그를 못 가져왔다면 기본 장세별 키워드 보완
+    market_summary_tags = list(dynamic_tags)[:5] # 최대 5개 제한
+    if not market_summary_tags:
+        if is_up:
+            market_summary_tags = ["**삼성전자**", "**SK하이닉스**", "**한미반도체**", "**HD현대일렉트릭**"]
+        else:
+            market_summary_tags = ["**KB금융**", "**신한지주**", "**삼성바이오로직스**"]
         
     return header_title, bullets, market_summary_tags
-
+    
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
