@@ -378,6 +378,7 @@
                     
                     if (!items) return;
                     
+                    // 1. 장중 특징주 핫이슈 목록 동적 갱신
                     let html = '';
                     items.forEach(item => {
                         html += `
@@ -396,12 +397,15 @@
                         container.innerHTML = html;
                     }
                     
+                    // 2. 장중 수급 및 마감시황 종합 분석 동적 갱신
                     let summaryContainer = document.getElementById('feature-market-summary-content');
                     if (summaryContainer && marketSummary) {
-                        summaryContainer.innerHTML = marketSummary;
+                        // 백엔드에서 전달된 마크다운 볼드체(**)를 HTML <strong> 태그로 변환하여 적용
+                        let formattedSummary = marketSummary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        summaryContainer.innerHTML = formattedSummary;
                     }
                 })
-                .catch(err => console.error('특징주 갱신 실패:', err));
+                .catch(err => console.error('특징주 및 마감시황 갱신 실패:', err));
         }
 
         setInterval(updateMarketQuotes, 3000);
