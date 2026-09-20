@@ -308,13 +308,13 @@ def fetch_feature_stocks():
     if is_market_closed:
         market_summary_keyword = (
             "• [마감 동향]: 국내 증시 마감에 따른 주요 업종별 수급 마감 결과 반영\n"
-            "• [순환매 전개]: 단기 자금이 반도체 대형주(삼성전자·SK하이닉스)에서 저PBR 금융주(KB금융·신한지주) 및 전력기기 섹터로 순환 이동\n"
+            "• [순환매 전개]: 단기 자금이 **반도체 대형주(삼성전자·SK하이닉스)**에서 **저PBR 금융주(KB금융·신한지주)** 및 **전력기기 섹터**로 순환 이동\n"
             "• [향후 전망]: 글로벌 매크로 지표 및 야간 선물 시장 연동성 검토"
         )
     else:
         market_summary_keyword = (
-            "• [수급 동향]: AI 반도체 및 핵심 소부장 중심의 선별적 매수세 유입\n"
-            "• [순환매 전개]: 초반 2차전지 및 바이오 섹터로 유입되던 자금이 오후장 들어 전력기기·방산 섹터 및 저PBR 금융주로 빠르게 순환 이동\n"
+            "• [수급 동향]: **AI 반도체 및 핵심 소부장** 중심의 선별적 매수세 유입\n"
+            "• [순환매 전개]: 초반 2차전지 및 바이오 섹터로 유입되던 자금이 오후장 들어 **전력기기·방산 섹터 및 저PBR 금융주**로 빠르게 순환 이동\n"
             "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
         )
         
@@ -418,11 +418,11 @@ def fetch_naver_finance_news():
                 related_stock = "시장 대형주"
 
                 if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
-                    related_stock = "삼성전자, SK하이닉스"
+                    related_stock = "**삼성전자, SK하이닉스**"
                 elif any(k in title_clean for k in ["현대차", "자동차", "배터리"]):
-                    related_stock = "현대차, LG에너지솔루션"
+                    related_stock = "**현대차, LG에너지솔루션**"
                 elif any(k in title_clean for k in ["금융", "은행", "증권"]):
-                    related_stock = "KB금융, 신한지주"
+                    related_stock = "**KB금융, 신한지주**"
 
                 if is_negative:
                     news_type = "리스크"
@@ -460,14 +460,14 @@ def generate_theme_sync_analysis(quotes, news_list):
     nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
     
     if is_up:
-        us_driver = f"글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체({sox_rate}) 및 나스닥 선물({nasdaq_rate})의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다."
-        core_stocks = "NVIDIA, 마이크론, ASML"
-        domestic_stocks = "삼성전자, SK하이닉스"
+        us_driver = f"글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체(**{sox_rate}**) 및 나스닥 선물(**{nasdaq_rate}**)의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다."
+        core_stocks = "**NVIDIA, 마이크론, ASML**"
+        domestic_stocks = "**삼성전자, SK하이닉스**"
         risk_strategy = "실적 모멘텀이 검증된 펀더멘털 우량주 중심의 공격적 비중 확대 및 눌림목 트레이딩"
     else:
-        us_driver = f"글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체({sox_rate}) 조정 및 나스닥 선물({nasdaq_rate})의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다."
-        core_stocks = "테슬라, 애플, 마이크로소프트"
-        domestic_stocks = "KB금융, 현대차, 삼성바이오로직스"
+        us_driver = f"글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체(**{sox_rate}**) 조정 및 나스닥 선물(**{nasdaq_rate}**)의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다."
+        core_stocks = "**테슬라, 애플, 마이크로소프트**"
+        domestic_stocks = "**KB금융, 현대차, 삼성바이오로직스**"
         risk_strategy = "매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축 및 리스크 관리"
     
     return {
@@ -488,16 +488,16 @@ def generate_smart_money_analysis(quotes, newspim_news):
     
     newspim_snippet = ""
     if newspim_news:
-        newspim_snippet = f" (뉴스핌 실시간 보도 참고: \"{newspim_news[0]}\")"
+        newspim_snippet = f" (뉴스핌 실시간 보도 참고: \"**{newspim_news[0]}**\")"
 
     if kospi_up:
         badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)"
         badge_class = "up"
-        domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi_rate}) 및 코스닥({kosdaq_rate})의 상승 탄력과 함께 뉴스핌 보도 실시간 동향 반영 시 외국인·기관의 우호적 수급 유입이 포착됩니다{newspim_snippet}."
+        domestic_text = f"국내 현·선물 수급 동향: 코스피(**{kospi_rate}**) 및 코스닥(**{kosdaq_rate}**)의 상승 탄력과 함께 외국인·기관의 우호적 수급 유입이 포착됩니다{newspim_snippet}."
     else:
         badge_text = "외인·기관 주도세력 매도 우위 (방어적 포지션)"
         badge_class = "down"
-        domestic_text = f"국내 현·선물 수급 동향: 코스피({kospi_rate}) 및 코스닥({kosdaq_rate}) 하락 압력 속에서 뉴스핌 실시간 보도 기준 기관·외인 매물 출회 및 보수적 대응이 우세합니다{newspim_snippet}."
+        domestic_text = f"국내 현·선물 수급 동향: 코스피(**{kospi_rate}**) 및 코스닥(**{kosdaq_rate}**) 하락 압력 속에서 기관·외인 매물 출회 및 보수적 대응이 우세합니다{newspim_snippet}."
 
     if kospi_up and not kosdaq.get('is_up', True):
         decoupling_text = "코스피 대형주 중심의 자금 집중 현상과 코스닥 개별주 조정 간의 디커플링 장세가 진행 중입니다."
@@ -505,7 +505,7 @@ def generate_smart_money_analysis(quotes, newspim_news):
         decoupling_text = "코스피가 조정을 받는 동안 코스닥 중소형주로 개인 및 단기 스마트머니의 순환매가 유입되는 양상입니다."
     else:
         direction_word = "동반 강세" if kospi_up else "동반 약세"
-        decoupling_text = f"양시장 모두 {direction_word} 흐름을 보이며 지수 연동성이 높게 유지되고 있습니다."
+        decoupling_text = f"양시장 모두 **{direction_word}** 흐름을 보이며 지수 연동성이 높게 유지되고 있습니다."
 
     if kospi_up:
         concentrated_themes = (
@@ -523,9 +523,9 @@ def generate_smart_money_analysis(quotes, newspim_news):
     fx_price = usdkrw.get('price', '1,300')
     fx_rate = usdkrw.get('rate', '+0.00%')
     if usdkrw.get('is_up', True):
-        fx_oil_text = f"원/달러 환율({fx_price}원, {fx_rate}) 상승 압력에 따른 외국인 수급 이탈 우려 점검 및 변동성 주의"
+        fx_oil_text = f"원/달러 환율(**{fx_price}원**, **{fx_rate}**) 상승 압력에 따른 외국인 수급 이탈 우려 점검 및 변동성 주의"
     else:
-        fx_oil_text = f"원/달러 환율({fx_price}원, {fx_rate}) 하향 안정세에 힘입어 외국인 수급 유입 환경 개선 모니터링"
+        fx_oil_text = f"원/달러 환율(**{fx_price}원**, **{fx_rate}**) 하향 안정세에 힘입어 외국인 수급 유입 환경 개선 모니터링"
 
     return {
         'badge_text': badge_text,
@@ -538,11 +538,11 @@ def generate_smart_money_analysis(quotes, newspim_news):
 
 def generate_strategies(quotes, news_list):
     return [
-        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "삼성전자, SK하이닉스, 한미반도체 - AI 반도체", "rank": "TOP 1"},
-        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "HD현대일렉트릭, 효성중공업 - 전력기기", "rank": "TOP 2"},
-        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "삼성바이오로직스, 셀트리온 - 바이오", "rank": "TOP 3"},
-        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "한화에어로스페이스, 현대로템 - 방산", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "KB금융, 신한지주 - 금융", "rank": "TOP 5"}
+        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "**삼성전자, SK하이닉스, 한미반도체** - AI 반도체", "rank": "TOP 1"},
+        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "**HD현대일렉트릭, 효성중공업** - 전력기기", "rank": "TOP 2"},
+        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "**삼성바이오로직스, 셀트리온** - 바이오", "rank": "TOP 3"},
+        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "**한화에어로스페이스, 현대로템** - 방산", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "**KB금융, 신한지주** - 금융", "rank": "TOP 5"}
     ]
 
 def generate_premarket_summary_bullets(quotes, news_list):
@@ -568,35 +568,27 @@ def generate_premarket_summary_bullets(quotes, news_list):
     
     bullets = []
     
-    # 1. 글로벌 마감
     if us_macro_news:
-        bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"{us_macro_news[0]}\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
+        bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"**{us_macro_news[0]}**\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
     else:
         bullets.append(f"[글로벌 마감 핵심] 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
         
-    # 2. 경제 지표
     if macro_indicator_news:
-        bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"{macro_indicator_news[0]}\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
+        bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"**{macro_indicator_news[0]}**\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
     else:
         bullets.append(f"[경제 지표 점검] 다가오는 주요 경제 지표 발표 및 연준 주요 인사의 통화정책 발언에 따른 글로벌 금리 변동성을 모니터링해야 합니다.")
     
-    # 3. 국내 증시 영향 및 주도주 (누락 방지를 위해 명확한 핵심 종목 표기)
     if is_up:
-        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세({nasdaq_rate})의 영향으로, 오늘 국내 증시는 AI 반도체 및 전력기기 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
-        
-        focus_stocks = "삼성전자, SK하이닉스, 한미반도체 (AI 반도체) 및 HD현대일렉트릭 (전력인프라)"
-        bullets.append(f"[핵심 주목 종목 및 주도주] 상승 랠리 기대감에 발맞춘 **{focus_stocks}**")
-        
-        bullets.append(f"[실전 대응 전략] 지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세(**{nasdaq_rate}**)의 영향으로, 오늘 국내 증시는 **AI 반도체 및 전력기기** 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
+        focus_stocks = "**삼성전자, SK하이닉스, 한미반도체** (AI 반도체) 및 **HD현대일렉트릭** (전력인프라)"
     else:
-        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세({nasdaq_rate})의 여파로, 오늘 국내 증시는 고베타 업종을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
+        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세(**{nasdaq_rate}**)의 여파로, 오늘 국내 증시는 **고베타 업종**을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
+        focus_stocks = "**KB금융, 신한지주** (저PBR 금융주) 및 **삼성바이오로직스** (방어주)"
         
-        focus_stocks = "KB금융, 신한지주 (저PBR 금융주) 및 삼성바이오로직스 (방어주)"
-        bullets.append(f"[핵심 주목 종목 및 주도주] 변동성 방어를 위한 **{focus_stocks}**")
+    strategy_text = "지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다." if is_up else "지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다."
+    bullets.append(f"[실전 대응 전략] {strategy_text}")
         
-        bullets.append(f"[실전 대응 전략] 지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다.")
-        
-    return header_title, bullets
+    return header_title, bullets, focus_stocks
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
@@ -607,11 +599,11 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
     
     return (
-        f"🤖 [팩트 기반 AI 브리핑 리포트 ({now_time} 갱신)]\n\n"
+        f"🤖 [팩트 기반 AI 브리핑 리포트 (**{now_time}** 갱신)]\n\n"
         f"📊 [시황 총평]\n"
-        f"나스닥 선물({nasdaq_fut['rate']})과 필라델피아 반도체 지수({sox['rate']}) 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율({usdkrw['price']}원) 추이에 주목합니다.\n\n"
+        f"나스닥 선물(**{nasdaq_fut['rate']}**)과 필라델피아 반도체 지수(**{sox['rate']}**) 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율(**{usdkrw['price']}원**) 추이에 주목합니다.\n\n"
         f"🔍 [핵심 체크포인트]\n"
-        f"• 주요 헤드라인: \"{top_news}\"\n"
+        f"• 주요 헤드라인: \"**{top_news}**\"\n"
         f"• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n\n"
         f"💡 [실전 대응 가이드]\n"
         f"• 지수 변동성 구간에서는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n"
@@ -634,7 +626,7 @@ def index():
     smart_money_data = generate_smart_money_analysis(price_map, newspim_news)
     strategies_data = generate_strategies(price_map, live_news)
     
-    market_summary_header, market_summary_bullets = generate_premarket_summary_bullets(price_map, live_news)
+    market_summary_header, market_summary_bullets, focus_stocks = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
             
@@ -648,6 +640,7 @@ def index():
         strategies=strategies_data,
         market_summary_header=market_summary_header,
         market_summary_bullets=market_summary_bullets,
+        focus_stocks=focus_stocks,
         ai_briefing=ai_briefing_text,
         feature_stocks=feature_stocks_data,
         feature_market_summary=feature_market_summary
