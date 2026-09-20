@@ -173,9 +173,9 @@
         <div class="section-header-title">2. 미·한 테마 연동성 및 리스크 구분</div>
         <div class="content-card">
             <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.9rem; line-height: 1.5;">
-                <div><strong style="color: var(--accent-main);">🇺🇸 미국 주도:</strong> {{ theme_summary.us_driver }}</div>
-                <div><strong style="color: var(--accent-main);">🔥 테마 핵심 종목:</strong> {{ theme_summary.core_stocks }}</div>
-                <div><strong style="color: var(--accent-main);">🇰🇷 국내 수혜 연동주:</strong> {{ theme_summary.domestic_stocks }}</div>
+                <div><strong style="color: var(--accent-main);">🇺🇸 미국 주도:</strong> {{ theme_summary.us_driver | safe }}</div>
+                <div><strong style="color: var(--accent-main);">🔥 테마 핵심 종목:</strong> {{ theme_summary.core_stocks | safe }}</div>
+                <div><strong style="color: var(--accent-main);">🇰🇷 국내 수혜 연동주:</strong> {{ theme_summary.domestic_stocks | safe }}</div>
                 <div><strong style="color: var(--accent-main);">⚠️ 리스크 및 대응 전략:</strong> {{ theme_summary.risk_strategy }}</div>
             </div>
             <div class="tag-list" style="margin-top: 14px;">
@@ -184,23 +184,22 @@
         </div>
     </div>
 
-    <!-- 3. 장전 5분 마켓 핵심 요약 -->
+    <!-- 3. 장전 5분 마켓 핵심 요약 (수정됨) -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
             <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 10px;">
                 📝 {{ market_summary_header }}
             </div>
-            <!-- list-style-type을 none으로 주어 원치 않는 기본 불릿(점) 제거 -->
             <ul style="list-style-type: none; padding-left: 0; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 {% for bullet in market_summary_bullets %}
-                <li style="margin-bottom: 8px;">{{ bullet }}</li>
+                <li style="margin-bottom: 8px;">{{ bullet | safe }}</li>
                 {% endfor %}
             </ul>
             <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
             <div class="tag-list" style="margin-top: 6px;">
                 {% for tag in market_summary_tags %}
-                <span class="tag">{{ tag }}</span>
+                <span class="tag">{{ tag | safe }}</span>
                 {% endfor %}
             </div>
         </div>
@@ -215,10 +214,10 @@
                 <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: bold; background-color: {% if smart_money_summary.badge_class == 'up' %}var(--accent-red){% else %}var(--accent-blue){% endif %}; color: #fff; white-space: nowrap;">{{ smart_money_summary.badge_text }}</span>
             </div>
             <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
-                <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic }}</li>
-                <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling }}</li>
+                <li style="margin-bottom: 6px;"><strong>국내 지수 동조화:</strong> {{ smart_money_summary.domestic | safe }}</li>
+                <li style="margin-bottom: 6px;"><strong>시장 디커플링:</strong> {{ smart_money_summary.decoupling | safe }}</li>
                 <li style="margin-bottom: 6px;">{{ smart_money_summary.concentrated_themes | safe }}</li>
-                <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil }}</li>
+                <li><strong>환율 및 유가:</strong> {{ smart_money_summary.fx_oil | safe }}</li>
             </ul>
         </div>
     </div>
@@ -244,7 +243,7 @@
                     <span>📊</span> 장중 수급 및 마감시황 종합 분석
                 </div>
                 <div id="feature-market-summary-content" style="line-height: 1.6; white-space: pre-line; font-size: 0.88rem; color: var(--text-main);">
-                    {{ feature_market_summary }}
+                    {{ feature_market_summary | safe }}
                 </div>
             </div>
         </div>
@@ -266,7 +265,7 @@
                     {% if news.comment %}
                     <div class="news-comment">{{ news.comment }}</div>
                     {% endif %}
-                    <div class="news-stock">🏷️ 관련 종목 및 주도주: {{ news.stock }}</div>
+                    <div class="news-stock">🏷️ 관련 종목 및 주도주: {{ news.stock | safe }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -286,7 +285,7 @@
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">{{ stg.desc }}</div>
                     <div class="tag-list" style="margin-top: 8px;">
-                        <span class="tag">{{ stg.stock }}</span>
+                        <span class="tag">{{ stg.stock | safe }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -304,7 +303,7 @@
             <button class="btn" onclick="toggleAiBriefing()">✨ 실시간 AI 브리핑 리포트 생성</button>
             
             <div id="ai-report-box" style="display: none; margin-top: 16px; background: var(--bg-primary); border: 1px solid var(--accent-main); border-radius: 6px; padding: 14px; white-space: pre-wrap; font-size: 0.88rem; line-height: 1.6; color: var(--text-main);">
-{{ ai_briefing }}
+{{ ai_briefing | safe }}
             </div>
         </div>
     </div>
