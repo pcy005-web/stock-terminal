@@ -188,18 +188,15 @@
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 장전 5분 마켓 핵심 요약</div>
         <div class="content-card">
-            <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 10px;">
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--accent-main); margin-bottom: 12px;">
                 📝 {{ market_summary_header }}
             </div>
-            <ul style="list-style-type: disc; padding-left: 20px; margin: 0; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
+            <!-- 점 없이 깔끔하게 출력되는 카드 형태 레이아웃 -->
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem; color: var(--text-main); line-height: 1.6;">
                 {% for bullet in market_summary_bullets %}
-                <li style="margin-bottom: 8px;">{{ bullet }}</li>
-                {% endfor %}
-            </ul>
-            <div style="margin-top: 14px; font-size: 0.85rem; color: var(--text-sub);">관련 핵심 주목 종목 및 주도주:</div>
-            <div class="tag-list" style="margin-top: 6px;">
-                {% for tag in market_summary_tags %}
-                <span class="tag">{{ tag }}</span>
+                <div style="padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 3px solid var(--accent-main);">
+                    {{ bullet }}
+                </div>
                 {% endfor %}
             </div>
         </div>
