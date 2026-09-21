@@ -324,7 +324,7 @@ def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     
-    query_str = urllib.parse.quote("연합인포맥스 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 영업이익 OR 외국인 OR 수급 OR FOMC OR 증시 when:6h")
+    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 테마주 OR 연합인포맥스 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 영업이익 OR 외국인 OR 수급 OR FOMC OR CPI OR 증시 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     scored_news_list = []
