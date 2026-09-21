@@ -400,12 +400,12 @@ def fetch_naver_finance_news():
                 link = link_elem.text if link_elem is not None else "https://news.google.com"
                 
                 score = 0
-                high_impact_keywords = ["실적", "영업이익", "서프라이즈", "FOMC", "금리", "환율", "한국은행", "연준", "수주", "인하", "인상"]
+                high_impact_keywords = ["실적", "영업이익", "서프라이즈", "FOMC", "CPI", "금리", "환율", "한국은행", "연준", "수주", "납품", "인하", "인상"]
                 for hik in high_impact_keywords:
                     if hik in title_clean:
                         score += 3
                         
-                medium_impact_keywords = ["외국인", "기관", "순매수", "반도체", "삼성전자", "하이닉스", "증시", "코스피"]
+                medium_impact_keywords = ["외국인", "기관", "순매수", "반도체", "삼성전자", "하이닉스", "증시", "코스피", "코스닥", "계약"]
                 for mik in medium_impact_keywords:
                     if mik in title_clean:
                         score += 1
