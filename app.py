@@ -2,16 +2,16 @@ import datetime
 import json
 import re
 import ssl
-import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.utils import parsedate_to_datetime
-from functools import lru_cache
 from difflib import SequenceMatcher
 from flask import Flask, render_template, jsonify
 import pytz
+from bs4 import BeautifulSoup
+import requests
 
 app = Flask(__name__)
 
@@ -218,14 +218,45 @@ def get_all_quotes_cached():
     _quote_cache_time = now_ts
     return price_map
 
+def fetch_shortnews_summary():
+    """매일 아침 갱신되는 shortnews.co.kr/news/날짜 데이터를 가져옵니다."""
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.datetime.now(kst).strftime("%Y-%m-%d")
+    url = f"https://shortnews.co.kr/news/{today_str}"
+    
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(url, headers=headers, timeout=3)
+        
+        if response.status_code != 200:
+            return {
+                "date": today_str,
+                "content": f"[{today_str}] 오늘의 간추린 뉴스 데이터가 아직 등록되지 않았거나 주말/휴일일 수 있습니다. (원문 링크를 확인해주세요)"
+            }
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        body_div = soup.find('div', class_='news-content') or soup.find('main') or soup.find('article')
+        
+        if not body_div:
+            paragraphs = [p.get_text() for p in soup.find_all(['p', 'div']) if len(p.get_text()) > 20]
+            content_text = "\n\n".join(paragraphs[:10]) if paragraphs else "등록된 뉴스 내용이 없습니다."
+        else:
+            content_text = body_div.get_text(separator="\n\n").strip()
+            
+        return {
+            "date": today_str,
+            "content": content_text if content_text else "오늘의 간추린 뉴스 내용이 비어 있습니다."
+        }
+    except Exception as e:
+        return {
+            "date": today_str,
+            "content": f"숏뉴스 크롤링 중 오류가 발생했습니다: {str(e)}"
+        }
+
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
-    current_hour_min = now_dt.hour * 100 + now_dt.minute
-    
-    is_market_closed = current_hour_min >= 1530 or now_dt.weekday() >= 5
-    
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:개장전특징주 OR intitle:상한가 when:6h"
+    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:상한가 when:6h"
     cache_buster = int(datetime.datetime.now().timestamp())
     rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
     
@@ -233,25 +264,16 @@ def fetch_feature_stocks():
     seen_titles = set()
     
     try:
-        req = urllib.request.Request(
-            rss_url, 
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Cache-Control': 'no-cache'
-            }
-        )
+        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
-            xml_data = response.read()
-            root = ET.fromstring(xml_data)
-            
+            root = ET.fromstring(response.read())
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
                 pub_date_elem = item.find('pubDate')
                 
                 title = title_elem.text if title_elem is not None else ""
-                if not title:
-                    continue
+                if not title: continue
                 
                 sort_dt = None
                 item_time_str = ""
@@ -263,36 +285,18 @@ def fetch_feature_stocks():
                     except Exception:
                         pass
                 
-                if not sort_dt:
+                if not sort_dt or (now_dt - sort_dt).total_seconds() > 6 * 3600:
                     continue
                 
-                time_diff = now_dt - sort_dt
-                if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
-                    continue
+                title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title.strip()
+                if len(title_clean) > 38: title_clean = title_clean[:38] + "…"
                 
-                if " - " in title:
-                    title_clean = title.rsplit(" - ", 1)[0]
-                else:
-                    title_clean = title
-                    
-                title_clean = title_clean.strip()
-                
-                max_len = 38
-                if len(title_clean) > max_len:
-                    title_clean = title_clean[:max_len] + "…"
-                    
-                link = link_elem.text if link_elem is not None else "https://news.google.com"
-                
-                if "주요 특징주" in title_clean or "오늘(" in title_clean:
-                    continue
-                if title_clean in seen_titles:
-                    continue
-                
+                if title_clean in seen_titles: continue
                 seen_titles.add(title_clean)
                 
                 parsed_items.append({
                     "title": title_clean,
-                    "link": link,
+                    "link": link_elem.text if link_elem is not None else "https://news.google.com",
                     "time": item_time_str,
                     "sort_dt": sort_dt
                 })
@@ -301,46 +305,24 @@ def fetch_feature_stocks():
         
     parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
     feature_items = parsed_items[:5]
+    for item in feature_items: item.pop("sort_dt", None)
     
-    for item in feature_items:
-        item.pop("sort_dt", None)
-    
-    if is_market_closed:
-        market_summary_keyword = (
-            "• [마감 동향]: 국내 증시 마감에 따른 주요 업종별 수급 마감 결과 반영\n"
-            "• [순환매 전개]: 단기 자금이 **반도체 대형주(삼성전자·SK하이닉스)**에서 **저PBR 금융주(KB금융·신한지주)** 및 **전력기기 섹터**로 순환 이동\n"
-            "• [향후 전망]: 글로벌 매크로 지표 및 야간 선물 시장 연동성 검토"
-        )
-    else:
-        market_summary_keyword = (
-            "• [수급 동향]: **AI 반도체 및 핵심 소부장** 중심의 선별적 매수세 유입\n"
-            "• [순환매 전개]: 초반 2차전지 및 바이오 섹터로 유입되던 자금이 오후장 들어 **전력기기·방산 섹터 및 저PBR 금융주**로 빠르게 순환 이동\n"
-            "• [시장 분위기]: 주요 지수 등락 속 종목별 차별화 장세 진행 중"
-        )
-        
-    return feature_items, market_summary_keyword
+    market_summary = "• [장중 수급 동향]: AI 반도체 및 핵심 소부장 중심의 매수세 유입 중\n• [순환매 전개]: 전력기기·방산 및 저PBR 금융주로 빠른 수급 순환 진행"
+    return feature_items, market_summary
 
 def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
-    
-    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 테마주 OR 연합인포맥스 OR 뉴스핌 OR 금리 OR 환율 OR 실적 OR 영업이익 OR 외국인 OR 수급 OR FOMC OR CPI OR 증시 when:6h")
+    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 금리 OR 환율 OR 실적 when:6h")
     rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
     
     scored_news_list = []
-    collected_titles = [] 
+    collected_titles = []
     
-    noise_keywords = ["@", "[영상]", "[포토]", "[클릭]", "특집", "[종합]", "채널", "WOWTV", "구독", "좋아요"]
-
     try:
-        req = urllib.request.Request(
-            rss_url, 
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        )
+        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
-            xml_data = response.read()
-            root = ET.fromstring(xml_data)
-            
+            root = ET.fromstring(response.read())
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
                 link_elem = item.find('link')
@@ -348,294 +330,67 @@ def fetch_naver_finance_news():
                 
                 if pub_date_elem is not None and pub_date_elem.text:
                     try:
-                        dt = parsedate_to_datetime(pub_date_elem.text)
-                        dt_kst = dt.astimezone(kst)
-                        time_diff = now_dt - dt_kst
-                        if time_diff.total_seconds() > 6 * 3600 or time_diff.total_seconds() < 0:
-                            continue
+                        dt_kst = parsedate_to_datetime(pub_date_elem.text).astimezone(kst)
+                        if (now_dt - dt_kst).total_seconds() > 6 * 3600: continue
                     except Exception:
                         continue
                 else:
                     continue
 
                 title = title_elem.text if title_elem is not None else "제목 없음"
-                
-                if any(nk in title for nk in noise_keywords):
+                title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title
+                if len(title_clean) > 40: title_clean = title_clean[:40] + "…"
+
+                if any(SequenceMatcher(None, title_clean, et).ratio() >= 0.75 for et in collected_titles):
                     continue
-
-                if " - " in title:
-                    title_clean, press_source = title.rsplit(" - ", 1)
-                else:
-                    title_clean = title
-                    press_source = ""
-                
-                title_clean = title_clean.strip()
-                max_len = 40
-                if len(title_clean) > max_len:
-                    title_clean = title_clean[:max_len] + "…"
-
-                rss_source_name = item.find('source').text if item.find('source') is not None else ""
-                combined_source_check = f"{press_source} {rss_source_name} {title}"
-                
-                if "연합인포" in combined_source_check:
-                    display_source = "연합인포맥스"
-                elif "뉴스핌" in combined_source_check:
-                    display_source = "뉴스핌"
-                else:
-                    display_source = press_source.strip() if press_source else "경제 뉴스"
-                
-                news_date_str = dt_kst.strftime('%m/%d')
-
-                is_duplicate = False
-                for existing_title in collected_titles:
-                    similarity = SequenceMatcher(None, title_clean, existing_title).ratio()
-                    if similarity >= 0.75:
-                        is_duplicate = True
-                        break
-                
-                if is_duplicate:
-                    continue
-                
                 collected_titles.append(title_clean)
-                link = link_elem.text if link_elem is not None else "https://news.google.com"
-                
-                score = 0
-                high_impact_keywords = ["실적", "영업이익", "서프라이즈", "FOMC", "CPI", "금리", "환율", "한국은행", "연준", "수주", "납품", "인하", "인상"]
-                for hik in high_impact_keywords:
-                    if hik in title_clean:
-                        score += 3
-                        
-                medium_impact_keywords = ["외국인", "기관", "순매수", "반도체", "삼성전자", "하이닉스", "증시", "코스피", "코스닥", "계약"]
-                for mik in medium_impact_keywords:
-                    if mik in title_clean:
-                        score += 1
 
-                negative_keywords = ["하회", "적자", "둔화", "우려", "경고", "규제", "충격", "리스크", "하락", "급락"]
-                is_negative = any(nk in title_clean for nk in negative_keywords)
-                
-                news_type = "중립"
-                comment = "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요"
-                related_stock = "시장 대형주"
-
-                if any(k in title_clean for k in ["반도체", "AI", "삼성", "하이닉스"]):
-                    related_stock = "**삼성전자, SK하이닉스**"
-                elif any(k in title_clean for k in ["현대차", "자동차", "배터리"]):
-                    related_stock = "**현대차, LG에너지솔루션**"
-                elif any(k in title_clean for k in ["금융", "은행", "증권"]):
-                    related_stock = "**KB금융, 신한지주**"
-
-                if is_negative:
-                    news_type = "리스크"
-                    comment = "관련 이슈에 따른 단기 변동성 확대 및 리스크 관리 주의"
-                elif any(k in title_clean for k in ["실적", "서프라이즈", "영업이익", "수주", "계약"]):
-                    news_type = "호재"
-                    comment = "실적 개선 및 모멘텀 유입에 따른 긍정적 주가 영향 기대"
+                news_type = "호재" if any(k in title_clean for k in ["실적", "서프라이즈", "수주"]) else ("리스크" if any(k in title_clean for k in ["우려", "하락", "적자"]) else "중립")
+                related_stock = "**삼성전자, SK하이닉스**" if "반도체" in title_clean else "시장 대형주"
 
                 scored_news_list.append({
-                    'score': score,
+                    'score': 3 if news_type == "호재" else 1,
                     'item': {
                         'title': title_clean,
-                        'source': display_source,
-                        'link': link,
+                        'source': "경제 뉴스",
+                        'link': link_elem.text if link_elem is not None else "https://news.google.com",
                         'stock': related_stock,
-                        'comment': comment,
-                        'type': news_type,
-                        'date': news_date_str,
-                        'timestamp': now_dt
+                        'comment': "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요",
+                        'type': news_type
                     }
                 })
     except Exception:
         pass
         
     scored_news_list.sort(key=lambda x: x['score'], reverse=True)
-    news_list = [x['item'] for x in scored_news_list[:10]]
-        
-    return news_list
-
-def generate_theme_sync_analysis(quotes, news_list):
-    sox = quotes.get('phlx', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '+0.00%', 'is_up': True})
-    is_up = sox.get('is_up', True)
-    sox_rate = sox.get('rate', '+0.00%')
-    nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
-    
-    if is_up:
-        us_driver = f"글로벌 빅테크 반도체 밸류체인 연동 강세: 필라델피아 반도체(**{sox_rate}**) 및 나스닥 선물(**{nasdaq_rate}**)의 우상향 흐름은 국내 반도체 수출 실적 개선 기대감을 선반영하며 지수 상단을 지지하고 있습니다."
-        core_stocks = "**NVIDIA, 마이크론, ASML**"
-        domestic_stocks = "**삼성전자, SK하이닉스**"
-        risk_strategy = "실적 모멘텀이 검증된 펀더멘털 우량주 중심의 공격적 비중 확대 및 눌림목 트레이딩"
-    else:
-        us_driver = f"글로벌 기술주 멀티플 조정 압력: 필라델피아 반도체(**{sox_rate}**) 조정 및 나스닥 선물(**{nasdaq_rate}**)의 경계감 반영은 국내 증시의 단기 변동성을 확대시키는 주요 요인으로 작용합니다."
-        core_stocks = "**테슬라, 애플, 마이크로소프트**"
-        domestic_stocks = "**KB금융, 현대차, 삼성바이오로직스**"
-        risk_strategy = "매크로 변동성 심화 국면에서 펀더멘털이 탄탄한 방어적 포트폴리오 구축 및 리스크 관리"
-    
-    return {
-        'us_driver': us_driver,
-        'core_stocks': core_stocks,
-        'domestic_stocks': domestic_stocks,
-        'risk_strategy': risk_strategy
-    }
-
-def generate_smart_money_analysis(quotes, newspim_news):
-    kospi = quotes.get('kospi', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    kosdaq = quotes.get('kosdaq', {'price': '0', 'rate': '+0.00%', 'is_up': True})
-    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%', 'is_up': True})
-    
-    kospi_up = kospi.get('is_up', True)
-    kospi_rate = kospi.get('rate', '+0.00%')
-    kosdaq_rate = kosdaq.get('rate', '+0.00%')
-    
-    newspim_snippet = ""
-    if newspim_news:
-        newspim_snippet = f" (뉴스핌 실시간 보도 참고: \"**{newspim_news[0]}**\")"
-
-    if kospi_up:
-        badge_text = "외인·기관 주도세력 순매수 유입 (포지션 확장)"
-        badge_class = "up"
-        domestic_text = f"국내 현·선물 수급 동향: 코스피(**{kospi_rate}**) 및 코스닥(**{kosdaq_rate}**)의 상승 탄력과 함께 외국인·기관의 우호적 수급 유입이 포착됩니다{newspim_snippet}."
-    else:
-        badge_text = "외인·기관 주도세력 매도 우위 (방어적 포지션)"
-        badge_class = "down"
-        domestic_text = f"국내 현·선물 수급 동향: 코스피(**{kospi_rate}**) 및 코스닥(**{kosdaq_rate}**) 하락 압력 속에서 기관·외인 매물 출회 및 보수적 대응이 우세합니다{newspim_snippet}."
-
-    if kospi_up and not kosdaq.get('is_up', True):
-        decoupling_text = "코스피 대형주 중심의 자금 집중 현상과 코스닥 개별주 조정 간의 디커플링 장세가 진행 중입니다."
-    elif not kospi_up and kosdaq.get('is_up', True):
-        decoupling_text = "코스피가 조정을 받는 동안 코스닥 중소형주로 개인 및 단기 스마트머니의 순환매가 유입되는 양상입니다."
-    else:
-        direction_word = "동반 강세" if kospi_up else "동반 약세"
-        decoupling_text = f"양시장 모두 **{direction_word}** 흐름을 보이며 지수 연동성이 높게 유지되고 있습니다."
-
-    if kospi_up:
-        concentrated_themes = (
-            "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
-            "1) <strong>AI 반도체 및 핵심 소부장(삼성전자·SK하이닉스)</strong> 중심의 이익 성장 동반 구조적 쏠림 현상이 지속되며, "
-            "2) 변동성 장세 속 수익성 방어를 위한 <strong>전력기기·원전·조선</strong> 및 <strong>은행·보험 등 저PBR 주주환원 업종</strong>으로 자금이 분산·확산되는 순환매 흐름이 포착됩니다."
-        )
-    else:
-        concentrated_themes = (
-            "<strong>현재 스마트머니 수급 집중 테마 및 업종 분석:</strong> "
-            "1) 지수 방어 및 변동성 회피를 위한 <strong>저PBR 금융주(KB금융·신한지주) 및 통신·유틸리티</strong> 방어주로 피난처 성격의 자금이 유입되며, "
-            "2) 개별 모멘텀을 보유한 일부 테마주 중심으로만 단기 트레이딩 자금이 순환하고 있습니다."
-        )
-
-    fx_price = usdkrw.get('price', '1,300')
-    fx_rate = usdkrw.get('rate', '+0.00%')
-    if usdkrw.get('is_up', True):
-        fx_oil_text = f"원/달러 환율(**{fx_price}원**, **{fx_rate}**) 상승 압력에 따른 외국인 수급 이탈 우려 점검 및 변동성 주의"
-    else:
-        fx_oil_text = f"원/달러 환율(**{fx_price}원**, **{fx_rate}**) 하향 안정세에 힘입어 외국인 수급 유입 환경 개선 모니터링"
-
-    return {
-        'badge_text': badge_text,
-        'badge_class': badge_class,
-        'domestic': domestic_text,
-        'decoupling': decoupling_text,
-        'concentrated_themes': concentrated_themes,
-        'fx_oil': fx_oil_text
-    }
+    return [x['item'] for x in scored_news_list[:10]]
 
 def generate_strategies(quotes, news_list):
     return [
-        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "**삼성전자, SK하이닉스, 한미반도체** - AI 반도체", "rank": "TOP 1"},
-        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "**HD현대일렉트릭, 효성중공업** - 전력기기", "rank": "TOP 2"},
-        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "**삼성바이오로직스, 셀트리온** - 바이오", "rank": "TOP 3"},
-        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "**한화에어로스페이스, 현대로템** - 방산", "rank": "TOP 4"},
-        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "**KB금융, 신한지주** - 금융", "rank": "TOP 5"}
+        {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "**삼성전자, SK하이닉스, 한미반도체**", "rank": "TOP 1"},
+        {"title": "구조적 북미 수출 호조 전력 인프라 기기주", "desc": "견고한 수주 잔고와 마진율 개선세가 입증된 대장주 트레이딩", "stock": "**HD현대일렉트릭, 효성중공업**", "rank": "TOP 2"},
+        {"title": "바이오 CDMO 실적 우량주 및 파이프라인 모멘텀", "desc": "어닝 개선 기대감 및 스마트머니 수급 유입 포착", "stock": "**삼성바이오로직스, 셀트리온**", "rank": "TOP 3"},
+        {"title": "K-방산 및 조선 슈퍼사이클 실적 턴어라운드", "desc": "환율 효과 및 인도 기준 실적 성장이 담보된 수주형 성장주", "stock": "**한화에어로스페이스, 현대로템**", "rank": "TOP 4"},
+        {"title": "저PBR 밸류업 금융주 및 정책 수혜 방어주", "desc": "매크로 변동성 대응 방어력 제고 및 배당 매력 부각", "stock": "**KB금융, 신한지주**", "rank": "TOP 5"}
     ]
-
-def generate_premarket_summary_bullets(quotes, news_list):
-    kst = pytz.timezone('Asia/Seoul')
-    today_str = datetime.datetime.now(kst).strftime('%m/%d')
-    header_title = f"{today_str}, 장 시작 전 뉴욕증시 마감 및 매크로 핵심 브리핑"
-    
-    us_macro_news = []
-    macro_indicator_news = []
-    
-    for news in news_list:
-        title = news.get('title', '')
-        if any(k in title for k in ["뉴욕", "증시", "FOMC", "금리", "CPI", "연준", "파월", "미국", "나스닥", "다우"]):
-            if not us_macro_news:
-                us_macro_news.append(title)
-        if any(k in title for k in ["CPI", "PCE", "고용", "물가", "실업률", "소비자물가", "인플레이션", "발언", "점도표"]):
-            if title not in macro_indicator_news and title not in us_macro_news:
-                macro_indicator_news.append(title)
-                
-    nasdaq_fut = quotes.get('nasdaq_fut', {'rate': '+0.00%', 'is_up': True})
-    is_up = nasdaq_fut.get('is_up', True)
-    nasdaq_rate = nasdaq_fut.get('rate', '+0.00%')
-    
-    bullets = []
-    
-    if us_macro_news:
-        bullets.append(f"[글로벌 마감 핵심] 간밤 뉴욕증시와 연계된 주요 매크로 이슈로 \"**{us_macro_news[0]}**\"(이)가 시장의 주요 변동성 요인으로 작용했습니다.")
-    else:
-        bullets.append(f"[글로벌 마감 핵심] 뉴욕증시 주요 지수 혼조세 속 연준 정책 및 금리 동향에 따른 투자 심리가 교차하고 있습니다.")
-        
-    if macro_indicator_news:
-        bullets.append(f"[경제 지표 점검] 실시간 주요 경제 동향으로 \"**{macro_indicator_news[0]}**\" 관련 소식이 전해지며, 글로벌 통화정책 압력을 가중시키고 있습니다.")
-    else:
-        bullets.append(f"[경제 지표 점검] 다가오는 주요 경제 지표 발표 및 연준 주요 인사의 통화정책 발언에 따른 글로벌 금리 변동성을 모니터링해야 합니다.")
-    
-    if is_up:
-        bullets.append(f"[국내 증시 영향] 간밤 해외 지수 및 선물 강세(**{nasdaq_rate}**)의 영향으로, 오늘 국내 증시는 **AI 반도체 및 전력기기** 업종을 중심으로 탄력적인 매수세 유입이 예상됩니다.")
-        market_summary_tags = [
-            "**삼성전자**", 
-            "**SK하이닉스**", 
-            "**한미반도체** (AI 반도체)", 
-            "**HD현대일렉트릭** (전력인프라)"
-        ]
-    else:
-        bullets.append(f"[국내 증시 영향] 간밤 뉴욕증시 조정 및 야간 선물 약세(**{nasdaq_rate}**)의 여파로, 오늘 국내 증시는 **고베타 업종**을 중심으로 매물 출회 및 변동성 확대가 예상됩니다.")
-        market_summary_tags = [
-            "**KB금융**", 
-            "**신한지주** (저PBR 금융주)", 
-            "**삼성바이오로직스** (방어주)"
-        ]
-        
-    strategy_text = "지수 상승 탄력과 수급 유입에 발맞춰, 핵심 주도 테마 내 실적 우량 종목의 지지선 확인 후 분할 매수 및 순환매 대응이 유효합니다." if is_up else "지수 하방 압력에 대응하여 방어적 포트폴리오를 구성하고 무리한 추격 매수를 자제하는 보수적 관점 유지가 안전합니다."
-    bullets.append(f"[실전 대응 전략] {strategy_text}")
-        
-    return header_title, bullets, market_summary_tags
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
     kst = pytz.timezone('Asia/Seoul')
     now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
-    nasdaq_fut = quotes.get('nasdaq_fut', {'price': '-', 'rate': '-0.6%'})
-    usdkrw = quotes.get('usdkrw', {'price': '1,300', 'rate': '+0.00%'})
-    sox = quotes.get('phlx', {'price': '-', 'rate': '-3.4%'})
     top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
-    
     return (
         f"🤖 [팩트 기반 AI 브리핑 리포트 (**{now_time}** 갱신)]\n\n"
-        f"📊 [시황 총평]\n"
-        f"나스닥 선물(**{nasdaq_fut['rate']}**)과 필라델피아 반도체 지수(**{sox['rate']}**) 변동성을 소화하며 대형주 중심의 완만한 수급 균형이 나타나고 있습니다. 원/달러 환율(**{usdkrw['price']}원**) 추이에 주목합니다.\n\n"
-        f"🔍 [핵심 체크포인트]\n"
-        f"• 주요 헤드라인: \"**{top_news}**\"\n"
-        f"• 코스피·코스닥 거래대금 유입 및 주도 섹터 순환매 속도 확인\n\n"
-        f"💡 [실전 대응 가이드]\n"
-        f"• 지수 변동성 구간에서는 수급이 집중되는 핵심 주도주 눌림목 위주로 대응\n"
-        f"• 매크로 리스크 방어를 위한 실적 우량주 분산 병행"
+        f"📊 [시황 총평]\n실시간 지수 연동성 및 대형주 수급 균형을 바탕으로 한 선별적 접근이 요구됩니다.\n\n"
+        f"🔍 [핵심 체크포인트]\n• 주요 헤드라인: \"**{top_news}**\"\n• 주도 섹터 자금 유입 속도 확인\n\n"
+        f"💡 [실전 대응 가이드]\n• 변동성 구간 내 주도주 눌림목 위주 분할 매수"
     )
 
 @app.route('/')
 def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
-    
-    newspim_news = [
-        news['title'] for news in live_news 
-        if '뉴스핌' in news.get('source', '') or '뉴스핌' in news.get('title', '')
-    ]
-    if not newspim_news and live_news:
-        newspim_news = [live_news[0]['title']]
-
-    theme_text = generate_theme_sync_analysis(price_map, live_news)
-    smart_money_data = generate_smart_money_analysis(price_map, newspim_news)
+    short_news = fetch_shortnews_summary()
     strategies_data = generate_strategies(price_map, live_news)
-    
-    market_summary_header, market_summary_bullets, market_summary_tags = generate_premarket_summary_bullets(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
             
@@ -644,36 +399,31 @@ def index():
         categories=MARKET_CATEGORIES, 
         quotes=price_map,
         news_list=live_news,
-        theme_summary=theme_text,
-        smart_money_summary=smart_money_data,
         strategies=strategies_data,
-        market_summary_header=market_summary_header,
-        market_summary_bullets=market_summary_bullets,
-        market_summary_tags=market_summary_tags,
         ai_briefing=ai_briefing_text,
         feature_stocks=feature_stocks_data,
-        feature_market_summary=feature_market_summary
+        feature_market_summary=feature_market_summary,
+        short_news=short_news
     )
 
 @app.route('/api/quotes')
 def api_quotes():
-    price_map = get_all_quotes_cached()
-    return jsonify(price_map)
+    return jsonify(get_all_quotes_cached())
+
+@app.route('/api/short-news')
+def api_short_news():
+    return jsonify(fetch_shortnews_summary())
 
 @app.route('/api/feature-stocks')
 def api_feature_stocks():
     items, market_summary = fetch_feature_stocks()
-    return jsonify({
-        "feature_stocks": items,
-        "feature_market_summary": market_summary
-    })
+    return jsonify({"feature_stocks": items, "feature_market_summary": market_summary})
 
 @app.route('/api/ai-briefing')
 def api_ai_briefing():
     price_map = get_all_quotes_cached()
     news_list = fetch_naver_finance_news()
-    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, news_list=news_list)
-    return jsonify({"ai_briefing": ai_briefing_text})
+    return jsonify({"ai_briefing": generate_ai_comprehensive_briefing(price_map, news_list)})
 
 if __name__ == '__main__':
     app.run(debug=True)
