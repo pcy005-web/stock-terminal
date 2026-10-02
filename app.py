@@ -1,15 +1,12 @@
 import datetime
 import json
-import re
 import ssl
-import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from email.utils import parsedate_to_datetime
-from functools import lru_cache
 from difflib import SequenceMatcher
+from email.utils import parsedate_to_datetime
 from flask import Flask, render_template, jsonify
 import pytz
 
@@ -219,7 +216,7 @@ def get_all_quotes_cached():
     return price_map
 
 def fetch_naver_market_briefing_api():
-    """네이버 증권 공식 시황/브리핑 오픈 API 엔드포인트 연동 (문구 하드코딩 없음)"""
+    """미국증시 마감 시황 브리핑 전용 연동 API"""
     kst = pytz.timezone('Asia/Seoul')
     now_dt = datetime.datetime.now(kst)
     today_date_str = now_dt.strftime('%Y년 %m월 %d일')
@@ -229,9 +226,9 @@ def fetch_naver_market_briefing_api():
         'Referer': 'https://m.stock.naver.com/'
     }
     
+    # 1. 네이버 증권 해외증시/뉴욕증시 관련 플래시 뉴스 수급
     try:
-        # 네이버 증권 모바일 시황/뉴스 브리핑 공식 API 엔드포인트
-        api_url = "https://m.stock.naver.com/api/news/flash?category=marketsum&page=1&pageSize=5"
+        api_url = "https://m.stock.naver.com/api/news/flash?category=world&page=1&pageSize=5"
         req = urllib.request.Request(api_url, headers=headers)
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
             res_json = json.loads(response.read().decode('utf-8'))
@@ -241,20 +238,20 @@ def fetch_naver_market_briefing_api():
                 briefing_lines = []
                 for idx, item in enumerate(items[:3], 1):
                     title = item.body or item.get('title', '')
-                    office = item.get('officeName', '증권사')
+                    office = item.get('officeName', '글로벌 외신')
                     briefing_lines.append(f"{idx}. [{office}] {title}")
                 
                 if briefing_lines:
                     return {
-                        "date": today_date_str,
+                        "date": f"{today_date_str} 미국증시 마감 시황",
                         "briefing": "\n\n".join(briefing_lines)
                     }
     except Exception:
         pass
         
-    # API 호출 실패 시 Google News RSS 최신 증시 시황 브리핑으로 대체하여 동적 제공 (하드코딩 방지)
+    # 2. 구글 뉴스 RSS를 통한 뉴욕증시 마감 시황 대체 연동
     try:
-        query_str = urllib.parse.quote("코스피 마감시황 OR 뉴욕증시 마감 OR 증권 브리핑 when:1d")
+        query_str = urllib.parse.quote("뉴욕증시 마감 OR 다우 나스닥 S&P 마감시황 when:1d")
         rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
         req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
@@ -268,15 +265,15 @@ def fetch_naver_market_briefing_api():
             
             if briefing_lines:
                 return {
-                    "date": today_date_str,
+                    "date": f"{today_date_str} 미국증시 마감 시황",
                     "briefing": "\n\n".join(briefing_lines)
                 }
     except Exception:
         pass
 
     return {
-        "date": today_date_str,
-        "briefing": f"• [{today_date_str}] 실시간 네이버 증권 시황 브리핑 데이터 연동 대기 중입니다. 잠시 후 갱신됩니다."
+        "date": f"{today_date_str} 미국증시 마감 시황",
+        "briefing": "• 미국증시 마감 시황 브리핑 데이터를 불러오는 중입니다."
     }
 
 def fetch_feature_stocks():
@@ -568,7 +565,6 @@ def api_quotes():
 
 @app.route('/api/naver-briefing')
 def api_naver_briefing():
-    """네이버 증권 시황/브리핑 API 엔드포인트 제공"""
     briefing_data = fetch_naver_market_briefing_api()
     return jsonify(briefing_data)
 
