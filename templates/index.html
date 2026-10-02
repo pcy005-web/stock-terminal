@@ -75,6 +75,10 @@
         
         .ai-briefing-box { background: var(--bg-primary); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-main); border-radius: 8px; padding: 14px; margin-top: 14px; }
         .btn { padding: 10px 16px; border-radius: 6px; border: none; background: var(--accent-main); color: #0f172a; font-weight: 700; cursor: pointer; font-size: 0.9rem; width: 100%; }
+
+        /* 특징주 스크롤바 커스텀 스타일 */
+        .feature-scroll-container::-webkit-scrollbar { width: 6px; }
+        .feature-scroll-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -182,11 +186,12 @@
         </div>
     </div>
 
-    <!-- 3. 장중 특징주 핫이슈 -->
+    <!-- 3. 장중 특징주 핫이슈 (스크롤 적용, 최대 10개) -->
     <div class="dashboard-section" id="sec-3">
         <div class="section-header-title">3. 장중 특징주 핫이슈 (실시간)</div>
         <div class="content-card">
-            <div id="feature-stocks-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- max-height와 overflow-y 지정으로 10개 항목 스크롤 조회 구현 -->
+            <div id="feature-stocks-container" class="feature-scroll-container" style="display: flex; flex-direction: column; gap: 16px; max-height: 420px; overflow-y: auto; padding-right: 6px;">
                 {% for item in feature_stocks %}
                 <div class="news-box">
                     <div class="news-header-row">
@@ -269,7 +274,6 @@
     </div>
 
     <script>
-        // 미국증시 마감 브리핑 API 연동 및 자동 갱신
         function fetchNaverMarketBriefing() {
             fetch('/api/naver-briefing')
                 .then(response => response.json())
