@@ -217,16 +217,11 @@ def get_all_quotes_cached():
 
 def fetch_naver_market_briefing_api():
     """미국증시 마감 시황 브리핑 전용 연동 API"""
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    today_date_str = now_dt.strftime('%Y년 %m월 %d일')
-    
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Referer': 'https://m.stock.naver.com/'
     }
     
-    # 1. 네이버 증권 해외증시/뉴욕증시 관련 플래시 뉴스 수급
     try:
         api_url = "https://m.stock.naver.com/api/news/flash?category=world&page=1&pageSize=5"
         req = urllib.request.Request(api_url, headers=headers)
@@ -243,13 +238,12 @@ def fetch_naver_market_briefing_api():
                 
                 if briefing_lines:
                     return {
-                        "date": f"{today_date_str} 미국증시 마감 시황",
+                        "date": "미국증시 마감 시황",
                         "briefing": "\n\n".join(briefing_lines)
                     }
     except Exception:
         pass
         
-    # 2. 구글 뉴스 RSS를 통한 뉴욕증시 마감 시황 대체 연동
     try:
         query_str = urllib.parse.quote("뉴욕증시 마감 OR 다우 나스닥 S&P 마감시황 when:1d")
         rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
@@ -265,14 +259,14 @@ def fetch_naver_market_briefing_api():
             
             if briefing_lines:
                 return {
-                    "date": f"{today_date_str} 미국증시 마감 시황",
+                    "date": "미국증시 마감 시황",
                     "briefing": "\n\n".join(briefing_lines)
                 }
     except Exception:
         pass
 
     return {
-        "date": f"{today_date_str} 미국증시 마감 시황",
+        "date": "미국증시 마감 시황",
         "briefing": "• 미국증시 마감 시황 브리핑 데이터를 불러오는 중입니다."
     }
 
@@ -358,7 +352,7 @@ def fetch_feature_stocks():
         pass
         
     parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
-    feature_items = parsed_items[:5]
+    feature_items = parsed_items[:10]  # 최대 10개까지 확장
     
     for item in feature_items:
         item.pop("sort_dt", None)
