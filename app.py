@@ -51,19 +51,22 @@ _quote_cache_time = 0
 CACHE_TTL = 30 
 
 def get_ssl_context():
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    except Exception:
+        return None
 
 def fetch_yahoo_data(ticker):
-    yahoo_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-    encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
-    
     try:
+        yahoo_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        encoded_ticker = ticker.replace('^', '%5E').replace('=', '%3D')
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{encoded_ticker}?interval=1m&range=1d"
+        
         req = urllib.request.Request(url, headers=yahoo_headers)
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
             res_json = json.loads(response.read().decode('utf-8'))
             result_arr = res_json.get('chart', {}).get('result')
             
@@ -97,13 +100,13 @@ def fetch_yahoo_data(ticker):
         return None
 
 def fetch_realtime_data(ticker):
-    if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
-        try:
+    try:
+        if ticker in ['NAVER_COIN_BTC', 'NAVER_COIN_ETH']:
             market_code = "KRW-BTC" if ticker == 'NAVER_COIN_BTC' else "KRW-ETH"
             api_url = f"https://api.upbit.com/v1/ticker?markets={market_code}"
             
             req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 if res_json and isinstance(res_json, list):
                     item = res_json[0]
@@ -116,16 +119,13 @@ def fetch_realtime_data(ticker):
                         'rate': f"{rate_val:+.2f}%",
                         'is_up': is_up
                     }
-        except Exception:
-            pass
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': 'https://m.stock.naver.com/',
-        'Accept': 'application/json, text/plain, */*'
-    }
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Referer': 'https://m.stock.naver.com/',
+            'Accept': 'application/json, text/plain, */*'
+        }
 
-    try:
         api_url = None
         if ticker.startswith('NAVER_DOMESTIC_'):
             target = ticker.replace('NAVER_DOMESTIC_', '')
@@ -150,7 +150,7 @@ def fetch_realtime_data(ticker):
 
         if api_url:
             req = urllib.request.Request(api_url, headers=headers)
-            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=0.8) as response:
+            with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.0) as response:
                 res_json = json.loads(response.read().decode('utf-8'))
                 item = None
                 if isinstance(res_json, dict):
@@ -162,7 +162,7 @@ def fetch_realtime_data(ticker):
                         item = res_json['datas'][0]
                 
                 if not item and isinstance(res_json, list) and len(res_json) > 0:
-                    item = res_json['datas'][0] if isinstance(res_json, dict) and 'datas' in res_json else res_json[0]
+                    item = res_json[0]
 
                 if item:
                     cur_price = item.get('closePrice') or item.get('nowValue') or item.get('price') or item.get('dealBasRate')
@@ -201,32 +201,36 @@ def get_all_quotes_cached():
         for stock in cat['stocks']:
             tasks.append((stock['code'], stock['ticker']))
 
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
-        for future in as_completed(future_to_code):
-            code = future_to_code[future]
-            try:
-                data = future.result()
-                price_map[code] = data if data else {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
-            except Exception:
-                price_map[code] = {'price': '일시적 지연', 'rate': '+0.00%', 'is_up': True}
+    try:
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_code = {executor.submit(fetch_realtime_data, ticker): code for code, ticker in tasks}
+            for future in as_completed(future_to_code):
+                code = future_to_code[future]
+                try:
+                    data = future.result()
+                    price_map[code] = data if data else {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
+                except Exception:
+                    price_map[code] = {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
+    except Exception:
+        for code, _ in tasks:
+            price_map[code] = {'price': '0.00', 'rate': '+0.00%', 'is_up': True}
                 
     _quote_cache = price_map
     _quote_cache_time = now_ts
     return price_map
 
 def fetch_naver_finance_news():
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 금리 OR 환율 OR 실적 when:6h")
-    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    scored_news_list = []
-    collected_titles = []
-    
     try:
+        kst = pytz.timezone('Asia/Seoul')
+        now_dt = datetime.datetime.now(kst)
+        query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 금리 OR 환율 OR 실적 when:6h")
+        rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
+        
+        scored_news_list = []
+        collected_titles = []
+        
         req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
             root = ET.fromstring(response.read())
             for item in root.findall('.//item'):
                 title_elem = item.find('title')
@@ -236,11 +240,9 @@ def fetch_naver_finance_news():
                 if pub_date_elem is not None and pub_date_elem.text:
                     try:
                         dt_kst = parsedate_to_datetime(pub_date_elem.text).astimezone(kst)
-                        if (now_dt - dt_kst).total_seconds() > 6 * 3600: continue
+                        if (now_dt - dt_kst).total_seconds() > 12 * 3600: continue
                     except Exception:
-                        continue
-                else:
-                    continue
+                        pass
 
                 title = title_elem.text if title_elem is not None else "제목 없음"
                 title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title
@@ -261,30 +263,32 @@ def fetch_naver_finance_news():
                         'type': news_type
                     }
                 })
+        scored_news_list.sort(key=lambda x: x['score'], reverse=True)
+        return [x['item'] for x in scored_news_list[:10]]
     except Exception:
-        pass
-        
-    scored_news_list.sort(key=lambda x: x['score'], reverse=True)
-    return [x['item'] for x in scored_news_list[:10]]
+        return []
 
 def fetch_infostock_clipping():
-    """하드코딩된 문구 틀을 완전히 제거하고 실시간 뉴스 데이터를 그대로 반환합니다."""
-    news_items = fetch_naver_finance_news()
-    return {
-        "items": news_items[:5] if news_items else []
-    }
+    """하드코딩 문구 틀 완전 제거 및 실시간 뉴스 데이터만 반환"""
+    try:
+        news_items = fetch_naver_finance_news()
+        return {
+            "items": news_items[:5] if news_items else []
+        }
+    except Exception:
+        return {"items": []}
 
 def fetch_feature_stocks():
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    query = "intitle:특징주 OR intitle:장전특징주 OR intitle:상한가 when:6h"
-    cache_buster = int(datetime.datetime.now().timestamp())
-    rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
-    
-    parsed_items = []
-    seen_titles = set()
-    
     try:
+        kst = pytz.timezone('Asia/Seoul')
+        now_dt = datetime.datetime.now(kst)
+        query = "intitle:특징주 OR intitle:장전특징주 OR intitle:상한가 when:6h"
+        cache_buster = int(datetime.datetime.now().timestamp())
+        rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&cb={cache_buster}"
+        
+        parsed_items = []
+        seen_titles = set()
+        
         req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=get_ssl_context(), timeout=2.0) as response:
             root = ET.fromstring(response.read())
@@ -306,9 +310,6 @@ def fetch_feature_stocks():
                     except Exception:
                         pass
                 
-                if not sort_dt or (now_dt - sort_dt).total_seconds() > 6 * 3600:
-                    continue
-                
                 title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title.strip()
                 if len(title_clean) > 38: title_clean = title_clean[:38] + "…"
                 
@@ -318,18 +319,11 @@ def fetch_feature_stocks():
                 parsed_items.append({
                     "title": title_clean,
                     "link": link_elem.text if link_elem is not None else "https://news.google.com",
-                    "time": item_time_str,
-                    "sort_dt": sort_dt
+                    "time": item_time_str
                 })
+        return parsed_items[:5], "• [장중 수급 동향]: 실시간 수급 유입이 포착되는 종목 중심 순환매 진행"
     except Exception:
-        pass
-        
-    parsed_items.sort(key=lambda x: x["sort_dt"], reverse=True)
-    feature_items = parsed_items[:5]
-    for item in feature_items: item.pop("sort_dt", None)
-    
-    market_summary = "• [장중 수급 동향]: 실시간 수급 유입이 포착되는 종목 중심 순환매 진행"
-    return feature_items, market_summary
+        return [], "• [장중 수급 동향]: 데이터 수집 대기 중"
 
 def generate_strategies(quotes, news_list):
     return [
@@ -341,36 +335,42 @@ def generate_strategies(quotes, news_list):
     ]
 
 def generate_ai_comprehensive_briefing(quotes, news_list):
-    kst = pytz.timezone('Asia/Seoul')
-    now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
-    top_news = news_list[0]['title'] if news_list else "글로벌 매크로 이슈 점검"
-    return (
-        f"🤖 [팩트 기반 AI 브리핑 리포트 (**{now_time}** 갱신)]\n\n"
-        f"📊 [시황 총평]\n실시간 지수 연동성 및 대형주 수급 균형을 바탕으로 한 선별적 접근이 요구됩니다.\n\n"
-        f"🔍 [핵심 체크포인트]\n• 주요 헤드라인: \"**{top_news}**\"\n• 주도 섹터 자금 유입 속도 확인\n\n"
-        f"💡 [실전 대응 가이드]\n• 변동성 구간 내 주도주 눌림목 위주 분할 매수"
-    )
+    try:
+        kst = pytz.timezone('Asia/Seoul')
+        now_time = datetime.datetime.now(kst).strftime('%H시 %M분')
+        top_news = news_list[0]['title'] if news_list and len(news_list) > 0 else "글로벌 매크로 이슈 점검"
+        return (
+            f"🤖 [팩트 기반 AI 브리핑 리포트 (**{now_time}** 갱신)]\n\n"
+            f"📊 [시황 총평]\n실시간 지수 연동성 및 대형주 수급 균형을 바탕으로 한 선별적 접근이 요구됩니다.\n\n"
+            f"🔍 [핵심 체크포인트]\n• 주요 헤드라인: \"**{top_news}**\"\n• 주도 섹터 자금 유입 속도 확인\n\n"
+            f"💡 [실전 대응 가이드]\n• 변동성 구간 내 주도주 눌림목 위주 분할 매수"
+        )
+    except Exception:
+        return "🤖 AI 브리핑 데이터를 생성하는 중입니다."
 
 @app.route('/')
 def index():
-    price_map = get_all_quotes_cached()
-    live_news = fetch_naver_finance_news()
-    infostock_data = fetch_infostock_clipping()
-    strategies_data = generate_strategies(price_map, live_news)
-    ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
-    feature_stocks_data, feature_market_summary = fetch_feature_stocks()
-            
-    return render_template(
-        'index.html', 
-        categories=MARKET_CATEGORIES, 
-        quotes=price_map,
-        news_list=live_news,
-        strategies=strategies_data,
-        ai_briefing=ai_briefing_text,
-        feature_stocks=feature_stocks_data,
-        feature_market_summary=feature_market_summary,
-        infostock=infostock_data
-    )
+    try:
+        price_map = get_all_quotes_cached()
+        live_news = fetch_naver_finance_news()
+        infostock_data = fetch_infostock_clipping()
+        strategies_data = generate_strategies(price_map, live_news)
+        ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
+        feature_stocks_data, feature_market_summary = fetch_feature_stocks()
+                
+        return render_template(
+            'index.html', 
+            categories=MARKET_CATEGORIES, 
+            quotes=price_map,
+            news_list=live_news,
+            strategies=strategies_data,
+            ai_briefing=ai_briefing_text,
+            feature_stocks=feature_stocks_data,
+            feature_market_summary=feature_market_summary,
+            infostock=infostock_data
+        )
+    except Exception as e:
+        return f"서버 오류가 발생했습니다: {str(e)}", 500
 
 @app.route('/api/quotes')
 def api_quotes():
