@@ -1,6 +1,5 @@
 import datetime
 import json
-import re
 import ssl
 import urllib.parse
 import urllib.request
@@ -10,8 +9,6 @@ from email.utils import parsedate_to_datetime
 from difflib import SequenceMatcher
 from flask import Flask, render_template, jsonify
 import pytz
-from bs4 import BeautifulSoup
-import requests
 
 app = Flask(__name__)
 
@@ -254,7 +251,6 @@ def fetch_naver_finance_news():
                 collected_titles.append(title_clean)
 
                 news_type = "호재" if any(k in title_clean for k in ["실적", "서프라이즈", "수주"]) else ("리스크" if any(k in title_clean for k in ["우려", "하락", "적자"]) else "중립")
-                related_stock = "**삼성전자, SK하이닉스**" if "반도체" in title_clean else "시장 대형주"
 
                 scored_news_list.append({
                     'score': 3 if news_type == "호재" else 1,
@@ -262,8 +258,6 @@ def fetch_naver_finance_news():
                         'title': title_clean,
                         'source': "경제 뉴스",
                         'link': link_elem.text if link_elem is not None else "https://news.google.com",
-                        'stock': related_stock,
-                        'comment': "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요",
                         'type': news_type
                     }
                 })
@@ -274,56 +268,10 @@ def fetch_naver_finance_news():
     return [x['item'] for x in scored_news_list[:10]]
 
 def fetch_infostock_clipping():
-    """인포스탁/팍스넷 스타일의 장전 핵심 클리핑을 실시간 뉴스 및 오늘 날짜 기반으로 동적 갱신합니다."""
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    
-    # 요일 계산
-    days_dict = {'Mon': '월', 'Tue': '화', 'Wed': '수', 'Thu': '목', 'Fri': '금', 'Sat': '토', 'Sun': '일'}
-    day_str = days_dict.get(now_dt.strftime('%a'), '')
-    today_str = f"{now_dt.strftime('%Y년 %m월 %d일')} ({day_str})"
-    
+    """하드코딩된 문구 틀을 완전히 제거하고 실시간 뉴스 데이터를 그대로 반환합니다."""
     news_items = fetch_naver_finance_news()
-    
-    # 인포스탁/팍스넷 스타일 기본 텍스트 (기본 폴백)
-    macro_text = (
-        f"• 뉴욕증시/해외: 글로벌 주요 지수 및 실시간 매크로 지표 변동성 집중 모니터링 중, 기술주 및 반도체 업황 흐름 주시\n"
-        f"• 국내 이슈: 국내 증시 대형주 및 핵심 밸류체인 수급 공방 전개\n"
-        f"• 원전/정책: 주요 정책 수혜 기대감 속 핵심 인프라 관련 모멘텀 점검"
-    )
-    schedule_text = (
-        f"• 미국 경제지표: 미 연준(Fed) 통화정책 관련 거시경제 지표 및 고용 지표 발표 일정 확인\n"
-        f"• 연준 인사 발언: 주요 연방준비제도 인사들의 금리 인하 경로 관련 발언 대기\n"
-        f"• 국내 일정: 금일 주요 경제 부처 브리핑 및 정책 발표 스케줄 체크"
-    )
-    theme_text = (
-        f"• 반도체 소부장: HBM 및 온디바이스 AI 관련 핵심 부품사 중심으로 기관 수급 유입\n"
-        f"• 전력기기 및 조선: 북미 전력망 교체 수요 지속 및 조선 빅3 수주 잔고 모멘텀 유지\n"
-        f"• 바이오/제약: 글로벌 학회 개최 기대감에 따른 유망 파이프라인 종목 순환매"
-    )
-    
-    if len(news_items) >= 2:
-        macro_text = (
-            f"• 뉴욕증시/해외: {news_items[0]['title']} 영향 속 글로벌 반도체 및 기술주 업황 강세 지속\n"
-            f"• 국내 이슈: {news_items[1]['title']} 등 주요 산업 및 기업 이슈 발생\n"
-            f"• 원전/정책: 정책 수혜 기대감 및 환율/금리 변동성에 따른 외국인/기관 수급 동향 주시"
-        )
-        schedule_text = (
-            f"• 주요 실적/지표: 글로벌 혁신 기업 실적 발표 및 경제 지표 주목\n"
-            f"• 연준 관련: 금리 및 통화정책 관련 주요 인사 발언 스케줄 확인\n"
-            f"• 기타 일정: 금일 장내 주요 경제 부처 회의 및 정책 브리핑 개최"
-        )
-        theme_text = (
-            f"• 반도체 관련주: {news_items[0]['stock']} 중심의 실적 모멘텀 및 수급 유입\n"
-            f"• 금융/보험업: 시장 변동성 방어 및 밸류업 프로그램 연계 종목 강세\n"
-            f"• 기계 및 중공업: 수주 잔고가 담보된 대장주 및 테마별 순환매 전개"
-        )
-
     return {
-        "date": today_str,
-        "macro": macro_text,
-        "schedule": schedule_text,
-        "theme": theme_text
+        "items": news_items[:5] if news_items else []
     }
 
 def fetch_feature_stocks():
@@ -380,7 +328,7 @@ def fetch_feature_stocks():
     feature_items = parsed_items[:5]
     for item in feature_items: item.pop("sort_dt", None)
     
-    market_summary = "• [장중 수급 동향]: AI 반도체 및 핵심 소부장 중심의 매수세 유입 중\n• [순환매 전개]: 전력기기·방산 및 저PBR 금융주로 빠른 수급 순환 진행"
+    market_summary = "• [장중 수급 동향]: 실시간 수급 유입이 포착되는 종목 중심 순환매 진행"
     return feature_items, market_summary
 
 def generate_strategies(quotes, news_list):
