@@ -218,40 +218,85 @@ def get_all_quotes_cached():
     _quote_cache_time = now_ts
     return price_map
 
-def fetch_shortnews_summary():
-    """매일 아침 갱신되는 shortnews.co.kr/news/날짜 데이터를 가져옵니다."""
+def fetch_naver_finance_news():
     kst = pytz.timezone('Asia/Seoul')
-    today_str = datetime.datetime.now(kst).strftime("%Y-%m-%d")
-    url = f"https://shortnews.co.kr/news/{today_str}"
+    now_dt = datetime.datetime.now(kst)
+    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 금리 OR 환율 OR 실적 when:6h")
+    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
+    
+    scored_news_list = []
+    collected_titles = []
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=3)
+        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
+            root = ET.fromstring(response.read())
+            for item in root.findall('.//item'):
+                title_elem = item.find('title')
+                link_elem = item.find('link')
+                pub_date_elem = item.find('pubDate')
+                
+                if pub_date_elem is not None and pub_date_elem.text:
+                    try:
+                        dt_kst = parsedate_to_datetime(pub_date_elem.text).astimezone(kst)
+                        if (now_dt - dt_kst).total_seconds() > 6 * 3600: continue
+                    except Exception:
+                        continue
+                else:
+                    continue
+
+                title = title_elem.text if title_elem is not None else "제목 없음"
+                title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title
+                if len(title_clean) > 40: title_clean = title_clean[:40] + "…"
+
+                if any(SequenceMatcher(None, title_clean, et).ratio() >= 0.75 for et in collected_titles):
+                    continue
+                collected_titles.append(title_clean)
+
+                news_type = "호재" if any(k in title_clean for k in ["실적", "서프라이즈", "수주"]) else ("리스크" if any(k in title_clean for k in ["우려", "하락", "적자"]) else "중립")
+                related_stock = "**삼성전자, SK하이닉스**" if "반도체" in title_clean else "시장 대형주"
+
+                scored_news_list.append({
+                    'score': 3 if news_type == "호재" else 1,
+                    'item': {
+                        'title': title_clean,
+                        'source': "경제 뉴스",
+                        'link': link_elem.text if link_elem is not None else "https://news.google.com",
+                        'stock': related_stock,
+                        'comment': "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요",
+                        'type': news_type
+                    }
+                })
+    except Exception:
+        pass
         
-        if response.status_code != 200:
-            return {
-                "date": today_str,
-                "content": f"[{today_str}] 오늘의 간추린 뉴스 데이터가 아직 등록되지 않았거나 주말/휴일일 수 있습니다. (원문 링크를 확인해주세요)"
-            }
+    scored_news_list.sort(key=lambda x: x['score'], reverse=True)
+    return [x['item'] for x in scored_news_list[:10]]
+
+def fetch_infostock_clipping():
+    """실시간 수집된 뉴스를 바탕으로 오늘의 매크로, 일정, 테마를 매번 새롭게 동적 생성합니다."""
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.datetime.now(kst).strftime("%Y년 %m월 %d일")
+    
+    news_items = fetch_naver_finance_news()
+    
+    macro_text = "• 글로벌 증시 및 실시간 매크로 지표 변동성 집중 모니터링 중"
+    schedule_text = "• 금일 주요 경제 지표 발표 및 정책 관련 일정 확인 필요"
+    theme_text = "• 실시간 수급 유입이 포착되는 주도 섹터 및 테마 순환매 전개"
+    
+    if news_items:
+        macro_text = f"• [실시간 주요 이슈]: {news_items[0]['title']}"
+        if len(news_items) > 1:
+            schedule_text = f"• [시장 체크포인트]: {news_items[1]['title']}"
+        if len(news_items) > 2:
+            theme_text = f"• [주목할 섹터]: {news_items[2]['stock']} 및 연관 테마 수급 포착"
             
-        soup = BeautifulSoup(response.text, 'html.parser')
-        body_div = soup.find('div', class_='news-content') or soup.find('main') or soup.find('article')
-        
-        if not body_div:
-            paragraphs = [p.get_text() for p in soup.find_all(['p', 'div']) if len(p.get_text()) > 20]
-            content_text = "\n\n".join(paragraphs[:10]) if paragraphs else "등록된 뉴스 내용이 없습니다."
-        else:
-            content_text = body_div.get_text(separator="\n\n").strip()
-            
-        return {
-            "date": today_str,
-            "content": content_text if content_text else "오늘의 간추린 뉴스 내용이 비어 있습니다."
-        }
-    except Exception as e:
-        return {
-            "date": today_str,
-            "content": f"숏뉴스 크롤링 중 오류가 발생했습니다: {str(e)}"
-        }
+    return {
+        "date": today_str,
+        "macro": macro_text,
+        "schedule": schedule_text,
+        "theme": theme_text
+    }
 
 def fetch_feature_stocks():
     kst = pytz.timezone('Asia/Seoul')
@@ -310,61 +355,6 @@ def fetch_feature_stocks():
     market_summary = "• [장중 수급 동향]: AI 반도체 및 핵심 소부장 중심의 매수세 유입 중\n• [순환매 전개]: 전력기기·방산 및 저PBR 금융주로 빠른 수급 순환 진행"
     return feature_items, market_summary
 
-def fetch_naver_finance_news():
-    kst = pytz.timezone('Asia/Seoul')
-    now_dt = datetime.datetime.now(kst)
-    query_str = urllib.parse.quote("코스피 OR 코스닥 OR 삼성전자 OR 반도체 OR 특징주 OR 금리 OR 환율 OR 실적 when:6h")
-    rss_url = f"https://news.google.com/rss/search?q={query_str}&hl=ko&gl=KR&ceid=KR:ko"
-    
-    scored_news_list = []
-    collected_titles = []
-    
-    try:
-        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=get_ssl_context(), timeout=1.5) as response:
-            root = ET.fromstring(response.read())
-            for item in root.findall('.//item'):
-                title_elem = item.find('title')
-                link_elem = item.find('link')
-                pub_date_elem = item.find('pubDate')
-                
-                if pub_date_elem is not None and pub_date_elem.text:
-                    try:
-                        dt_kst = parsedate_to_datetime(pub_date_elem.text).astimezone(kst)
-                        if (now_dt - dt_kst).total_seconds() > 6 * 3600: continue
-                    except Exception:
-                        continue
-                else:
-                    continue
-
-                title = title_elem.text if title_elem is not None else "제목 없음"
-                title_clean = title.rsplit(" - ", 1)[0].strip() if " - " in title else title
-                if len(title_clean) > 40: title_clean = title_clean[:40] + "…"
-
-                if any(SequenceMatcher(None, title_clean, et).ratio() >= 0.75 for et in collected_titles):
-                    continue
-                collected_titles.append(title_clean)
-
-                news_type = "호재" if any(k in title_clean for k in ["실적", "서프라이즈", "수주"]) else ("리스크" if any(k in title_clean for k in ["우려", "하락", "적자"]) else "중립")
-                related_stock = "**삼성전자, SK하이닉스**" if "반도체" in title_clean else "시장 대형주"
-
-                scored_news_list.append({
-                    'score': 3 if news_type == "호재" else 1,
-                    'item': {
-                        'title': title_clean,
-                        'source': "경제 뉴스",
-                        'link': link_elem.text if link_elem is not None else "https://news.google.com",
-                        'stock': related_stock,
-                        'comment': "실시간 매크로 및 개별 종목 펀더멘털 영향 분석 필요",
-                        'type': news_type
-                    }
-                })
-    except Exception:
-        pass
-        
-    scored_news_list.sort(key=lambda x: x['score'], reverse=True)
-    return [x['item'] for x in scored_news_list[:10]]
-
 def generate_strategies(quotes, news_list):
     return [
         {"title": "실적 가시성 높은 AI 반도체 및 핵심 소부장", "desc": "글로벌 AI 인프라 투자 확대에 따른 실적 턴어라운드 종목 집중 공략", "stock": "**삼성전자, SK하이닉스, 한미반도체**", "rank": "TOP 1"},
@@ -389,7 +379,7 @@ def generate_ai_comprehensive_briefing(quotes, news_list):
 def index():
     price_map = get_all_quotes_cached()
     live_news = fetch_naver_finance_news()
-    short_news = fetch_shortnews_summary()
+    infostock_data = fetch_infostock_clipping()
     strategies_data = generate_strategies(price_map, live_news)
     ai_briefing_text = generate_ai_comprehensive_briefing(price_map, live_news)
     feature_stocks_data, feature_market_summary = fetch_feature_stocks()
@@ -403,16 +393,16 @@ def index():
         ai_briefing=ai_briefing_text,
         feature_stocks=feature_stocks_data,
         feature_market_summary=feature_market_summary,
-        short_news=short_news
+        infostock=infostock_data
     )
 
 @app.route('/api/quotes')
 def api_quotes():
     return jsonify(get_all_quotes_cached())
 
-@app.route('/api/short-news')
-def api_short_news():
-    return jsonify(fetch_shortnews_summary())
+@app.route('/api/infostock')
+def api_infostock():
+    return jsonify(fetch_infostock_clipping())
 
 @app.route('/api/feature-stocks')
 def api_feature_stocks():
